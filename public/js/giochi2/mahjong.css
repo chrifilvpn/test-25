@@ -1,0 +1,29 @@
+/* MAHJONG SOLITARIO: tessere d'avorio con lo spessore verde giada e l'ombra, impilate in strati */
+.mj { display: grid; justify-items: center; gap: .8rem; width: 100%; padding: .3rem 0 1rem; }
+.mj-tavolo { position: relative; max-width: 100%; }
+.mj-t {
+  position: absolute; width: var(--w); height: var(--h); padding: 0; border: 0; border-radius: calc(var(--w) * .12); cursor: pointer;
+  background: linear-gradient(160deg, #fffdf6, #f1ead6 70%, #e6dcc1);
+  box-shadow: var(--dz) var(--dz) 0 #3f8f6b, calc(var(--dz) + 1px) calc(var(--dz) + 1px) 0 #2a6a4d, calc(var(--dz) + 3px) calc(var(--dz) + 4px) 6px rgba(0, 0, 0, .45),
+    inset 0 0 0 1px rgba(120, 100, 60, .35), inset 0 2px 0 rgba(255, 255, 255, .9);
+  transition: transform .12s, filter .12s;
+}
+.mj-t svg { width: 100%; height: 100%; display: block; padding: 6% 8%; box-sizing: border-box; pointer-events: none; }
+.mj-t.bloccata { filter: brightness(.78) saturate(.8); cursor: default; }
+.mj-t.libera:hover { transform: translate(-1px, -2px); filter: brightness(1.04); }
+.mj-t.scelta {
+  background: linear-gradient(160deg, #fff6c9, #ffe28a 70%, #f4c84f);
+  box-shadow: var(--dz) var(--dz) 0 #3f8f6b, 0 0 0 3px #d19a2a, 0 0 16px rgba(242, 193, 78, .9);
+  transform: translate(-2px, -4px);
+}
+.mj-t.suggerita { animation: mj-lampo 1s ease-in-out infinite; }
+@keyframes mj-lampo { 50% { box-shadow: var(--dz) var(--dz) 0 #3f8f6b, 0 0 0 3px #7ac7ff, 0 0 18px #7ac7ff; } }
+.mj-t.no { animation: mj-no .3s; }
+@keyframes mj-no { 25% { transform: translateX(-3px); } 75% { transform: translateX(3px); } }
+.mj-comandi { display: flex; flex-wrap: wrap; gap: .4rem; justify-content: center; }
+.mj-guida { margin: 0; font-size: .8rem; color: var(--tenue); text-align: center; }
+.mj-avviso { margin: 0; padding: .45rem .8rem; border-radius: 10px; background: rgba(242, 193, 78, .15); border: 1px solid rgba(242, 193, 78, .4); text-align: center; }
+.mj.finito .mj-tavolo { animation: mj-fine 1s ease-out; }
+@keyframes mj-fine { 40% { filter: drop-shadow(0 0 14px #ffd166); } }
+@media (hover: none) { .mj-guida { display: none; } }
+@media (prefers-reduced-motion: reduce) { .mj-t, .mj-t.suggerita, .mj.finito .mj-tavolo { animation: none; transition: none; } }

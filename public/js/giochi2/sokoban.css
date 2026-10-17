@@ -1,0 +1,60 @@
+/* SPINGI LE CASSE: pavimento grigio a piastrelle, muri di mattoni rossi, mete con il segno, casse di legno con le
+   assi in croce (verdi e lucide quando sono a posto), il magazziniere che scivola da una casella all'altra */
+.skb { display: flex; flex-direction: column; align-items: center; gap: .8rem; width: 100%; padding: .3rem 0 .8rem; }
+.skb-sx { display: grid; justify-items: center; gap: .5rem; }
+.skb-dx { display: grid; justify-items: center; gap: .7rem; max-width: 100%; }
+@media (min-width: 900px) {
+  .skb { flex-direction: row; justify-content: center; align-items: center; gap: 2rem; }
+  .skb-dx { width: 280px; justify-items: stretch; }
+}
+.skb-mag { position: relative; display: grid; grid-template-columns: repeat(var(--w), var(--c)); grid-auto-rows: var(--c); user-select: none; -webkit-user-select: none; touch-action: none; }
+.skb-c { display: block; }
+.skb-fuori { background: transparent; }
+.skb-muro {
+  background-color: #8c3b2b;
+  background-image: linear-gradient(#5e2419 1px, transparent 1px), linear-gradient(90deg, #5e2419 1px, transparent 1px), linear-gradient(90deg, #5e2419 1px, transparent 1px);
+  background-size: 100% 25%, 50% 50%, 50% 50%; background-position: 0 0, 0 0, 25% 50%;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, .15), inset 0 -3px 0 rgba(0, 0, 0, .25);
+}
+.skb-pav { background: #cfc8b8; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08); cursor: pointer; }
+.skb-pav:hover { background: #ddd6c6; }
+.skb-meta { position: relative; }
+.skb-meta::after {
+  content: ""; position: absolute; inset: 30%; border-radius: 50%; border: calc(var(--c) * .06) solid #d1462f;
+  box-shadow: 0 0 0 calc(var(--c) * .05) rgba(209, 70, 47, .2);
+}
+.skb-cassa, .skb-io {
+  position: absolute; left: 0; top: 0; width: var(--c); height: var(--c); pointer-events: none;
+  transform: translate(calc(var(--x) * var(--c)), calc(var(--y) * var(--c)));
+}
+.skb-cassa::before {
+  content: ""; position: absolute; inset: 7%; border-radius: 4px;
+  background: linear-gradient(45deg, transparent 44%, #7a4f22 44%, #7a4f22 56%, transparent 56%), linear-gradient(-45deg, transparent 44%, #7a4f22 44%, #7a4f22 56%, transparent 56%), #c8914f;
+  box-shadow: inset 0 0 0 calc(var(--c) * .08) #8f5d2b, 0 3px 5px rgba(0, 0, 0, .35);
+}
+.skb-cassa.a-posto::before {
+  background: linear-gradient(45deg, transparent 44%, #2f6f2f 44%, #2f6f2f 56%, transparent 56%), linear-gradient(-45deg, transparent 44%, #2f6f2f 44%, #2f6f2f 56%, transparent 56%), #7fcf6b;
+  box-shadow: inset 0 0 0 calc(var(--c) * .08) #3f8f3a, 0 0 10px rgba(127, 207, 107, .6);
+}
+.skb-io { display: grid; place-items: center; z-index: 2; }
+.skb-io span { font-size: calc(var(--c) * .72); line-height: 1; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, .4)); }
+.skb-io.verso-l span { transform: scaleX(-1); }
+.skb-scivola { animation: skb-scivola .12s ease-out; }
+@keyframes skb-scivola {
+  from { transform: translate(calc((var(--x) - var(--dx)) * var(--c)), calc((var(--y) - var(--dy)) * var(--c))); }
+  to { transform: translate(calc(var(--x) * var(--c)), calc(var(--y) * var(--c))); }
+}
+.skb-frecce { display: grid; grid-template-columns: repeat(3, 3.4rem); grid-template-rows: repeat(2, 3rem); gap: .3rem; }
+.skb-f { border: 0; border-radius: 12px; background: rgba(247, 240, 222, .14); color: var(--testo); font-size: 1.3rem; cursor: pointer; }
+.skb-f:active { background: rgba(247, 240, 222, .3); transform: scale(.95); }
+.skb-f.su { grid-column: 2; grid-row: 1; }
+.skb-f.sx { grid-column: 1; grid-row: 2; }
+.skb-f.giu { grid-column: 2; grid-row: 2; }
+.skb-f.dx { grid-column: 3; grid-row: 2; }
+.skb-comandi { display: flex; flex-wrap: wrap; gap: .4rem; justify-content: center; }
+.skb-guida { margin: 0; font-size: .8rem; color: var(--tenue); text-align: center; line-height: 1.5; }
+.skb.finito .skb-mag { animation: skb-fine .9s ease-out; }
+@keyframes skb-fine { 40% { filter: brightness(1.25) drop-shadow(0 0 12px #ffd166); } }
+@media (hover: hover) and (min-width: 900px) { .skb-frecce { display: none; } }
+@media (hover: none) { .skb-guida { display: none; } }
+@media (prefers-reduced-motion: reduce) { .skb-scivola, .skb.finito .skb-mag { animation: none; } }

@@ -1,0 +1,51 @@
+/* GABBIE ARITMETICHE */
+.ga { display: flex; flex-direction: column; align-items: center; gap: .8rem; width: 100%; padding: .3rem 0 .8rem; }
+.ga-sx { display: grid; justify-items: center; gap: .5rem; }
+.ga-dx { display: grid; justify-items: center; gap: .7rem; max-width: 100%; }
+@media (min-width: 900px) {
+  .ga { flex-direction: row; justify-content: center; align-items: center; gap: 2.2rem; }
+  .ga-dx { justify-items: stretch; width: 290px; }
+}
+.ga-griglia { display: grid; grid-template-columns: repeat(var(--n), var(--c)); grid-auto-rows: var(--c); padding: 2px; border-radius: 6px; background: #1c1a16;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, .45); user-select: none; -webkit-user-select: none; }
+.ga-c { position: relative; display: grid; place-items: center; background: #fbf8f0; color: #1c1a16; cursor: pointer; transition: background .12s;
+  /* righe sottili e bordi delle gabbie fatti con ombre interne: agli incroci non restano tacche */
+  --t: 0px; --b: 0px; --l: 0px; --r: 0px;
+  box-shadow: inset 0 var(--t) 0 #1c1a16, inset 0 calc(-1 * var(--b)) 0 #1c1a16, inset var(--l) 0 0 #1c1a16, inset calc(-1 * var(--r)) 0 0 #1c1a16, inset 0 0 0 .5px #cfc6b0; }
+.ga-c.bt { --t: 2px; } .ga-c.bb { --b: 2px; }
+.ga-c.bl { --l: 2px; } .ga-c.br { --r: 2px; }
+.ga-c:hover { background: #fff3cf; }
+.ga-c.zona { background: #f3eedf; }
+.ga-c.gabbia { background: #efe6c9; }
+.ga-c.uguale { background: #dbe8fb; }
+.ga-c.scelta { background: #ffe08a; outline: 3px solid #d19a2a; outline-offset: -3px; z-index: 1; }
+.ga-griglia.in-appunti .ga-c.scelta { background: #ffeec2; outline-color: #2b6cb0; }
+.ga-et { position: absolute; top: 3px; left: 4px; font: 800 max(11px, calc(var(--c) * .21)) / 1 var(--sans); color: #234; letter-spacing: -.02em; pointer-events: none; }
+.ga-c.gabbia-ko .ga-et { color: #c62828; }
+.ga-v { font: 700 calc(var(--c) * .5) / 1 var(--sans); margin-top: calc(var(--c) * .1); animation: ga-pop .14s ease-out; }
+@keyframes ga-pop { from { transform: scale(.6); opacity: .4; } }
+.ga-c.doppia .ga-v, .ga-c.sbagliata .ga-v { color: #c62828; }
+.ga-c.doppia { background: #ffe3de; }
+.ga-c.aiutata { animation: ga-aiuto 1s ease-in-out 3; }
+@keyframes ga-aiuto { 50% { outline: 3px solid #ffd166; outline-offset: -3px; background: #fff3cf; } }
+.ga-note { position: absolute; inset: calc(var(--c) * .22) 3px 3px; display: grid; grid-template-columns: repeat(3, 1fr); font: 600 max(9px, calc(var(--c) * .19)) / 1 var(--sans); color: #2b6cb0; pointer-events: none; }
+.ga-note.n4 { grid-template-columns: repeat(2, 1fr); }
+.ga-note i { font-style: normal; display: grid; place-items: center; }
+.ga-griglia.completa .ga-c { cursor: default; }
+.ga-griglia.completa .ga-v { color: #1f5e3a; }
+.ga.finito .ga-griglia { animation: ga-fine .8s ease-out; }
+@keyframes ga-fine { 40% { box-shadow: 0 0 0 6px #ffd166, 0 14px 30px rgba(0, 0, 0, .45); } }
+.ga-tasti { display: grid; grid-template-columns: repeat(calc(var(--n) + 1), minmax(38px, 52px)); gap: .35rem; justify-content: center; }
+@media (min-width: 900px) { .ga-tasti { grid-template-columns: repeat(4, 1fr); } }
+.ga-tasto { height: 50px; border-radius: 10px; border: 0; background: rgba(247, 240, 222, .14); color: var(--testo); font: 700 1.35rem var(--sans); cursor: pointer; transition: background .12s, transform .08s; }
+.ga-tasto:hover { background: rgba(247, 240, 222, .26); }
+.ga-tasto:active { transform: scale(.94); }
+.ga-tasto.finito { opacity: .4; }
+.ga-tasto.canc { font-size: 1.1rem; }
+.ga-comandi { display: flex; flex-wrap: wrap; gap: .4rem; justify-content: center; }
+@media (min-width: 900px) { .ga-comandi { display: grid; grid-template-columns: 1fr 1fr; } .ga-comandi .bottone { padding-left: .4rem; padding-right: .4rem; } }
+.ga-comandi .bottone.leggero { margin-top: 0; }
+.ga-comandi small { opacity: .7; font-size: .75em; }
+.ga-guida { margin: 0; font-size: .8rem; color: var(--tenue); text-align: center; line-height: 1.5; }
+@media (hover: none) { .ga-guida { display: none; } .ga-c:hover { background: #fbf8f0; } }
+@media (prefers-reduced-motion: reduce) { .ga-v, .ga-c.aiutata, .ga.finito .ga-griglia { animation: none; } }
