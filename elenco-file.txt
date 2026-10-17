@@ -108,8 +108,11 @@ giochi2/anagrammi.js
 giochi2/anno-dati.js
 giochi2/anno.js
 giochi2/assopiglia.js
+giochi2/asteroidi.js
 giochi2/backgammon-pesi.js
 giochi2/backgammon.js
+giochi2/battitura-dati.js
+giochi2/battitura.js
 giochi2/biglie.js
 giochi2/bomberman.js
 giochi2/burraco-regole.js
@@ -117,6 +120,7 @@ giochi2/burraco.js
 giochi2/calamaro.js
 giochi2/calcetto.js
 giochi2/capitali.js
+giochi2/carri.js
 giochi2/codenames-dati.js
 giochi2/codenames.js
 giochi2/connessioni-dati.js
@@ -145,6 +149,7 @@ giochi2/otello.js
 giochi2/paroliere-dati.js
 giochi2/paroliere.js
 giochi2/patata.js
+giochi2/pong4.js
 giochi2/quiz-dati-a.js
 giochi2/quiz-dati-b.js
 giochi2/quiz-dati-c.js
@@ -155,6 +160,7 @@ giochi2/sagome.js
 giochi2/settemezzo.js
 giochi2/slither.js
 giochi2/tressette.js
+giochi2/tron.js
 giochi2/uomonero.js
 giochi2/videopoker.js
 giochi2/yahtzee.js
@@ -253,8 +259,11 @@ public/js/giochi2/anno.css
 public/js/giochi2/anno.js
 public/js/giochi2/assopiglia.css
 public/js/giochi2/assopiglia.js
+public/js/giochi2/asteroidi.js
 public/js/giochi2/backgammon.css
 public/js/giochi2/backgammon.js
+public/js/giochi2/battitura.css
+public/js/giochi2/battitura.js
 public/js/giochi2/biglie.css
 public/js/giochi2/biglie.js
 public/js/giochi2/bomberman.js
@@ -262,6 +271,7 @@ public/js/giochi2/burraco.css
 public/js/giochi2/burraco.js
 public/js/giochi2/calamaro.js
 public/js/giochi2/calcetto.js
+public/js/giochi2/carri.js
 public/js/giochi2/codenames.css
 public/js/giochi2/codenames.js
 public/js/giochi2/connessioni.css
@@ -299,6 +309,7 @@ public/js/giochi2/otello.js
 public/js/giochi2/paroliere.css
 public/js/giochi2/paroliere.js
 public/js/giochi2/patata.js
+public/js/giochi2/pong4.js
 public/js/giochi2/quiz.css
 public/js/giochi2/quiz.js
 public/js/giochi2/quoridor.css
@@ -308,6 +319,7 @@ public/js/giochi2/settemezzo.js
 public/js/giochi2/slither.js
 public/js/giochi2/tressette.css
 public/js/giochi2/tressette.js
+public/js/giochi2/tron.js
 public/js/giochi2/uomonero.css
 public/js/giochi2/uomonero.js
 public/js/giochi2/videopoker.css
@@ -327,12 +339,15 @@ test/giochi2/affari.js
 test/giochi2/anagrammi.js
 test/giochi2/anno.js
 test/giochi2/assopiglia.js
+test/giochi2/asteroidi.js
 test/giochi2/backgammon.js
+test/giochi2/battitura.js
 test/giochi2/biglie.js
 test/giochi2/bomberman.js
 test/giochi2/burraco.js
 test/giochi2/calamaro.js
 test/giochi2/calcetto.js
+test/giochi2/carri.js
 test/giochi2/codenames.js
 test/giochi2/connessioni.js
 test/giochi2/corsa.js
@@ -353,11 +368,13 @@ test/giochi2/omaha.js
 test/giochi2/otello.js
 test/giochi2/paroliere.js
 test/giochi2/patata.js
+test/giochi2/pong4.js
 test/giochi2/quiz.js
 test/giochi2/quoridor.js
 test/giochi2/settemezzo.js
 test/giochi2/slither.js
 test/giochi2/tressette.js
+test/giochi2/tron.js
 test/giochi2/uomonero.js
 test/giochi2/videopoker.js
 test/giochi2/yahtzee.js
