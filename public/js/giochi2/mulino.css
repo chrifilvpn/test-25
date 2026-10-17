@@ -1,0 +1,66 @@
+/* FILETTO (MULINO) */
+.mul { display: grid; justify-items: center; gap: .5rem; width: 100%; padding: .2rem 0 .6rem; }
+.mul-campo { display: flex; align-items: center; justify-content: center; gap: 1.2rem; width: 100%; }
+.mul-centro { flex: none; }
+.mul-tavola { --lato: min(92vw, calc(100vh - 15.5rem), 42rem); width: max(17rem, var(--lato)); height: auto; display: block; touch-action: manipulation; user-select: none; filter: drop-shadow(0 12px 18px rgba(0, 0, 0, .45)); }
+
+.mul-venature path { fill: none; stroke: rgba(120, 72, 25, .16); stroke-width: 3; }
+.mul-cornice { fill: none; stroke: rgba(90, 52, 18, .35); stroke-width: 3; }
+.mul-linee { fill: none; stroke: #4a2c10; stroke-width: 7; stroke-linejoin: round; stroke-linecap: round; }
+.mul-foro { fill: #3d230c; stroke: #8a5a2b; stroke-width: 2; }
+.mul-anello-bianco { fill: none; stroke: rgba(150, 140, 120, .45); stroke-width: 2; }
+.mul-anello-nero { fill: none; stroke: rgba(255, 255, 255, .12); stroke-width: 2; }
+.mul-ped { transition: transform .15s; }
+.mul-ped.nuova { animation: mul-arriva .35s ease-out both; animation-delay: var(--t, 0ms); }
+@keyframes mul-arriva { from { opacity: 0; } to { opacity: 1; } }
+.mul-ped.mobile circle:first-child { stroke: rgba(255, 233, 160, .55); stroke-width: 3; }
+.mul-ped.scelta circle:first-child { stroke: #ffd34d; stroke-width: 6; }
+.mul-ped.togli circle:first-child { stroke: #ff4a3a; stroke-width: 6; animation: mul-lampeggia 1s ease-in-out infinite; }
+@keyframes mul-lampeggia { 50% { stroke-opacity: .25; } }
+.mul-ped.in-mulino circle:first-child { stroke: #ffcf3f; stroke-width: 4; }
+.mul-ultima { fill: none; stroke: #e2483b; stroke-width: 4; stroke-dasharray: 8 6; pointer-events: none; }
+.mul-partenza { fill: none; stroke: rgba(226, 72, 59, .8); stroke-width: 3; stroke-dasharray: 4 4; }
+.mul-scia { stroke: rgba(226, 72, 59, .75); stroke-width: 5; stroke-dasharray: 10 8; stroke-linecap: round; animation: mul-arriva .4s both; animation-delay: var(--t, 0ms); }
+.mul-mulino { stroke: #ffd34d; stroke-width: 18; stroke-linecap: round; opacity: .55; filter: drop-shadow(0 0 8px #ffd34d); animation: mul-brilla 1.6s ease-out both; animation-delay: var(--t, 0ms); }
+@keyframes mul-brilla { 0% { opacity: 0; stroke-width: 4; } 25% { opacity: .9; stroke-width: 26; } 100% { opacity: .5; stroke-width: 18; } }
+.mul-puo { fill: rgba(80, 220, 120, .85); stroke: #fff; stroke-width: 3; pointer-events: none; }
+.mul-puo.dest { animation: mul-pulsa 1.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes mul-pulsa { 50% { transform: scale(1.25); } }
+.mul-svanisce { animation: mul-via .7s ease-in both; animation-delay: var(--t, 0ms); pointer-events: none; transform-box: fill-box; }
+@keyframes mul-via { 0% { opacity: 1; } 100% { opacity: 0; } }
+.mul-tocco { fill: transparent; }
+.mul-fantasma { opacity: 0; transition: opacity .12s; }
+.mul-bersaglio.attivo { cursor: pointer; }
+.mul-bersaglio:focus { outline: none; }
+.mul-bersaglio.attivo:focus-visible .mul-tocco { stroke: #ffd34d; stroke-width: 3; }
+@media (hover: hover) {
+  .mul-bersaglio.attivo:hover .mul-fantasma { opacity: .5; }
+  .mul-bersaglio.attivo:hover .mul-tocco { fill: rgba(255, 255, 255, .08); }
+}
+.mul-giocatore { display: grid; gap: .45rem; justify-items: center; padding: .7rem .8rem; border-radius: 14px; background: rgba(0, 0, 0, .22); border: 2px solid transparent; width: 9.5rem; }
+.mul-giocatore.di-turno { border-color: var(--oro); box-shadow: 0 0 14px rgba(209, 154, 42, .45); }
+.mul-chi { display: flex; align-items: center; gap: .45rem; max-width: 100%; }
+.mul-chi b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mul-pile { display: grid; grid-template-columns: repeat(3, 1.5rem); gap: .3rem; }
+.mul-mini { display: inline-block; width: 1.5rem; height: 1.5rem; border-radius: 50%; flex: none; box-shadow: 0 2px 3px rgba(0, 0, 0, .45); }
+.mul-mini.bianco { background: radial-gradient(circle at 38% 32%, #fff, #ebe6da 55%, #bdb5a3); }
+.mul-mini.nero { background: radial-gradient(circle at 38% 32%, #6a6a6a, #262626 50%, #050505); }
+.mul-mini.vuota { background: none; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .14); }
+.mul-chi .mul-mini { width: 1.1rem; height: 1.1rem; }
+.mul-conti { display: grid; justify-items: center; font-size: .9rem; color: var(--tenue); }
+.mul-conti strong { color: var(--testo); font: 400 1.15rem var(--serif); }
+.mul-fase { color: var(--oro); font-weight: 600; min-height: 1.2em; }
+.mul-msg { font-size: 1.05rem; max-width: 34rem; text-align: center; }
+.mul-nota { margin: 0; font-size: .85rem; color: var(--tenue); }
+@media (max-width: 760px) {
+  .mul-campo { flex-wrap: wrap; gap: .5rem; }
+  .mul-centro { order: 3; flex: 1 1 100%; display: flex; justify-content: center; min-width: 0; }
+  .mul-giocatore { flex: 1 1 40%; width: auto; min-width: 0; padding: .4rem .5rem; gap: .25rem; }
+  .mul-giocatore.io { order: 2; }
+  .mul-pile { grid-template-columns: repeat(9, .8rem); gap: .15rem; }
+  .mul-pile .mul-mini { width: .8rem; height: .8rem; }
+  .mul-conti { font-size: .8rem; }
+  .mul-conti > span:first-child { display: none; }
+  .mul-tavola { --lato: min(94vw, calc(100vh - 19rem)); }
+}
+@media (prefers-reduced-motion: reduce) { .mul-ped.nuova, .mul-mulino, .mul-scia, .mul-puo.dest, .mul-svanisce, .mul-ped.togli circle { animation: none; } }
