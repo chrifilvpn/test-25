@@ -1,0 +1,84 @@
+/* ======================= VIDEO POKER ======================= */
+.vp { width: 100%; display: grid; justify-items: center; padding: .3rem 0 .6rem; }
+.vp-macchina {
+  width: min(100%, 1000px); display: grid; justify-items: center; gap: .45rem; padding: .8rem clamp(.5rem, 2vw, 1.4rem) 1rem;
+  border-radius: 22px; border: 3px solid #c9a24a;
+  background: radial-gradient(ellipse at 50% 0%, #2b3fb0 0%, #18237a 45%, #0c1145 100%);
+  box-shadow: 0 0 0 6px #2a1d07, 0 0 0 8px #8a6a22, 0 18px 40px rgba(0, 0, 0, .55), inset 0 0 40px rgba(0, 0, 0, .45);
+  color: #f2f4ff;
+}
+.vp-testa { display: grid; justify-items: center; line-height: 1.1; }
+.vp-marchio { font: 800 clamp(1rem, 2.2vw, 1.45rem) / 1 var(--sans); letter-spacing: .18em; color: #ffd75e; text-shadow: 0 0 10px rgba(255, 200, 60, .55), 0 2px 0 #7a4b00; }
+.vp-sotto { font-size: .72rem; letter-spacing: .08em; color: #aab4ff; text-transform: uppercase; margin-top: .2rem; }
+
+/* tabella delle vincite */
+.vp-tabella { width: min(100%, 760px); border-collapse: collapse; font: 700 clamp(.7rem, 1.2vw, .9rem) / 1.15 var(--sans); background: rgba(5, 8, 40, .7); border: 2px solid #f0c040; }
+.vp-tabella th, .vp-tabella td { padding: .1rem .55rem; text-align: right; color: #ffe066; white-space: nowrap; }
+.vp-tabella thead th { font-size: .7em; color: #9fb0ff; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1px solid rgba(240, 192, 64, .5); }
+.vp-tabella tbody th { text-align: left; color: #ffe066; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; }
+.vp-tabella td + td, .vp-tabella th + th { border-left: 1px solid rgba(240, 192, 64, .35); }
+.vp-tabella .vp-col { background: rgba(200, 30, 40, .55); color: #fff; }
+.vp-tabella thead .vp-col { color: #fff; }
+.vp-tabella tr.vp-vinta th, .vp-tabella tr.vp-vinta td { background: #ffe066; color: #1a1450; animation: vp-lampeggia .55s steps(2) 6; }
+.vp-tabella tr.vp-vinta .vp-col { background: #fff; color: #b3001b; }
+@keyframes vp-lampeggia { 50% { background: #fff6c2; } }
+
+/* carte */
+.vp-carte { display: flex; gap: clamp(.35rem, 1.6vw, 1.1rem); justify-content: center; margin-top: .3rem; }
+.vp-posto { display: grid; justify-items: center; gap: .3rem; cursor: default; border-radius: 10px; }
+.vp-posto[data-az] { cursor: pointer; }
+.vp-posto[data-az]:hover .carta { transform: translateY(-4px); }
+.vp-carta.carta { --w: clamp(64px, min(10vw, 15vh), 136px); transition: transform .12s ease, box-shadow .12s ease, filter .2s; }
+.vp-carta.vp-tenuta { transform: translateY(-8px) !important; box-shadow: 0 0 0 3px #ffe066, 0 10px 20px rgba(0, 0, 0, .5); }
+.vp-carta.vp-consigliata { outline: 3px dashed #7dffb0; outline-offset: 4px; }
+.vp-carta.vp-vince { box-shadow: 0 0 0 3px #ffe066, 0 0 26px rgba(255, 224, 102, .8); }
+.vp-carta.vp-spenta { filter: brightness(.55) saturate(.6); }
+.vp-carta.vp-gira { animation: vp-gira .32s ease-out both; animation-delay: calc(var(--k, 0) * 70ms); }
+.vp-posto .vp-carta.vp-gira { animation-delay: calc(var(--k, 0) * 70ms); }
+@keyframes vp-gira { from { transform: perspective(600px) rotateY(90deg); filter: brightness(.6); } to { transform: none; } }
+.vp-etichetta { min-height: 1.3rem; font: 800 .78rem / 1.3rem var(--sans); letter-spacing: .12em; color: #8f9ae0; }
+.vp-etichetta.si { color: #1a1450; background: #ffe066; padding: 0 .55rem; border-radius: 4px; box-shadow: 0 0 10px rgba(255, 224, 102, .6); }
+.vp-etichetta kbd, .vp-tasti kbd { font: 700 .7rem / 1 var(--sans); padding: .12rem .35rem; border-radius: 4px; border: 1px solid #6c78c8; color: #c8d0ff; background: rgba(255, 255, 255, .06); }
+
+.vp-msg { margin: .1rem 0 0; min-height: 1.4em; font: 700 clamp(.9rem, 1.6vw, 1.15rem) / 1.3 var(--sans); text-align: center; color: #e4e8ff; }
+.vp-msg-vinta { color: #fff; text-shadow: 0 0 12px rgba(255, 224, 102, .7); }
+.vp-oro { color: #ffe066; text-transform: uppercase; letter-spacing: .04em; }
+.vp-consiglio { width: min(100%, 720px); padding: .4rem .8rem; border-radius: 10px; background: rgba(40, 200, 120, .14); border: 1px solid rgba(125, 255, 176, .45); font-size: .86rem; text-align: center; }
+.vp-consiglio p { margin: .1rem 0; }
+.vp-tua { color: #c8d0ff; }
+.vp-tua.ok { color: #7dffb0; }
+
+/* crediti, puntata, vincita */
+.vp-quadri { display: flex; gap: clamp(.4rem, 2vw, 1.4rem); justify-content: center; flex-wrap: wrap; }
+.vp-quadro { min-width: clamp(5.6rem, 9vw, 7.4rem); display: grid; justify-items: center; padding: .2rem .7rem .25rem; border-radius: 8px; background: #050822; border: 2px solid #3a4aa8; }
+.vp-quadro small { font: 800 .66rem / 1 var(--sans); letter-spacing: .16em; color: #ff5a5a; }
+.vp-quadro b { font: 800 clamp(1.2rem, 2.4vw, 1.7rem) / 1.15 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: #ff4040; text-shadow: 0 0 8px rgba(255, 60, 60, .7); }
+.vp-quadro i { font-style: normal; font-size: .7rem; color: #8f9ae0; }
+.vp-quadro.vp-acceso { border-color: #ffe066; }
+.vp-quadro.vp-acceso b { color: #ffe066; text-shadow: 0 0 10px rgba(255, 224, 102, .8); }
+
+.vp-fondo { display: flex; gap: .6rem 1.4rem; flex-wrap: wrap; justify-content: center; align-items: center; }
+.vp-piede { display: flex; gap: .3rem 1rem; flex-wrap: wrap; justify-content: center; align-items: center; }
+.vp-comandi { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: center; align-items: center; }
+.vp-bt { background: #2a3590; border-color: #6c78c8; color: #fff; font-weight: 700; }
+.vp-bt small { font-weight: 400; color: #c8d0ff; }
+.vp-grande { min-width: 10rem; font-size: 1.05rem; padding-top: .6rem; padding-bottom: .6rem; }
+.vp-cons-bt[aria-pressed="true"] { background: rgba(40, 200, 120, .3); border-color: #7dffb0; }
+.vp-tasti { margin: 0; font-size: .72rem; color: #8f9ae0; }
+.vp-storia { display: flex; gap: .25rem; flex-wrap: wrap; justify-content: center; }
+.vp-storia span { font-size: .68rem; padding: .08rem .45rem; border-radius: 999px; background: rgba(255, 255, 255, .07); color: #aab4ff; }
+.vp-storia span.su { background: rgba(255, 224, 102, .2); color: #ffe066; }
+.vp-conti { margin: 0; font-size: .72rem; color: #8f9ae0; text-align: center; }
+
+@media (hover: none) { .vp-tasti { display: none; } .vp-etichetta kbd { display: none; } }
+@media (max-width: 620px) {
+  .vp-macchina { border-radius: 14px; gap: .4rem; padding: .55rem .4rem .7rem; box-shadow: 0 0 0 3px #2a1d07, 0 10px 24px rgba(0, 0, 0, .5); }
+  .vp-tabella th, .vp-tabella td { padding: .1rem .25rem; }
+  .vp-tabella { font-size: .62rem; }
+  .vp-tabella thead th { font-size: .55rem; }
+  .vp-carta.carta { --w: calc((100vw - 3.6rem) / 5.3); }
+  .vp-carte { gap: .3rem; }
+  .vp-grande { min-width: 0; flex: 1 1 100%; }
+  .vp-quadro { min-width: 5.4rem; padding: .25rem .4rem; }
+}
+@media (prefers-reduced-motion: reduce) { .vp-carta.vp-gira, .vp-tabella tr.vp-vinta th, .vp-tabella tr.vp-vinta td { animation: none; } }
