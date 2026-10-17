@@ -1,0 +1,138 @@
+/* NOMI COSE CITTÀ: la lettera su una tessera di legno, i cartellini delle categorie come fogli di quaderno a
+   quadretti, la tabella delle risposte come la pagina dove si fanno i conti */
+.ncc {
+  --ncc-foglio: #fbf7ec; --ncc-riga: rgba(70, 110, 170, .14); --ncc-penna: #1d3f8a;
+  width: min(68rem, 100%); min-width: 0; box-sizing: border-box; margin: 0 auto; display: grid; gap: .9rem; padding: .3rem 0 1rem;
+}
+.ncc-testa { display: flex; align-items: center; gap: 1.1rem; }
+.ncc-lettera {
+  width: 5.2rem; height: 5.2rem; flex: none; border-radius: 14px; display: grid; place-items: center;
+  background: linear-gradient(145deg, #e8c48a, #c99a55 60%, #a8793c); box-shadow: 0 5px 0 #7d5626, 0 10px 18px rgba(0, 0, 0, .35), inset 0 2px 0 rgba(255, 255, 255, .35);
+  animation: ncc-gira .6s cubic-bezier(.3, 1.4, .5, 1);
+}
+.ncc-lettera b { font: 700 3.4rem/1 var(--serif); color: #3a230a; text-shadow: 0 1px 0 rgba(255, 255, 255, .4); }
+.ncc-lettera.piccola { width: 3.4rem; height: 3.4rem; border-radius: 10px; animation: none; box-shadow: 0 3px 0 #7d5626, 0 6px 12px rgba(0, 0, 0, .3); }
+.ncc-lettera.piccola b { font-size: 2.1rem; }
+@keyframes ncc-gira { from { transform: rotateY(180deg) scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
+.ncc-giro { display: grid; gap: .25rem; }
+.ncc-giro span { color: var(--tenue); font-size: .9rem; text-transform: uppercase; letter-spacing: .08em; }
+.ncc-giro small { color: var(--tenue); font-size: .8rem; display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+.ncc-giro small span { font: 700 .75rem var(--sans); letter-spacing: 0; color: var(--avorio); background: rgba(0, 0, 0, .25); border-radius: 4px; padding: .05rem .35rem; }
+.ncc-destra { margin-left: auto; display: flex; align-items: center; gap: 1rem; }
+
+.ncc-tempo { display: grid; justify-items: end; gap: 4px; min-width: 8rem; }
+.ncc-tempo b { font: 400 2rem/1 var(--serif); color: var(--avorio); font-variant-numeric: tabular-nums; }
+.ncc-tempo i { display: block; width: 8rem; height: 6px; border-radius: 3px; background: rgba(247, 240, 222, .15); position: relative; overflow: hidden; }
+.ncc-tempo i::after {
+  content: ""; position: absolute; inset: 0; transform-origin: left; background: linear-gradient(90deg, #e2b13c, #9fd26b);
+  animation: ncc-svuota var(--d) linear forwards; transform: scaleX(var(--da));
+}
+@keyframes ncc-svuota { from { transform: scaleX(var(--da)); } to { transform: scaleX(0); } }
+.ncc-tempo.poco b { color: #ff9b85; animation: ncc-pulsa 1s infinite; }
+@keyframes ncc-pulsa { 50% { opacity: .55; } }
+
+.ncc-stop {
+  border: 0; cursor: pointer; padding: .65rem 1.3rem; border-radius: 999px; font: 800 1.05rem var(--sans); letter-spacing: .06em;
+  background: #d8432f; color: #fff; box-shadow: 0 4px 0 #8e2516, 0 6px 14px rgba(0, 0, 0, .3); transition: transform .08s, filter .12s;
+}
+.ncc-stop:hover:not(:disabled) { filter: brightness(1.1); }
+.ncc-stop:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 1px 0 #8e2516; }
+.ncc-stop:disabled { background: rgba(0, 0, 0, .25); color: var(--tenue); box-shadow: none; cursor: default; }
+.ncc-stopdetto { font: 800 1.05rem var(--sans); color: #ffb3a5; animation: ncc-pulsa .8s infinite; }
+.ncc.fermato .ncc-celle { box-shadow: 0 0 0 3px rgba(216, 67, 47, .45); border-radius: 16px; }
+
+/* i cartellini delle categorie */
+.ncc-celle { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .8rem; }
+.ncc-celle.n8 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ncc-cat {
+  position: relative; display: grid; gap: .45rem; padding: .8rem .9rem .9rem; border-radius: 12px; cursor: text;
+  background-color: var(--ncc-foglio); color: var(--inchiostro);
+  background-image: linear-gradient(var(--ncc-riga) 1px, transparent 1px), linear-gradient(90deg, var(--ncc-riga) 1px, transparent 1px);
+  background-size: 14px 14px; box-shadow: 0 6px 16px rgba(0, 0, 0, .3); transition: transform .12s, box-shadow .12s;
+}
+.ncc-cat:focus-within { transform: translateY(-2px); box-shadow: 0 0 0 3px rgba(242, 193, 78, .8), 0 10px 22px rgba(0, 0, 0, .35); }
+.ncc-nome { display: flex; align-items: center; gap: .45rem; font: 700 .85rem var(--sans); text-transform: uppercase; letter-spacing: .06em; color: #5a4a2e; }
+.ncc-nome i { font-style: normal; font-size: 1.15rem; }
+.ncc-cat input {
+  width: 100%; box-sizing: border-box; border: 0; border-bottom: 2px solid rgba(29, 63, 138, .35); background: transparent; outline: none;
+  font: 600 1.45rem/1.3 var(--serif); color: var(--ncc-penna); padding: .1rem .1rem .2rem;
+}
+.ncc-cat input::placeholder { color: rgba(29, 63, 138, .28); }
+.ncc-cat.pieno::after { content: "✓"; position: absolute; top: .55rem; right: .7rem; font: 800 1rem var(--sans); color: #3c8a3a; }
+.ncc-cat.sbagliata::after { content: "lettera?"; font-size: .72rem; color: #c2553a; }
+.ncc-cat.sbagliata input { color: #c2553a; }
+.ncc-aiuto { margin: 0; text-align: center; color: var(--tenue); font-size: .85rem; }
+.ncc-aiuto b { color: var(--avorio); }
+.ncc-aiuto kbd { font: 600 .72rem var(--sans); padding: .05rem .35rem; border-radius: 4px; background: rgba(255, 255, 255, .12); }
+.ncc-info { font-size: .82rem; }
+
+/* la tabella delle risposte */
+.ncc-fase { font: 600 .85rem var(--sans); text-transform: uppercase; letter-spacing: .08em; padding: .3rem .8rem; border-radius: 999px; background: rgba(0, 0, 0, .25); }
+.ncc-scorri { overflow-x: auto; border-radius: 14px; box-shadow: 0 8px 20px rgba(0, 0, 0, .3); }
+.ncc-scorri table {
+  width: 100%; border-collapse: collapse; background-color: var(--ncc-foglio); color: var(--inchiostro);
+  background-image: linear-gradient(var(--ncc-riga) 1px, transparent 1px); background-size: 100% 1.6rem;
+}
+.ncc-scorri th, .ncc-scorri td { padding: .45rem .6rem; text-align: left; border-bottom: 1px solid rgba(90, 74, 46, .15); vertical-align: middle; }
+.ncc-scorri thead th { font: 700 .85rem var(--sans); color: #5a4a2e; background: rgba(201, 154, 85, .25); white-space: nowrap; }
+.ncc-scorri thead th.ncc-io { color: #8a3b12; }
+.ncc-scorri tbody th { font: 700 .8rem var(--sans); text-transform: uppercase; letter-spacing: .04em; color: #5a4a2e; white-space: nowrap; width: 1%; }
+.ncc-scorri tbody th i { font-style: normal; margin-right: .35rem; }
+.ncc-scorri td { min-width: 7.5rem; }
+.ncc-risp { display: flex; align-items: baseline; gap: .35rem; font: 600 1.05rem var(--serif); color: var(--ncc-penna); white-space: nowrap; }
+.ncc-risp em { color: rgba(90, 74, 46, .4); font-style: normal; }
+.ncc-risp i { font: 800 .85rem var(--sans); font-style: normal; }
+td.ncc-ok .ncc-risp i, td.ncc-accettata .ncc-risp i { color: #3c8a3a; }
+td.ncc-no .ncc-risp, td.ncc-rifiutata .ncc-risp { color: #b2452e; text-decoration: line-through; text-decoration-thickness: 2px; }
+td.ncc-no .ncc-risp i, td.ncc-rifiutata .ncc-risp i { color: #b2452e; }
+td.ncc-dubbia { background: rgba(242, 193, 78, .22); }
+td.ncc-dubbia .ncc-risp i { color: #a8741a; }
+.ncc-voto { display: flex; align-items: center; gap: .3rem; margin-top: .25rem; }
+.ncc-voto small, .ncc-esito { font: 600 .72rem var(--sans); color: #6b5a3a; margin-left: .2rem; white-space: nowrap; }
+.ncc-pollice {
+  border: 0; cursor: pointer; width: 2.1rem; height: 1.9rem; border-radius: 8px; font-size: .95rem; line-height: 1;
+  background: rgba(90, 74, 46, .12); transition: transform .08s, background .12s;
+}
+.ncc-pollice:hover { background: rgba(90, 74, 46, .25); }
+.ncc-pollice.scelto { background: #f2c14e; box-shadow: 0 0 0 2px #a8741a; transform: scale(1.06); }
+.ncc-p { display: inline-block; margin: .15rem 0 0; padding: .05rem .4rem; border-radius: 6px; font: 800 .8rem var(--sans); background: rgba(90, 74, 46, .12); color: #6b5a3a; }
+.ncc-p.p20 { background: #2f7d32; color: #fff; }
+.ncc-p.p10 { background: #4f9b4a; color: #fff; }
+.ncc-p.p5 { background: #b98b2c; color: #fff; }
+.ncc-tot th, .ncc-tot td { background: rgba(201, 154, 85, .25); border-bottom: 0; }
+.ncc-tot td b { font: 800 1.15rem var(--sans); color: #2f5d22; }
+.ncc-tot td small { color: #6b5a3a; }
+.ncc-legenda { margin: 0; display: flex; flex-wrap: wrap; gap: .4rem 1.2rem; justify-content: center; font-size: .8rem; color: var(--tenue); }
+.ncc-legenda .ncc-ok { color: #9fd26b; }
+.ncc-legenda .ncc-dubbia { color: #f2c14e; }
+.ncc-legenda .ncc-no { color: #ff9b85; }
+.ncc-comandi { display: flex; gap: 1rem; align-items: center; justify-content: center; flex-wrap: wrap; }
+.ncc-comandi .bottone { padding: .6rem 1.3rem; border-radius: 999px; }
+.ncc-attesa { margin: 0; color: var(--tenue); }
+.ncc-attesa b { color: #f2c14e; }
+
+@media (max-width: 760px) {
+  .ncc { gap: .65rem; }
+  .ncc-lettera { width: 3.8rem; height: 3.8rem; }
+  .ncc-lettera b { font-size: 2.4rem; }
+  .ncc-testa { gap: .7rem; }
+  .ncc-giro small { display: none; }
+  .ncc-destra { gap: .5rem; }
+  .ncc-tempo { min-width: 0; }
+  .ncc-tempo i { width: 4.5rem; }
+  .ncc-tempo b { font-size: 1.5rem; }
+  .ncc-stop { padding: .5rem .9rem; font-size: .9rem; }
+  .ncc-celle, .ncc-celle.n8 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .5rem; }
+  .ncc-cat { padding: .55rem .6rem .6rem; gap: .25rem; }
+  .ncc-nome { font-size: .7rem; }
+  .ncc-cat input { font-size: 1.15rem; }
+  .ncc-tasti { display: none; }
+  .ncc-scorri th, .ncc-scorri td { padding: .35rem .45rem; }
+  .ncc-scorri tbody th { font-size: .68rem; white-space: normal; min-width: 4.5rem; }
+  .ncc-scorri tbody th i { display: block; margin: 0 0 .1rem; }
+  .ncc-scorri td { min-width: 0; }
+  .ncc-risp { font-size: .95rem; }
+  .ncc-p { margin-left: 0; }
+  .ncc-pollice { width: 2.3rem; height: 2.1rem; }
+}
+@media (prefers-reduced-motion: reduce) { .ncc-lettera, .ncc-stopdetto, .ncc-tempo.poco b { animation: none; } }

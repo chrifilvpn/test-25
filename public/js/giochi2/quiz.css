@@ -1,0 +1,14 @@
+/* ======================= QUIZ DI CULTURA GENERALE (il resto con le classi bd-… della bandiera) ======================= */
+.qz { max-width: 46rem; }
+.qz-carta { width: 100%; display: grid; grid-template-columns: auto 1fr; gap: 1rem; align-items: center; padding: 1.1rem 1.3rem; border-radius: 16px;
+  background: linear-gradient(135deg, #fdf8ea, #f1e6c8); color: #2a2116; box-shadow: 0 10px 24px rgba(0, 0, 0, .35); animation: qz-entra .35s ease-out both; }
+.qz-icona { font-size: 2.6rem; line-height: 1; }
+.qz-domanda { margin: 0; font: 600 clamp(1.1rem, 2.2vw, 1.45rem) / 1.3 var(--serif); }
+@keyframes qz-entra { from { transform: translateY(10px); opacity: 0; } to { transform: none; opacity: 1; } }
+.qz-ripasso { width: 100%; }
+.qz-ripasso h3 { margin: .4rem 0; }
+.qz-ripasso ol { margin: 0; padding-left: 1.2rem; display: grid; gap: .45rem; }
+.qz-ripasso li span { display: block; color: var(--tenue); font-size: .88rem; }
+.qz-ripasso li b { color: #7fd1a8; }
+.qz-ripasso li small { display: block; color: #f0a3a3; font-size: .78rem; }
+@media (prefers-reduced-motion: reduce) { .qz-carta { animation: none; } }
