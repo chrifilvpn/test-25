@@ -1,0 +1,51 @@
+/* ======================= CINQUE DADI ======================= */
+.yz { width: 100%; max-width: 76rem; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, auto); gap: 1.4rem; align-items: start; padding: .4rem .6rem 1rem; }
+.yz-vassoio { display: grid; justify-items: center; gap: .8rem; padding: 1.3rem 1rem; border-radius: 22px; background: radial-gradient(ellipse at 50% 35%, #2f7a4c, #1c5134 70%); box-shadow: inset 0 0 0 6px #6d4622, inset 0 0 30px rgba(0, 0, 0, .45), 0 14px 28px rgba(0, 0, 0, .4); align-self: center; }
+.yz-giro { font-size: .92rem; color: #e7f1e8; display: flex; align-items: center; gap: .5rem; }
+.yz-tiri { display: inline-flex; gap: 4px; }
+.yz-tiri i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #f0c24a; }
+.yz-tiri i.fatto { background: #f0c24a; }
+.yz-dadi { display: flex; gap: clamp(.4rem, 1.4vw, 1rem); justify-content: center; flex-wrap: wrap; padding: .6rem 0 .2rem; }
+.yz-posto { display: grid; justify-items: center; gap: .35rem; cursor: default; }
+.yz-dadi.mio .yz-posto[data-az] { cursor: pointer; }
+.yz-dado { width: clamp(54px, 7vw, 88px); height: clamp(54px, 7vw, 88px); filter: drop-shadow(0 6px 6px rgba(0, 0, 0, .45)); transition: transform .15s ease; }
+.yz-dado rect { fill: #fdfaf2; stroke: #b9ad92; stroke-width: 3; }
+.yz-dado circle { fill: #b3261e; }
+.yz-dado.spento { opacity: .45; }
+.yz-dado.tenuto { transform: translateY(-10px); }
+.yz-dado.tenuto rect { stroke: #f0c24a; stroke-width: 7; }
+.yz-posto[data-az]:hover .yz-dado:not(.tenuto) { transform: translateY(-4px) rotate(-3deg); }
+.yz-dado.rotola { animation: yz-rotola .55s cubic-bezier(.3, 1.4, .6, 1) both; animation-delay: calc(var(--t, 0ms) + var(--k) * 45ms); }
+@keyframes yz-rotola { 0% { transform: translate(-30px, -40px) rotate(-200deg) scale(.7); opacity: 0; } 70% { transform: rotate(12deg); opacity: 1; } 100% { transform: none; } }
+.yz-etich { min-height: 1.3rem; font-size: .7rem; font-weight: 800; letter-spacing: .06em; color: #f0c24a; }
+.yz-etich kbd { font-size: .72rem; }
+.yz-msg { margin: 0; text-align: center; color: #f4f8f2; font-size: 1.02rem; max-width: 30rem; min-height: 1.5em; }
+.yz-tira { font-size: 1.1rem; padding: .7rem 1.6rem; }
+.yz-tasti { margin: 0; font-size: .74rem; color: #cfe3d3; }
+.yz-tab { overflow-x: auto; max-width: 100%; }
+.yz-scheda { border-collapse: separate; border-spacing: 0; background: #fbf6ea; color: #2a2116; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 22px rgba(0, 0, 0, .35); font-size: .9rem; }
+.yz-scheda th, .yz-scheda td { padding: .28rem .6rem; border-bottom: 1px solid #e3d8bf; text-align: center; }
+.yz-scheda thead th { background: #6d4622; color: #fbf6ea; font-weight: 700; max-width: 7rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.yz-scheda thead th.di-turno { background: #b8862a; }
+.yz-scheda tbody th { text-align: left; font-weight: 700; white-space: nowrap; }
+.yz-scheda tbody th small { display: block; font-weight: 400; font-size: .68rem; color: #8a7a5c; }
+.yz-scheda td { min-width: 3.2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.yz-scheda td.zero { color: #a9997a; }
+.yz-libera { color: #8a7a5c; font-weight: 500 !important; font-style: italic; }
+.yz-libera.mia { cursor: pointer; color: #1d6b3d; font-style: normal; background: rgba(47, 122, 76, .1); }
+.yz-libera.mia.zero { color: #a6422f; }
+.yz-libera.mia:hover, .yz-libera.mia:focus-visible { background: #2f7a4c; color: #fff; outline: none; }
+.yz-appena { animation: yz-lampo 1.4s ease-out; }
+@keyframes yz-lampo { 0%, 40% { background: #f0c24a; } 100% { background: transparent; } }
+.yz-parz th, .yz-parz td { background: #efe5cd; font-size: .82rem; }
+.yz-parz td small { color: #8a7a5c; font-weight: 400; }
+.yz-tot th, .yz-tot td { background: #6d4622; color: #fbf6ea; font-size: 1.05rem; border-bottom: 0; }
+@media (max-width: 900px) {
+  .yz { grid-template-columns: 1fr; gap: .8rem; padding: .2rem .3rem 1rem; }
+  .yz-tab { justify-self: center; }
+  .yz-scheda { font-size: .8rem; }
+  .yz-scheda th, .yz-scheda td { padding: .22rem .35rem; }
+  .yz-scheda tbody th small { display: none; }
+  .yz-scheda td { min-width: 2.4rem; }
+}
+@media (prefers-reduced-motion: reduce) { .yz-dado.rotola, .yz-appena { animation: none; } }

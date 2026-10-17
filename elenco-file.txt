@@ -103,6 +103,8 @@ giochi/uno.js
 giochi/wanted.js
 giochi/wordle.js
 giochi2/assopiglia.js
+giochi2/backgammon-pesi.js
+giochi2/backgammon.js
 giochi2/biglie.js
 giochi2/bomberman.js
 giochi2/burraco-regole.js
@@ -119,6 +121,7 @@ giochi2/cucu.js
 giochi2/duemila.js
 giochi2/geo-dati.js
 giochi2/geo-quiz.js
+giochi2/ludo.js
 giochi2/machiavelli.js
 giochi2/mastermind.js
 giochi2/memory.js
@@ -126,6 +129,7 @@ giochi2/monumenti-dati.js
 giochi2/monumenti.js
 giochi2/nonogram-dati.js
 giochi2/nonogram.js
+giochi2/oca.js
 giochi2/omaha.js
 giochi2/otello.js
 giochi2/patata.js
@@ -136,6 +140,7 @@ giochi2/slither.js
 giochi2/tressette.js
 giochi2/uomonero.js
 giochi2/videopoker.js
+giochi2/yahtzee.js
 guardia.js
 package-lock.json
 package.json
@@ -225,6 +230,8 @@ public/js/giochi/wanted.js
 public/js/giochi/wordle.js
 public/js/giochi2/assopiglia.css
 public/js/giochi2/assopiglia.js
+public/js/giochi2/backgammon.css
+public/js/giochi2/backgammon.js
 public/js/giochi2/biglie.css
 public/js/giochi2/biglie.js
 public/js/giochi2/bomberman.js
@@ -242,6 +249,8 @@ public/js/giochi2/cucu.css
 public/js/giochi2/cucu.js
 public/js/giochi2/duemila.css
 public/js/giochi2/duemila.js
+public/js/giochi2/ludo.css
+public/js/giochi2/ludo.js
 public/js/giochi2/machiavelli.css
 public/js/giochi2/machiavelli.js
 public/js/giochi2/mastermind.css
@@ -250,6 +259,8 @@ public/js/giochi2/memory.css
 public/js/giochi2/memory.js
 public/js/giochi2/nonogram.css
 public/js/giochi2/nonogram.js
+public/js/giochi2/oca.css
+public/js/giochi2/oca.js
 public/js/giochi2/omaha.css
 public/js/giochi2/omaha.js
 public/js/giochi2/otello.css
@@ -264,6 +275,8 @@ public/js/giochi2/uomonero.css
 public/js/giochi2/uomonero.js
 public/js/giochi2/videopoker.css
 public/js/giochi2/videopoker.js
+public/js/giochi2/yahtzee.css
+public/js/giochi2/yahtzee.js
 public/js/tavoli-tabellone.js
 public/js/tavoli.js
 public/nuovi.css
@@ -274,6 +287,7 @@ sicurezza.js
 test/browser.js
 test/giochi2.js
 test/giochi2/assopiglia.js
+test/giochi2/backgammon.js
 test/giochi2/biglie.js
 test/giochi2/bomberman.js
 test/giochi2/burraco.js
@@ -285,10 +299,12 @@ test/giochi2/corsa.js
 test/giochi2/css-nomi.js
 test/giochi2/cucu.js
 test/giochi2/duemila.js
+test/giochi2/ludo.js
 test/giochi2/machiavelli.js
 test/giochi2/mastermind.js
 test/giochi2/memory.js
 test/giochi2/nonogram.js
+test/giochi2/oca.js
 test/giochi2/omaha.js
 test/giochi2/otello.js
 test/giochi2/patata.js
@@ -297,6 +313,7 @@ test/giochi2/slither.js
 test/giochi2/tressette.js
 test/giochi2/uomonero.js
 test/giochi2/videopoker.js
+test/giochi2/yahtzee.js
 test/migliorie3.js
 test/nuovi.js
 test/serate.js
