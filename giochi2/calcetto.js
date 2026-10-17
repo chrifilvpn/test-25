@@ -20,9 +20,9 @@ const STECCHE = [
 });
 const verso = (sq) => (sq === 0 ? -1 : 1); // dove attacca la squadra
 const LIV = {
-  facile: { ogni: 0.26, rumore: 26, tira: 0.55, mira: 0 },
-  medio: { ogni: 0.12, rumore: 10, tira: 0.85, mira: 0 },
-  difficile: { ogni: 0.05, rumore: 3, tira: 1, mira: 0.5 },
+  facile: { ogni: 0.26, rumore: 26, tira: 0.55, mira: 0, anticipa: 0 },
+  medio: { ogni: 0.12, rumore: 10, tira: 0.85, mira: 0, anticipa: 0 },
+  difficile: { ogni: 0.04, rumore: 2, tira: 1, mira: 1, anticipa: 0 },
 };
 
 class Calcetto extends Arena {
@@ -142,14 +142,14 @@ class Calcetto extends Arena {
           b.vx = (lato / l) * V_TIRO; b.vy = (dir / l) * V_TIRO;
           b.y = a.y + dir * (R_OMINO + R_PALLA + 3);
           a.tiro = DURATA_TIRO - TIRO_ATTIVO; // un calcio solo per rotazione
-          this.colpi.push([Math.round(b.x), Math.round(b.y), 1]);
+          this.colpo(b, 1);
           this.ultimoTocco = a;
           break;
         }
         if (d < R_OMINO + R_PALLA && d > 0) {
           const nx = dx / d, ny = dy / d;
           const rvx = b.vx - a.v, rvy = b.vy, vn = rvx * nx + rvy * ny;
-          if (vn < 0) { b.vx -= 1.55 * vn * nx; b.vy -= 1.55 * vn * ny; if (-vn > 250) this.colpi.push([Math.round(b.x), Math.round(b.y), 0]); }
+          if (vn < 0) { b.vx -= 1.55 * vn * nx; b.vy -= 1.55 * vn * ny; if (-vn > 250) this.colpo(b, 0); }
           b.x = x + nx * (R_OMINO + R_PALLA); b.y = a.y + ny * (R_OMINO + R_PALLA);
           this.ultimoTocco = a;
         }
@@ -165,6 +165,8 @@ class Calcetto extends Arena {
     if (this.fermo > 3.5) { this.fermo = 0; this.metti(Math.random() < 0.5 ? 0 : 1); this.annuncia(null, 'pallina ferma: si rimette in gioco ⚽', 'pallina ferma: si rimette in gioco ⚽'); this.cambiato = true; }
     return false;
   }
+  // i colpi alla pallina (per il suono e il lampo): numerati e tenuti per un attimo, così arrivano a tutti
+  colpo(b, forte) { this.nC = (this.nC || Math.floor(Date.now() / 10) % 1e9) + 1; this.colpi.push([this.nC, Math.round(b.x), Math.round(b.y), forte, this.tempoRound]); }
   segna(sq) {
     this.gol[sq]++;
     for (let p = 0; p < this.n; p++) this.punti[p] = this.gol[this.squadra(p)];
@@ -198,22 +200,42 @@ class Calcetto extends Arena {
     if (this.tempoRound >= m.fino) { m.fino = this.tempoRound + L.ogni * (0.7 + Math.random() * 0.6); m.visto = { ...this.palla, x: this.palla.x + (Math.random() - 0.5) * L.rumore }; }
     const b = m.visto;
     let tira = false;
+    // dove sarà la pallina quando arriva all'altezza y (con i rimbalzi sulle sponde), se ci va
+    const arrivo = (yy) => {
+      if (Math.abs(b.vy) < 40) return b.x;
+      const t = (yy - b.y) / b.vy;
+      if (t < 0 || t > 1.2) return b.x;
+      const L0 = R_PALLA, span = W - 2 * R_PALLA;
+      let u = (b.x + b.vx * t - L0) % (2 * span); if (u < 0) u += 2 * span;
+      return L0 + (u > span ? 2 * span - u : u);
+    };
+    // la porta avversaria: si mira dalla parte lasciata scoperta dal portiere
+    const portiere = this.aste.find((a) => a.sq !== sq && a.ruolo === 'portiere');
+    const xPortiere = portiere ? portiere.base[0] + portiere.s : W / 2;
+    const bersaglio = W / 2 + (xPortiere > W / 2 ? -1 : 1) * PORTA * 0.32;
     for (const a of this.aste) {
       if (a.chi !== p) continue;
       const davanti = (b.y - a.y) * dir; // > 0: la pallina è nella metà verso cui calcia questa stecca
-      let x = b.x;
+      let x = L.anticipa ? b.x + (arrivo(a.y) - b.x) * L.anticipa : b.x;
       // portiere e difesa: quando la pallina è lontana stanno tra la pallina e la porta
       if ((a.ruolo === 'portiere' || a.ruolo === 'difesa') && davanti > 60) { const porta = sq === 0 ? H : 0; x = W / 2 + (x - W / 2) * Math.min(1, Math.abs(a.y - porta) / Math.max(60, Math.abs(b.y - porta))) * 1.1; }
+      // il difficile sceglie il tiro con la strada più libera verso la porta (niente omini in mezzo, lontano dal portiere)
+      if (L.mira >= 1 && davanti > -R_PALLA && davanti < 70) {
+        const o = this.scegliTiro(a, b, sq);
+        x = b.x - o;
+      } else if (L.mira && davanti > -R_PALLA && davanti < 70) {
       // mirare: colpire la pallina un po' di lato per mandarla verso il centro della porta avversaria
-      if (L.mira && davanti > -R_PALLA && davanti < 70) {
         const porta = sq === 0 ? 0 : H, D = Math.max(80, Math.abs(b.y - porta));
-        const voglio = (W / 2 - b.x) / D; // vx/vy che serve
-        x = b.x - Math.max(-11, Math.min(11, (voglio / 0.55) * (R_OMINO + R_PALLA))) * L.mira;
+        const voglio = ((L.mira >= 1 ? bersaglio : W / 2) - b.x) / D; // vx/vy che serve
+        x = b.x - Math.max(-14, Math.min(14, (voglio / 0.55) * (R_OMINO + R_PALLA))) * Math.min(1, L.mira);
       }
       a.meta = this.spostaPer(a, x);
       // tira se la pallina è davanti a uno dei suoi omini
       if (davanti > -R_PALLA && davanti < R_OMINO + R_PALLA + 16 && a.tiro <= 0) {
-        for (const ox of this.omini(a)) if (Math.abs(this.palla.x - ox) < R_OMINO + R_PALLA) { tira = true; break; }
+        for (const ox of this.omini(a)) {
+          if (Math.abs(this.palla.x - ox) >= R_OMINO + R_PALLA) continue;
+          tira = true; break;
+        }
       }
     }
     const tocco = tira && this.tempoRound > m.tocco && Math.random() < L.tira;
@@ -221,9 +243,40 @@ class Calcetto extends Arena {
     return { tocco };
   }
 
-  vistaExtra() { return { aste: this.aste.map((a) => ({ sq: a.sq, ruolo: a.ruolo, y: a.y, base: a.base, chi: a.chi })), PORTA, R_PALLA, R_OMINO, obiettivo: this.obiettivo, aSquadre: this.aSquadre }; }
+  // il punto d'impatto (scostamento dell'omino rispetto alla pallina) che dà il tiro migliore: si segue la traiettoria
+  // dritta (con i rimbalzi sulle sponde) fino alla porta e si contano gli omini che la tagliano
+  scegliTiro(a, b, sq) {
+    const dir = verso(sq), portaY = sq === 0 ? 0 : H;
+    const portiere = this.aste.find((q) => q.sq !== sq && q.ruolo === 'portiere');
+    const xp = portiere ? portiere.base[0] + portiere.s : W / 2;
+    let meglio = 0, mv = -Infinity;
+    for (let o = -13; o <= 13; o += 2.6) {
+      const lato = (o / (R_OMINO + R_PALLA)) * 0.55;
+      const pend = lato / dir; // dx per ogni dy (dy con il segno della direzione)
+      const xa = (yy) => {
+        const L0 = R_PALLA, span = W - 2 * R_PALLA;
+        let u = (b.x + pend * (yy - b.y) - L0) % (2 * span); if (u < 0) u += 2 * span;
+        return L0 + (u > span ? 2 * span - u : u);
+      };
+      let v = 0;
+      for (const q of this.aste) {
+        if ((q.y - a.y) * dir <= 0) continue; // solo le stecche davanti
+        const xq = xa(q.y);
+        const tocca = this.omini(q).some((ox) => Math.abs(ox - xq) < R_OMINO + R_PALLA - 2);
+        if (tocca) v -= q.sq === sq ? 3 : q.ruolo === 'portiere' ? 6 : 2;
+      }
+      const xf = xa(portaY);
+      if (Math.abs(xf - W / 2) < PORTA / 2 - R_PALLA) v += 4 + Math.min(3, Math.abs(xf - xp) / 30); else v -= 2;
+      v -= Math.abs(o) * 0.02;
+      if (v > mv) { mv = v; meglio = o; }
+    }
+    return meglio;
+  }
+
+  vistaExtra() { return { aste: this.aste.map((a) => ({ sq: a.sq, ruolo: a.ruolo, y: a.y, base: a.base, chi: a.chi, min: a.min, max: a.max })), PORTA, R_PALLA, R_OMINO, V_ASTA, DURATA_TIRO, obiettivo: this.obiettivo, aSquadre: this.aSquadre }; }
   statoTick() {
-    const colpi = this.colpi; this.colpi = [];
+    const t = this.tempoRound; this.colpi = this.colpi.filter((c) => t - c[4] < 0.4 && c[4] <= t);
+    const colpi = this.colpi.map((c) => c.slice(0, 4));
     return {
       b: { id: 0, x: Math.round(this.palla.x * 10) / 10, y: Math.round(this.palla.y * 10) / 10 },
       a: this.aste.map((a) => [Math.round(a.s * 10) / 10, a.tiro > 0 ? Math.round((a.tiro / DURATA_TIRO) * 100) / 100 : 0]),
@@ -256,5 +309,5 @@ module.exports = {
   },
   crea: (o) => new Calcetto(o),
   bot: () => ({}),
-  _test: { Calcetto, STECCHE, W, H, PORTA, V_TIRO, DURATA_TIRO },
+  _test: { Calcetto, STECCHE, W, H, PORTA, V_TIRO, DURATA_TIRO, LIV },
 };

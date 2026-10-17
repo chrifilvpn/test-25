@@ -1,6 +1,8 @@
 // CALCIO BALILLA: stecche, chi comanda cosa (1 contro 1 e 2 contro 2), tiro, rimbalzi, gol, rimessa, e tante partite
 // complete tra computer.
 const assert = require('assert');
+// caso ripetibile: le partite tra computer danno sempre lo stesso esito
+{ let s = 20251017; Math.random = () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; }
 const { GIOCHI } = require('../../giochi');
 const M = GIOCHI.calcetto;
 const { STECCHE, W, H, PORTA } = M._test;
@@ -111,6 +113,14 @@ assert.ok(M.meta.regole.some((r) => /facile/.test(r) && /difficile/.test(r)));
     gol += g.gol[0] + g.gol[1];
     if (n === 2 && bot[0] !== bot[1]) { const v = bot[g.risultato.vincitori[0]], p = bot[1 - g.risultato.vincitori[0]]; vinte[v]++; const c = `${v}>${p}`; sfide[c] = (sfide[c] || 0) + 1; }
     partite++;
+  }
+  // in più, una serie dedicata difficile contro medio (sono vicini: con poche partite il caso conterebbe troppo)
+  for (let k = 0; k < 50; k++) {
+    const bot = k % 2 ? ['difficile', 'medio'] : ['medio', 'difficile'];
+    const g = M.crea({ n: 2, opzioni: { gol: 3 }, bot });
+    let ora = Date.now();
+    while (!g.finita) { ora += 25; if (g.fase !== 'gioco') g.fineFase = Math.min(g.fineFase, ora); g.tick(ora); }
+    const v = bot[g.risultato.vincitori[0]], c = `${v}>${v === 'medio' ? 'difficile' : 'medio'}`; sfide[c] = (sfide[c] || 0) + 1; partite++;
   }
   const batte = (a, b) => (sfide[`${a}>${b}`] || 0) > (sfide[`${b}>${a}`] || 0);
   assert.ok(batte('medio', 'facile') && batte('difficile', 'facile') && batte('difficile', 'medio'), `il più forte vince di più ${JSON.stringify(sfide)}`);

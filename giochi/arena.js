@@ -81,6 +81,7 @@ class Arena {
   nuoviTocchi(p) { const k = this.inp[p].tocchi - this.tocchiVisti[p]; this.tocchiVisti[p] = this.inp[p].tocchi; return Math.max(0, k); }
 
   tick(ora) {
+    this.nTick = (this.nTick || 0) + 1;
     if (this.finita || this.inPausa) return false;
     if (this.fase === 'via') { if (ora >= this.fineFase) { this.fase = 'gioco'; this.ultimoTick = ora; this.tocchiVisti = this.inp.map((x) => x.tocchi); return true; } return false; }
     if (this.fase === 'pausaRound') {
@@ -121,7 +122,29 @@ class Arena {
     this.risultato = { fazioni: this.punti.map((x, i) => ({ posti: [i], punti: Math.round(x) })), etichetta: this.etichettaPunti || 'punti', pareggio: this.n > 1 && v.length > 1, vincitori: this.n === 1 ? [0] : v.length > 1 ? [] : v };
   }
 
+  // Molti giochi in statoTick "consumano" gli effetti del tick (const x = this.x; this.x = []): il server chiama
+  // vistaTick una volta per ogni giocatore, quindi gli effetti arrivavano solo al primo. Qui, dal secondo giocatore
+  // in poi dello stesso tick, si rimettono per un attimo gli elenchi consumati dal primo.
   vistaTick(posto) {
+    if (this._effTick !== this.nTick) {
+      this._effTick = this.nTick;
+      this._effPrima = {};
+      for (const k of Object.keys(this)) if (Array.isArray(this[k])) this._effPrima[k] = this[k];
+      this._effConsumati = null;
+      const v = this.vistaTick0(posto);
+      // gli elenchi che statoTick ha sostituito con uno vuoto: erano effetti da dare anche agli altri
+      this._effConsumati = {};
+      for (const [k, vecchio] of Object.entries(this._effPrima)) if (this[k] !== vecchio && Array.isArray(this[k]) && !this[k].length && vecchio.length) this._effConsumati[k] = vecchio;
+      return v;
+    }
+    const c = this._effConsumati || {};
+    const ora = {};
+    for (const k of Object.keys(c)) { ora[k] = this[k]; this[k] = c[k]; }
+    const v = this.vistaTick0(posto);
+    for (const k of Object.keys(c)) this[k] = ora[k];
+    return v;
+  }
+  vistaTick0(posto) {
     const ora = Date.now();
     const rif = this.inPausa ? this.pausaDal : ora;
     return { ts: ora, fase: this.fase, round: this.round, pausa: this.inPausa, via: this.fase === 'via' ? Math.max(0, this.fineFase - rif) : 0, t: Math.round(this.tempoRound * 100) / 100, s: this.statoTick(posto) }; // statoTick(posto): alcuni giochi mostrano cose diverse a ognuno
