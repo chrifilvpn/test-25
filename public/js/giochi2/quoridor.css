@@ -1,0 +1,41 @@
+/* ======================= MURI E PEDINE ======================= */
+.qr { width: 100%; max-width: 70rem; margin: 0 auto; display: grid; grid-template-columns: minmax(0, min(46rem, calc(100vh - 13.5rem))) 16rem; gap: 1.2rem; align-items: center; justify-content: center; padding: .3rem .5rem; }
+.qr-svg { width: 100%; display: block; filter: drop-shadow(0 12px 22px rgba(0, 0, 0, .45)); user-select: none; }
+.qr-fondo { fill: #4a2f1a; }
+.qr-cella { fill: #c99a62; stroke: #8a6235; stroke-width: 1.5; transition: fill .12s; }
+.qr-cella.da { fill: #b98a54; }
+.qr-cella.puo { fill: #f3d58b; cursor: pointer; animation: qr-pulsa 1.6s ease-in-out infinite; }
+.qr-cella.puo:hover { fill: #ffe9a8; }
+@keyframes qr-pulsa { 50% { fill: #ffe39b; } }
+.qr-muro { fill: var(--c); stroke: rgba(0, 0, 0, .55); stroke-width: 2; }
+.qr-muro.nuovo { animation: qr-cala .4s ease-out both; }
+@keyframes qr-cala { from { opacity: 0; } to { opacity: 1; } }
+.qr-ped circle { stroke: rgba(0, 0, 0, .5); stroke-width: 2.5; }
+.qr-ped .qr-luce { fill: rgba(255, 255, 255, .18); stroke: none; transform-origin: center; }
+.qr-ped.di-turno circle:first-child { stroke: #fff6d8; stroke-width: 4; }
+.qr-ped text { fill: #fff; font: 800 20px var(--sans); text-anchor: middle; paint-order: stroke; stroke: rgba(0, 0, 0, .55); stroke-width: 3; pointer-events: none; }
+.qr-zona { cursor: pointer; }
+.qr-presa { fill: transparent; }
+.qr-fantasma { opacity: 0; pointer-events: none; transition: opacity .08s; }
+.qr-zona.si .qr-fantasma { fill: #49c26b; }
+.qr-zona.no .qr-fantasma { fill: #e2483b; }
+.qr-zona:hover .qr-fantasma, .qr-zona.ante .qr-fantasma { opacity: .75; }
+.qr-zona.no { cursor: not-allowed; }
+.qr-lato { display: grid; gap: .5rem; }
+.qr-tu { margin: 0 0 .2rem; font-size: .9rem; color: var(--tenue); }
+.qr-gioc { display: grid; grid-template-columns: auto 1fr auto; grid-template-rows: auto auto; column-gap: .5rem; row-gap: .3rem; align-items: center; padding: .5rem .7rem; border-radius: 12px; background: rgba(0, 0, 0, .22); border: 2px solid transparent; }
+.qr-gioc.di-turno { border-color: var(--oro); box-shadow: 0 0 12px rgba(209, 154, 42, .4); }
+.qr-gioc b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.qr-pallino { width: 1rem; height: 1rem; border-radius: 50%; box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .35); }
+.qr-dist { font-size: .9rem; }
+.qr-muretti { grid-column: 1 / 4; display: flex; gap: 3px; flex-wrap: wrap; min-height: .9rem; align-items: center; }
+.qr-muretti i { width: 6px; height: 16px; border-radius: 2px; background: #c99a62; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .35); }
+.qr-muretti small { color: var(--tenue); font-size: .72rem; }
+.qr-msg { margin: .3rem 0 0; font-size: 1rem; }
+@media (max-width: 860px) {
+  .qr { grid-template-columns: 1fr; justify-items: center; gap: .6rem; }
+  .qr-svg { width: 100%; }
+  .qr-lato { width: 100%; grid-template-columns: 1fr 1fr; }
+  .qr-tu, .qr-msg { grid-column: 1 / 3; }
+}
+@media (prefers-reduced-motion: reduce) { .qr-cella.puo, .qr-muro.nuovo { animation: none; } }

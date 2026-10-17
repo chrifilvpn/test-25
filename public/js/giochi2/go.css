@@ -1,0 +1,42 @@
+/* ======================= GO ======================= */
+.go { width: 100%; max-width: 74rem; margin: 0 auto; display: grid; grid-template-columns: minmax(0, min(44rem, calc(100vh - 11rem))) 16rem; gap: 1.2rem; align-items: center; justify-content: center; padding: .3rem .5rem; }
+.go-svg { width: 100%; display: block; filter: drop-shadow(0 14px 24px rgba(0, 0, 0, .5)); user-select: none; }
+.go-legno { fill: #dcb36a; }
+.go-linea { stroke: #3d2a12; stroke-width: 1.3; }
+.go-coord { fill: #6b4a1f; font: 600 13px var(--sans); text-anchor: middle; }
+.go-stella { fill: #3d2a12; }
+.go-pietra { filter: drop-shadow(1.5px 2.5px 1.5px rgba(0, 0, 0, .45)); }
+.go-pietra.nuova { animation: go-posa .25s ease-out both; transform-box: fill-box; transform-origin: center; }
+@keyframes go-posa { from { transform: scale(1.25); opacity: .4; } to { transform: none; opacity: 1; } }
+.go-pietra.morta { opacity: .5; }
+.go-pietra[data-az] { cursor: pointer; }
+.go-pietra[data-az]:hover { opacity: .75; }
+.go-ultima { fill: none; stroke-width: 2.2; pointer-events: none; }
+.go-croce { stroke: #e2483b; stroke-width: 3; stroke-linecap: round; pointer-events: none; }
+.go-terr.n { fill: #111; } .go-terr.b { fill: #fff; stroke: #333; stroke-width: .8; }
+.go-punto { cursor: pointer; }
+.go-fantasma { opacity: 0; pointer-events: none; }
+.go-fantasma.n { fill: #111; } .go-fantasma.b { fill: #fff; }
+.go-punto:hover .go-fantasma { opacity: .45; }
+.go-punto.ko { cursor: not-allowed; }
+.go-punto.ko:hover .go-fantasma { opacity: 0; }
+.go-ko { fill: none; stroke: #e2483b; stroke-width: 2.5; pointer-events: none; }
+.go-lato { display: grid; gap: .55rem; }
+.go-gioc { display: grid; grid-template-columns: auto 1fr auto; column-gap: .5rem; align-items: center; padding: .55rem .7rem; border-radius: 12px; background: rgba(0, 0, 0, .22); border: 2px solid transparent; }
+.go-gioc.di-turno { border-color: var(--oro); box-shadow: 0 0 12px rgba(209, 154, 42, .4); }
+.go-gioc b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.go-gioc small { grid-column: 2 / 3; color: var(--tenue); font-size: .75rem; }
+.go-pt { grid-column: 3; grid-row: 1 / 3; font: 400 1.6rem var(--serif); }
+.go-pal { width: 1.1rem; height: 1.1rem; border-radius: 50%; }
+.go-pal.nero { background: radial-gradient(circle at 35% 30%, #666, #000); }
+.go-pal.bianco { background: radial-gradient(circle at 35% 30%, #fff, #bdb9aa); }
+.go-msg { margin: .2rem 0 0; font-size: 1rem; }
+.go-bt { display: flex; flex-wrap: wrap; gap: .5rem; }
+.go-abb { opacity: .8; }
+.go-nota { margin: 0; font-size: .75rem; color: var(--tenue); }
+@media (max-width: 860px) {
+  .go { grid-template-columns: 1fr; justify-items: center; gap: .6rem; }
+  .go-lato { width: 100%; grid-template-columns: 1fr 1fr; }
+  .go-msg, .go-bt, .go-nota { grid-column: 1 / 3; }
+}
+@media (prefers-reduced-motion: reduce) { .go-pietra.nuova { animation: none; } }
