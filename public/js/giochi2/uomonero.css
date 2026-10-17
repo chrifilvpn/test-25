@@ -1,0 +1,63 @@
+/* ======================= UOMO NERO ======================= */
+.un { width: 100%; max-width: 72rem; margin: 0 auto; display: grid; gap: .7rem; padding: .3rem .5rem 1rem; justify-items: center; }
+.un > * { min-width: 0; max-width: 100%; }
+.un-giro { margin: 0; font-size: .82rem; color: var(--tenue); text-align: center; }
+.un-fila { display: flex; flex-wrap: wrap; gap: .6rem 1rem; justify-content: center; width: 100%; }
+.un-avv { position: relative; display: grid; justify-items: center; gap: .25rem; padding: .45rem .7rem .4rem; border-radius: 12px; background: rgba(0, 0, 0, .18); border: 2px solid transparent; min-width: 7.5rem; }
+.un-avv.di-turno { border-color: var(--oro); box-shadow: 0 0 14px rgba(209, 154, 42, .4); }
+.un-avv.fuori { opacity: .6; }
+.un-nome { font-weight: 600; max-width: 10rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.un-segni { font-size: .8em; }
+.un-ventaglio { display: flex; height: 44px; align-items: flex-end; }
+.un-ventaglio .carta { --w: 30px; margin-left: -20px; box-shadow: 0 1px 3px rgba(0, 0, 0, .4); }
+.un-ventaglio .carta:first-child { margin-left: 0; }
+.un-vuota { height: 44px; display: grid; place-items: center; color: var(--tenue); }
+.un-sotto { font-size: .74rem; color: var(--tenue); display: flex; gap: .35rem; align-items: center; }
+.un-salvo { color: #7fd1a8; font-weight: 700; }
+.un-pesca { color: var(--oro); font-weight: 700; }
+.un-bersaglio { color: #f0a3a3; }
+.un-centro { display: grid; justify-items: center; gap: .55rem; min-height: 12rem; width: 100%; align-content: center; }
+.un-titolo { margin: 0; font-size: 1.1rem; }
+.un-bersaglio-mano { --w: clamp(50px, 6.4vw, 84px); display: flex; justify-content: center; padding: 1.1rem .5rem .4rem; width: min(100%, 64rem); }
+/* le carte si sovrappongono quanto basta per stare nello spazio (--n = quante sono) */
+.un-dorso { padding: 0; border: 0; background: none; flex: none; transition: transform .14s ease; display: block;
+  margin-left: min(calc(var(--w) * -.4), calc((100% - var(--n) * var(--w)) / max(1, var(--n) - 1))); }
+.un-dorso:first-child { margin-left: 0; }
+.un-dorso .carta { --w: inherit; box-shadow: 0 3px 8px rgba(0, 0, 0, .45); }
+button.un-dorso { cursor: pointer; }
+button.un-dorso:hover, button.un-dorso:focus-visible { transform: translateY(-16px) rotate(-2deg); z-index: 2; position: relative; }
+button.un-dorso:hover .carta, button.un-dorso:focus-visible .carta { box-shadow: 0 0 0 3px var(--oro), 0 10px 18px rgba(0, 0, 0, .5); }
+.un-bersaglio-mano.mia { animation: un-respira 1.8s ease-in-out infinite; }
+@keyframes un-respira { 50% { transform: translateY(-3px); } }
+.un-dorso.un-tolta { animation: un-via .6s ease-in both; }
+@keyframes un-via { to { transform: translateY(-40px); opacity: 0; } }
+.un-notizia { margin: 0; font-size: 1rem; text-align: center; max-width: 40rem; }
+.un-rosso { color: #ff8a80; }
+.un-verde { color: #7fd1a8; }
+.un-scarti { display: flex; gap: .7rem; flex-wrap: wrap; justify-content: center; opacity: .9; }
+.un-coppia { display: inline-flex; }
+.un-coppia .carta { --w: 34px; }
+.un-coppia .carta + .carta { margin-left: -14px; transform: rotate(8deg); }
+.un-io { display: grid; justify-items: center; gap: .5rem; width: 100%; }
+.un-mia-mano { --w: clamp(54px, 6vw, 82px); display: flex; justify-content: center; flex-wrap: nowrap; padding-top: .8rem; width: min(100%, 64rem); }
+.un-mia { position: relative; cursor: pointer; flex: none; margin-left: min(calc(var(--w) * -.15), calc((100% - var(--n) * var(--w)) / max(1, var(--n) - 1))); }
+.un-mia:first-child { margin-left: 0; }
+.un-mia .carta { --w: inherit; transition: transform .12s ease; }
+.un-mia:hover .carta { transform: translateY(-8px); }
+.un-mia .carta.un-sel { transform: translateY(-14px); box-shadow: 0 0 0 3px var(--oro), 0 10px 18px rgba(0, 0, 0, .4); }
+.un-mia .carta.un-uomo { box-shadow: 0 0 0 2px #1b1b1b, 0 0 14px rgba(0, 0, 0, .7); }
+.un-mia .carta.un-nuova { animation: un-arriva .45s ease-out both; animation-delay: var(--t, 0ms); }
+@keyframes un-arriva { from { transform: translateY(-50px) scale(1.15); opacity: 0; } to { transform: none; opacity: 1; } }
+.un-etichetta { position: absolute; left: 50%; bottom: -.15rem; transform: translateX(-50%); font-size: .62rem; font-weight: 700; padding: 0 .35rem; border-radius: 999px; background: #1b1b1b; color: #f3ecd9; white-space: nowrap; pointer-events: none; }
+.un-comandi { display: flex; gap: .7rem; align-items: center; flex-wrap: wrap; justify-content: center; }
+.un-aiuto { font-size: .8rem; color: var(--tenue); }
+.un-salvo-io { font-size: 1.1rem; color: #7fd1a8; }
+.un-esito { text-align: center; }
+.un-grande { font-size: 3.4rem; animation: un-arriva .5s ease-out both; }
+.un-piccolo { font-size: .85rem; color: var(--tenue); }
+@media (max-width: 620px) {
+  .un-avv { min-width: 0; padding: .35rem .45rem; }
+  .un-ventaglio .carta { --w: 22px; margin-left: -16px; }
+  .un-bersaglio-mano, .un-mia-mano { --w: 52px; }
+}
+@media (prefers-reduced-motion: reduce) { .un-bersaglio-mano.mia, .un-mia .carta.un-nuova, .un-dorso.un-tolta, .un-grande { animation: none; } }

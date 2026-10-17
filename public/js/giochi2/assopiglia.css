@@ -1,0 +1,21 @@
+/* ======================= ASSO PIGLIATUTTO (carte napoletane: stili sm-… del Sette e mezzo) ======================= */
+.ap-retro.carta.retro { background-color: #8c2a24;
+  background-image: radial-gradient(circle at 50% 50%, rgba(227, 180, 55, .55) 0 18%, transparent 19%),
+    repeating-linear-gradient(45deg, rgba(247, 222, 160, .2) 0 2px, transparent 2px 7px),
+    repeating-linear-gradient(-45deg, rgba(247, 222, 160, .2) 0 2px, transparent 2px 7px); }
+.ap-bello { position: absolute; right: 5%; top: 3%; z-index: 3; color: #c8362c; font-size: calc(var(--w) * .2); line-height: 1; text-shadow: 0 0 3px #fff; }
+.ap-mini-bello { color: #f0c24a; font-weight: 700; font-size: .85em; }
+/* l'asso che in questo momento piglia tutto brilla d'oro */
+.mano .carta.ap-pronto { box-shadow: 0 0 0 3px #f0c24a, 0 0 18px rgba(240, 194, 74, .75); animation: ap-luce 1.6s ease-in-out infinite; }
+@keyframes ap-luce { 50% { box-shadow: 0 0 0 3px #f0c24a, 0 0 28px rgba(240, 194, 74, .95); } }
+.carta.ap-piglia { animation: ap-colpo .5s ease-out both !important; box-shadow: 0 0 0 4px #f0c24a, 0 0 30px rgba(240, 194, 74, .9) !important; }
+@keyframes ap-colpo { from { transform: scale(1.5) rotate(-8deg); opacity: 0; } 60% { transform: scale(1.12); opacity: 1; } to { transform: none; } }
+.ap-tutta.tavola-carte .carta.presa { animation: ap-via .9s ease-in .35s both; }
+@keyframes ap-via { to { transform: translateY(-6px) scale(.9); filter: brightness(1.15); } }
+.ap-info { position: absolute; right: .5rem; top: .35rem; z-index: 2; display: flex; align-items: center; gap: .35rem; font-size: .76rem; color: var(--tenue); }
+.ap-info b { color: var(--avorio); }
+.ap-assi { display: inline-flex; gap: 3px; }
+.ap-assi i { width: 9px; height: 13px; border-radius: 2px; border: 1.5px solid #e3b437; background: transparent; }
+.ap-assi i.uscito { background: #e3b437; }
+@media (max-width: 620px) { .ap-info { top: auto; bottom: .25rem; right: .4rem; font-size: .7rem; } }
+@media (prefers-reduced-motion: reduce) { .mano .carta.ap-pronto, .carta.ap-piglia, .ap-tutta.tavola-carte .carta.presa { animation: none !important; } }
