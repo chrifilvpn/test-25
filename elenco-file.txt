@@ -102,6 +102,8 @@ giochi/tris.js
 giochi/uno.js
 giochi/wanted.js
 giochi/wordle.js
+giochi2/affari-dati.js
+giochi2/affari.js
 giochi2/assopiglia.js
 giochi2/backgammon-pesi.js
 giochi2/backgammon.js
@@ -232,6 +234,8 @@ public/js/giochi/tetris.js
 public/js/giochi/tigerball.js
 public/js/giochi/wanted.js
 public/js/giochi/wordle.js
+public/js/giochi2/affari.css
+public/js/giochi2/affari.js
 public/js/giochi2/assopiglia.css
 public/js/giochi2/assopiglia.js
 public/js/giochi2/backgammon.css
@@ -298,6 +302,7 @@ sfida.js
 sicurezza.js
 test/browser.js
 test/giochi2.js
+test/giochi2/affari.js
 test/giochi2/assopiglia.js
 test/giochi2/backgammon.js
 test/giochi2/biglie.js
