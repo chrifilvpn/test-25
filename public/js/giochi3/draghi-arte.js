@@ -1,0 +1,319 @@
+// DRAGHI E SEGRETE: l'arte del gioco, tutta disegnata in SVG (niente immagini esterne). Il RITRATTO del personaggio è
+// fatto a strati: sfondo col colore della classe, capelli dietro, mantello, armatura o veste secondo la classe, collo,
+// orecchie secondo la stirpe (a punta per gli elfi, grandi per gnomi e halfling), testa con la forma del viso, corna dei
+// tiefling, muso a scaglie dei dragonidi, zanne dei mezzorchi, occhi, sopracciglia, naso, bocca, barba, capelli davanti,
+// segni (cicatrice, tatuaggio, lentiggini, benda, pitture), l'arma o il simbolo della classe dietro la spalla.
+// Poi gli EMBLEMI delle classi, le ICONE dei luoghi della mappa del mondo e il DADO a venti facce.
+(() => {
+  let nId = 0;
+  const uid = () => `dr${++nId}`;
+  const scurisci = (hex, k) => { const n = parseInt(hex.slice(1), 16); const f = (v) => Math.max(0, Math.min(255, Math.round(v * k))); return `#${[(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => f(v).toString(16).padStart(2, '0')).join('')}`; };
+  const COLORE_CLASSE = {
+    barbaro: ['#7a2a1a', '#3a1208'], bardo: ['#7a3a7a', '#2e1430'], chierico: ['#c8a84a', '#5a4410'], druido: ['#3a6a2a', '#16300e'],
+    guerriero: ['#6a6a7a', '#24242e'], ladro: ['#3a3a4a', '#121218'], mago: ['#2a3a8a', '#0e1440'], monaco: ['#c87a2a', '#5a2e08'],
+    paladino: ['#d0b060', '#5a4a1a'], ranger: ['#4a6a3a', '#1a2a12'], stregone: ['#a03030', '#3a0a0a'], warlock: ['#4a2a6a', '#14081e'],
+  };
+  const DRAGO_COL = { rosso: '#b8302a', oro: '#d8a83a', ottone: '#c8a050', blu: '#3060b0', bronzo: '#a87030', nero: '#3a3a3a', rame: '#b86a3a', bianco: '#d8e0e8', argento: '#a8b0c0', verde: '#3a8a4a' };
+
+  // ---------- EMBLEMI DELLE CLASSI (tracciati in un quadrato 0..100) ----------
+  const EMBLEMI = {
+    barbaro: '<path d="M30 80 L62 30" stroke="currentColor" stroke-width="8" stroke-linecap="round"/><path d="M50 22 C72 18 86 34 80 52 C70 44 60 40 50 22 Z" fill="currentColor"/><path d="M50 22 C40 34 40 46 50 52 C58 44 58 32 50 22 Z" fill="currentColor" opacity=".7"/>',
+    bardo: '<ellipse cx="40" cy="64" rx="20" ry="18" fill="currentColor"/><path d="M52 54 L80 20" stroke="currentColor" stroke-width="7" stroke-linecap="round"/><circle cx="40" cy="64" r="6" fill="#000" opacity=".35"/><path d="M74 16 L86 26" stroke="currentColor" stroke-width="5"/>',
+    chierico: '<circle cx="50" cy="50" r="14" fill="currentColor"/><g stroke="currentColor" stroke-width="6" stroke-linecap="round">' + Array.from({ length: 8 }, (_, k) => { const a = (k * Math.PI) / 4; return `<path d="M${50 + Math.cos(a) * 22} ${50 + Math.sin(a) * 22} L${50 + Math.cos(a) * 36} ${50 + Math.sin(a) * 36}"/>`; }).join('') + '</g>',
+    druido: '<path d="M50 86 C50 60 50 40 50 18" stroke="currentColor" stroke-width="6" stroke-linecap="round"/><path d="M50 50 C30 46 22 30 26 18 C40 22 50 34 50 50 Z M50 40 C66 36 76 22 74 12 C60 14 50 26 50 40 Z M50 64 C34 64 24 54 22 44 C36 44 48 52 50 64 Z" fill="currentColor"/>',
+    guerriero: '<path d="M50 12 L58 22 L58 62 L42 62 L42 22 Z" fill="currentColor"/><rect x="28" y="62" width="44" height="8" rx="3" fill="currentColor"/><rect x="46" y="70" width="8" height="16" fill="currentColor"/><circle cx="50" cy="90" r="5" fill="currentColor"/>',
+    ladro: '<path d="M20 80 L66 26 L74 34 L28 88 Z" fill="currentColor"/><path d="M80 80 L34 26 L26 34 L72 88 Z" fill="currentColor" opacity=".8"/><circle cx="70" cy="22" r="6" fill="currentColor"/><circle cx="30" cy="22" r="6" fill="currentColor" opacity=".8"/>',
+    mago: '<path d="M50 10 L64 60 L36 60 Z" fill="currentColor"/><ellipse cx="50" cy="62" rx="30" ry="8" fill="currentColor"/><path d="M50 74 L50 92" stroke="currentColor" stroke-width="6"/><circle cx="58" cy="34" r="3" fill="#fff" opacity=".7"/><circle cx="46" cy="46" r="2" fill="#fff" opacity=".7"/>',
+    monaco: '<circle cx="50" cy="50" r="30" fill="none" stroke="currentColor" stroke-width="7"/><path d="M50 20 A15 15 0 0 1 50 50 A15 15 0 0 0 50 80 A30 30 0 0 1 50 20 Z" fill="currentColor"/><circle cx="50" cy="35" r="5" fill="#000" opacity=".4"/><circle cx="50" cy="65" r="5" fill="currentColor"/>',
+    paladino: '<path d="M50 10 L82 22 L80 54 C76 74 62 84 50 90 C38 84 24 74 20 54 L18 22 Z" fill="currentColor"/><path d="M50 26 L50 74 M34 44 L66 44" stroke="#000" stroke-opacity=".35" stroke-width="7" stroke-linecap="round"/>',
+    ranger: '<path d="M28 14 C64 34 64 66 28 86" fill="none" stroke="currentColor" stroke-width="6"/><path d="M28 14 L28 86" stroke="currentColor" stroke-width="2"/><path d="M22 50 L84 50" stroke="currentColor" stroke-width="5"/><path d="M84 50 L74 42 L74 58 Z" fill="currentColor"/>',
+    stregone: '<path d="M50 88 C26 84 22 60 34 44 C36 56 44 58 44 58 C38 40 46 22 62 12 C58 30 72 38 70 56 C76 52 78 46 78 46 C86 66 74 86 50 88 Z" fill="currentColor"/>',
+    warlock: '<path d="M10 50 C28 26 72 26 90 50 C72 74 28 74 10 50 Z" fill="currentColor"/><circle cx="50" cy="50" r="13" fill="#000" opacity=".55"/><ellipse cx="50" cy="50" rx="4" ry="11" fill="currentColor"/>',
+  };
+  const emblema = (classe, col = 'currentColor', dim = 40) => `<svg class="dr-emblema" viewBox="0 0 100 100" width="${dim}" height="${dim}" style="color:${col}" aria-hidden="true">${EMBLEMI[classe] || EMBLEMI.guerriero}</svg>`;
+
+  // ---------- RITRATTO ----------
+  // p: { stirpe, classe, genere, discendenza, aspetto: { pelle, capelli, occhi, pettinatura, barba, viso, segni, mantello, corna } }
+  function ritratto(p, { cornice = true, sfondo = true } = {}) {
+    const a = (p && p.aspetto) || {};
+    const id = uid();
+    const st = p.stirpe || 'umano', cl = p.classe || 'guerriero';
+    const drago = st === 'dragonide';
+    let pelle = a.pelle || '#e0b090';
+    if (drago) pelle = DRAGO_COL[p.discendenza] || '#7a8a3a';
+    const pelleS = scurisci(pelle, 0.78), pelleSS = scurisci(pelle, 0.6);
+    const cap = a.capelli || '#4a2e1a', capS = scurisci(cap, 0.65);
+    const occhi = a.occhi || '#3a2a1a';
+    const mant = a.mantello || COLORE_CLASSE[cl][0], mantS = scurisci(mant, 0.55);
+    const [c1, c2] = COLORE_CLASSE[cl] || COLORE_CLASSE.guerriero;
+    const viso = a.viso || 'ovale';
+    const pett = drago ? 'calvo' : (a.pettinatura || 'corti');
+    const barba = drago ? 'nessuna' : (a.barba || 'nessuna');
+    const f = p.genere === 'f';
+    const piccolo = st === 'gnomo' || st === 'halfling';
+    const largo = st === 'nano' || st === 'mezzorco';
+    // dimensioni della testa: gnomi e halfling hanno teste più rotonde, nani e mezzorchi più larghe
+    const hx = 100, hy = piccolo ? 104 : 98;
+    const rx = largo ? 36 : piccolo ? 34 : f ? 30 : 32, ry = piccolo ? 38 : 42;
+    const out = [];
+    out.push(`<svg class="dr-ritratto" viewBox="0 0 200 240" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${(p.nome || 'Ritratto').replace(/"/g, '')}">`);
+    out.push(`<defs>
+      <radialGradient id="${id}bg" cx="50%" cy="38%" r="75%"><stop offset="0" stop-color="${c1}"/><stop offset=".75" stop-color="${c2}"/><stop offset="1" stop-color="#050505"/></radialGradient>
+      <radialGradient id="${id}pe" cx="42%" cy="35%" r="70%"><stop offset="0" stop-color="${scurisci(pelle, 1.12)}"/><stop offset=".7" stop-color="${pelle}"/><stop offset="1" stop-color="${pelleS}"/></radialGradient>
+      <linearGradient id="${id}ma" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${mant}"/><stop offset="1" stop-color="${mantS}"/></linearGradient>
+      <linearGradient id="${id}me" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e8ecf2"/><stop offset=".45" stop-color="#9aa2b0"/><stop offset="1" stop-color="#4a505c"/></linearGradient>
+      <linearGradient id="${id}cu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a5a32"/><stop offset="1" stop-color="#4a2e16"/></linearGradient>
+      <linearGradient id="${id}ca" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${scurisci(cap, 1.25)}"/><stop offset="1" stop-color="${capS}"/></linearGradient>
+      <linearGradient id="${id}om" x1="0" y1="0" x2="1" y2="0"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".22"/></linearGradient>
+      <clipPath id="${id}cl"><rect x="0" y="0" width="200" height="240" rx="${cornice ? 14 : 0}"/></clipPath>
+    </defs>`);
+    out.push(`<g clip-path="url(#${id}cl)">`);
+    if (sfondo) {
+      out.push(`<rect width="200" height="240" fill="url(#${id}bg)"/>`);
+      out.push(`<g opacity=".13" transform="translate(110 10) scale(.9)" style="color:#fff">${EMBLEMI[cl] || ''}</g>`);
+      // polvere di luce
+      for (let k = 0; k < 14; k++) out.push(`<circle cx="${(k * 53) % 200}" cy="${(k * 37) % 150}" r="${0.6 + (k % 3) * 0.5}" fill="#fff" opacity="${0.12 + (k % 4) * 0.05}"/>`);
+    }
+    // la figura un po' più grande nella cornice
+    out.push('<g transform="translate(100 150) scale(1.13) translate(-100 -150)">');
+    // ---- arma dietro la spalla ----
+    out.push(armaDietro(cl, id));
+    // ---- cappuccio del warlock (dietro la testa) ----
+    if (cl === 'warlock') out.push(`<path d="M${hx - rx - 14} ${hy + 40} C${hx - rx - 20} ${hy - 30} ${hx - 20} ${hy - ry - 22} ${hx} ${hy - ry - 22} C${hx + 20} ${hy - ry - 22} ${hx + rx + 20} ${hy - 30} ${hx + rx + 14} ${hy + 40} Z" fill="${scurisci(mant, 0.5)}"/>`);
+    // ---- capelli dietro ----
+    if (['lunghi', 'treccia', 'coda'].includes(pett) || (f && pett === 'ricci')) {
+      const lung = pett === 'lunghi' ? 78 : pett === 'ricci' ? 40 : 20;
+      out.push(`<path d="M${hx - rx - 6} ${hy - 10} C${hx - rx - 14} ${hy + 30} ${hx - rx - 10} ${hy + lung} ${hx - rx + 6} ${hy + lung + 10} L${hx + rx - 6} ${hy + lung + 10} C${hx + rx + 10} ${hy + lung} ${hx + rx + 14} ${hy + 30} ${hx + rx + 6} ${hy - 10} Z" fill="url(#${id}ca)"/>`);
+    }
+    if (pett === 'chignon') out.push(`<circle cx="${hx}" cy="${hy - ry - 6}" r="15" fill="url(#${id}ca)"/><circle cx="${hx - 4}" cy="${hy - ry - 10}" r="5" fill="#fff" opacity=".12"/>`);
+    // ---- corpo: mantello e armatura o veste ----
+    out.push(`<path d="M8 240 C12 196 46 176 100 172 C154 176 188 196 192 240 Z" fill="url(#${id}ma)"/>`);
+    out.push(corpo(cl, id, { f, mant, c1 }));
+    // ---- collo ----
+    out.push(`<path d="M${hx - 14} ${hy + ry - 14} L${hx - 15} ${hy + ry + 18} Q${hx} ${hy + ry + 26} ${hx + 15} ${hy + ry + 18} L${hx + 14} ${hy + ry - 14} Z" fill="${pelleS}"/>`);
+    out.push(colletto(cl, hx, hy + ry + 16, id, mant));
+    // ---- orecchie ----
+    out.push(orecchie(st, hx, hy, rx, pelle, pelleS));
+    // ---- testa ----
+    if (drago) out.push(testaDrago(hx, hy, rx, ry, pelle, pelleS, pelleSS, id));
+    else out.push(`<path d="${formaViso(viso, hx, hy, rx, ry)}" fill="url(#${id}pe)"/>`);
+    // ombra sotto i capelli e guance
+    if (!drago) out.push(`<ellipse cx="${hx - rx * 0.55}" cy="${hy + 14}" rx="9" ry="6" fill="#e06060" opacity="${f ? 0.22 : 0.1}"/><ellipse cx="${hx + rx * 0.55}" cy="${hy + 14}" rx="9" ry="6" fill="#e06060" opacity="${f ? 0.22 : 0.1}"/>`);
+    // ---- corna ----
+    if (a.corna && a.corna !== 'nessuna') out.push(corna(a.corna, hx, hy, rx, ry, drago ? scurisci(pelle, 0.5) : '#3a2a2a', id));
+    // ---- occhi, sopracciglia, naso, bocca ----
+    out.push(occhiFaccia({ hx, hy, rx, ry, occhi, cap, st, f, drago, pelleSS, segni: a.segni }));
+    // ---- barba ----
+    if (barba !== 'nessuna') out.push(disegnaBarba(barba, hx, hy, rx, ry, id, cap));
+    // zanne del mezzorco (sopra la barba)
+    if (st === 'mezzorco') out.push(`<path d="M${hx - 9} ${hy + 30} l2 -8 l3 8 Z M${hx + 9} ${hy + 30} l-2 -8 l-3 8 Z" fill="#f4ecd8" stroke="#8a7a5a" stroke-width=".6"/>`);
+    // ---- capelli davanti ----
+    if (!drago) out.push(capelliDavanti(pett, hx, hy, rx, ry, id, f));
+    // ---- segni ----
+    out.push(segni(a.segni, hx, hy, rx, ry, c1));
+    // ---- accessori della classe ----
+    out.push(accessori(cl, hx, hy, rx, ry, id, { pett, drago }));
+    // luce da sinistra: un velo d'ombra sul lato destro del viso
+    if (!drago) out.push(`<path d="${formaViso(viso, hx, hy, rx, ry)}" fill="url(#${id}om)"/>`);
+    out.push('</g></g>');
+    if (cornice) out.push(`<rect x="2" y="2" width="196" height="236" rx="13" fill="none" stroke="#d8b25a" stroke-width="3"/><rect x="6" y="6" width="188" height="228" rx="10" fill="none" stroke="#000" stroke-opacity=".35" stroke-width="1.5"/>`);
+    out.push('</svg>');
+    return out.join('');
+  }
+  function formaViso(viso, x, y, rx, ry) {
+    if (viso === 'tondo') return `M${x} ${y - ry} C${x + rx * 1.1} ${y - ry} ${x + rx * 1.12} ${y + ry * 0.9} ${x} ${y + ry * 0.95} C${x - rx * 1.12} ${y + ry * 0.9} ${x - rx * 1.1} ${y - ry} ${x} ${y - ry} Z`;
+    if (viso === 'squadrato') return `M${x} ${y - ry} C${x + rx} ${y - ry} ${x + rx * 1.05} ${y - 10} ${x + rx} ${y + 14} C${x + rx * 0.95} ${y + ry * 0.75} ${x + rx * 0.55} ${y + ry} ${x} ${y + ry} C${x - rx * 0.55} ${y + ry} ${x - rx * 0.95} ${y + ry * 0.75} ${x - rx} ${y + 14} C${x - rx * 1.05} ${y - 10} ${x - rx} ${y - ry} ${x} ${y - ry} Z`;
+    if (viso === 'affilato') return `M${x} ${y - ry} C${x + rx * 1.02} ${y - ry} ${x + rx * 1.04} ${y + 4} ${x + rx * 0.7} ${y + ry * 0.6} C${x + rx * 0.4} ${y + ry * 0.95} ${x + 6} ${y + ry * 1.05} ${x} ${y + ry * 1.06} C${x - 6} ${y + ry * 1.05} ${x - rx * 0.4} ${y + ry * 0.95} ${x - rx * 0.7} ${y + ry * 0.6} C${x - rx * 1.04} ${y + 4} ${x - rx * 1.02} ${y - ry} ${x} ${y - ry} Z`;
+    return `M${x} ${y - ry} C${x + rx * 1.08} ${y - ry} ${x + rx * 1.06} ${y + ry * 0.55} ${x + rx * 0.62} ${y + ry * 0.82} C${x + rx * 0.35} ${y + ry} ${x - rx * 0.35} ${y + ry} ${x - rx * 0.62} ${y + ry * 0.82} C${x - rx * 1.06} ${y + ry * 0.55} ${x - rx * 1.08} ${y - ry} ${x} ${y - ry} Z`;
+  }
+  function testaDrago(x, y, rx, ry, pelle, ps, pss, id) {
+    // testa allungata con muso, scaglie, creste dietro
+    return `<path d="M${x - rx - 10} ${y - 18} L${x - rx - 26} ${y - 34} L${x - rx - 4} ${y - 30} Z M${x + rx + 10} ${y - 18} L${x + rx + 26} ${y - 34} L${x + rx + 4} ${y - 30} Z" fill="${pss}"/>
+      <path d="M${x} ${y - ry} C${x + rx * 1.1} ${y - ry} ${x + rx * 1.15} ${y + 4} ${x + rx * 0.8} ${y + 22} C${x + rx * 0.6} ${y + ry * 0.95} ${x + 12} ${y + ry + 8} ${x} ${y + ry + 8} C${x - 12} ${y + ry + 8} ${x - rx * 0.6} ${y + ry * 0.95} ${x - rx * 0.8} ${y + 22} C${x - rx * 1.15} ${y + 4} ${x - rx * 1.1} ${y - ry} ${x} ${y - ry} Z" fill="url(#${id}pe)"/>
+      <path d="M${x - 16} ${y + 26} C${x - 10} ${y + 42} ${x + 10} ${y + 42} ${x + 16} ${y + 26}" fill="${ps}" opacity=".7"/>
+      <g fill="${pss}" opacity=".45">${Array.from({ length: 12 }, (_, k) => `<path d="M${x - 24 + (k % 4) * 16} ${y - 30 + Math.floor(k / 4) * 12} q4 -5 8 0 q-4 4 -8 0Z"/>`).join('')}</g>
+      <circle cx="${x - 6}" cy="${y + 30}" r="1.6" fill="${pss}"/><circle cx="${x + 6}" cy="${y + 30}" r="1.6" fill="${pss}"/>`;
+  }
+  function orecchie(st, x, y, rx, pe, ps) {
+    const L = x - rx + 2, Rr = x + rx - 2, yy = y + 4;
+    if (st === 'elfo' || st === 'mezzelfo') {
+      const lung = st === 'elfo' ? 30 : 18;
+      return `<path d="M${L + 2} ${yy - 8} C${L - 10} ${yy - 14} ${L - 14} ${yy - lung} ${L - 16} ${yy - lung - 6} C${L - 6} ${yy - lung + 4} ${L - 4} ${yy + 6} ${L + 4} ${yy + 12} Z" fill="${pe}" stroke="${ps}" stroke-width="1.2"/>
+        <path d="M${Rr - 2} ${yy - 8} C${Rr + 10} ${yy - 14} ${Rr + 14} ${yy - lung} ${Rr + 16} ${yy - lung - 6} C${Rr + 6} ${yy - lung + 4} ${Rr + 4} ${yy + 6} ${Rr - 4} ${yy + 12} Z" fill="${pe}" stroke="${ps}" stroke-width="1.2"/>`;
+    }
+    if (st === 'dragonide') return '';
+    const r = st === 'gnomo' || st === 'halfling' ? 11 : st === 'mezzorco' ? 9 : 8;
+    const punta = st === 'mezzorco' || st === 'gnomo' ? -6 : 0;
+    return `<path d="M${L + 3} ${yy - 10} C${L - r} ${yy - 12 + punta} ${L - r - 2} ${yy + 10} ${L + 3} ${yy + 12} Z" fill="${pe}" stroke="${ps}" stroke-width="1.2"/><path d="M${L - 2} ${yy - 2} q-3 4 1 8" stroke="${ps}" fill="none"/>
+      <path d="M${Rr - 3} ${yy - 10} C${Rr + r} ${yy - 12 + punta} ${Rr + r + 2} ${yy + 10} ${Rr - 3} ${yy + 12} Z" fill="${pe}" stroke="${ps}" stroke-width="1.2"/><path d="M${Rr + 2} ${yy - 2} q3 4 -1 8" stroke="${ps}" fill="none"/>`;
+  }
+  function corna(tipo, x, y, rx, ry, col, id) {
+    const top = y - ry + 8;
+    if (tipo === 'piccole') return `<path d="M${x - 16} ${top + 2} l-6 -16 l12 10 Z M${x + 16} ${top + 2} l6 -16 l-12 10 Z" fill="${col}" stroke="#000" stroke-opacity=".4"/>`;
+    if (tipo === 'lunghe') return `<path d="M${x - 14} ${top} C${x - 22} ${top - 30} ${x - 26} ${top - 48} ${x - 18} ${top - 62} C${x - 34} ${top - 44} ${x - 34} ${top - 20} ${x - 24} ${top + 4} Z M${x + 14} ${top} C${x + 22} ${top - 30} ${x + 26} ${top - 48} ${x + 18} ${top - 62} C${x + 34} ${top - 44} ${x + 34} ${top - 20} ${x + 24} ${top + 4} Z" fill="${col}" stroke="#000" stroke-opacity=".45"/>`;
+    // ricurve all'indietro, da ariete
+    return `<path d="M${x - 18} ${top + 4} C${x - 30} ${top - 22} ${x - 58} ${top - 10} ${x - 52} ${top + 18} C${x - 48} ${top + 30} ${x - 36} ${top + 26} ${x - 38} ${top + 14} C${x - 44} ${top + 4} ${x - 34} ${top - 6} ${x - 26} ${top + 10} Z M${x + 18} ${top + 4} C${x + 30} ${top - 22} ${x + 58} ${top - 10} ${x + 52} ${top + 18} C${x + 48} ${top + 30} ${x + 36} ${top + 26} ${x + 38} ${top + 14} C${x + 44} ${top + 4} ${x + 34} ${top - 6} ${x + 26} ${top + 10} Z" fill="${col}" stroke="#000" stroke-opacity=".45"/>
+      <path d="M${x - 44} ${top + 2} q4 4 0 9 M${x + 44} ${top + 2} q-4 4 0 9" stroke="#fff" stroke-opacity=".2" fill="none"/>`;
+  }
+  function occhiFaccia({ hx, hy, rx, ry, occhi, cap, st, f, drago, pelleSS, segni: sg }) {
+    const ey = hy - 4, dx = rx * 0.42;
+    const elf = st === 'elfo' || st === 'mezzelfo';
+    const occhio = (cx, chiuso) => {
+      if (chiuso) return `<path d="M${cx - 8} ${ey} q8 3 16 0" stroke="#2a1a10" stroke-width="2" fill="none"/>`;
+      const w = elf ? 9 : 8, h = drago ? 5 : 5.5;
+      const iris = drago ? `<ellipse cx="${cx}" cy="${ey}" rx="4.5" ry="5" fill="${occhi === '#3a2a1a' ? '#e0b030' : occhi}"/><ellipse cx="${cx}" cy="${ey}" rx="1.3" ry="4.4" fill="#111"/>` : `<circle cx="${cx}" cy="${ey + 0.5}" r="4.2" fill="${occhi}"/><circle cx="${cx}" cy="${ey + 0.5}" r="2" fill="#111"/><circle cx="${cx + 1.4}" cy="${ey - 1}" r="1.1" fill="#fff"/>`;
+      return `<path d="M${cx - w} ${ey} Q${cx} ${ey - h * (elf ? 1.6 : 1.4)} ${cx + w} ${ey - (elf ? 2 : 0)} Q${cx} ${ey + h} ${cx - w} ${ey} Z" fill="${drago ? '#f4e090' : '#fbf7f0'}"/>${iris}
+        <path d="M${cx - w - 1} ${ey} Q${cx} ${ey - h * (elf ? 1.7 : 1.5)} ${cx + w + 1} ${ey - (elf ? 2.5 : 0.5)}" stroke="#20140c" stroke-width="${f ? 2.2 : 1.6}" fill="none" stroke-linecap="round"/>
+        ${f && !drago ? `<path d="M${cx + w} ${ey - (elf ? 2.5 : 0.5)} l3 -2" stroke="#20140c" stroke-width="1.4"/>` : ''}`;
+    };
+    const benda = sg === 'benda';
+    const sopr = drago ? '' : `<path d="M${hx - dx - 9} ${ey - 10 - (elf ? 2 : 0)} Q${hx - dx} ${ey - 15} ${hx - dx + 9} ${ey - 11}" stroke="${scurisci(cap, 0.85)}" stroke-width="${f ? 2.2 : 3.4}" fill="none" stroke-linecap="round"/><path d="M${hx + dx - 9} ${ey - 11} Q${hx + dx} ${ey - 15} ${hx + dx + 9} ${ey - 10 - (elf ? 2 : 0)}" stroke="${scurisci(cap, 0.85)}" stroke-width="${f ? 2.2 : 3.4}" fill="none" stroke-linecap="round"/>`;
+    const nasoLungo = st === 'gnomo' ? 1.5 : 1;
+    const naso = drago ? '' : `<path d="M${hx - 1} ${ey + 4} Q${hx - 5 * nasoLungo} ${ey + 16 * nasoLungo} ${hx - 4} ${ey + 18 * nasoLungo} Q${hx} ${ey + 21 * nasoLungo} ${hx + 5} ${ey + 17 * nasoLungo}" stroke="${pelleSS}" stroke-width="1.6" fill="none" stroke-linecap="round"/>${st === 'gnomo' ? `<ellipse cx="${hx}" cy="${ey + 22}" rx="6" ry="5" fill="${pelleSS}" opacity=".35"/>` : ''}`;
+    const my = drago ? hy + 34 : hy + 27;
+    const bocca = drago ? `<path d="M${hx - 18} ${my - 4} Q${hx} ${my + 3} ${hx + 18} ${my - 4}" stroke="${pelleSS}" stroke-width="2" fill="none"/>` : `<path d="M${hx - 10} ${my} Q${hx} ${my + (f ? 5 : 3)} ${hx + 10} ${my}" stroke="${f ? '#a83a42' : '#7a3a2a'}" stroke-width="${f ? 3 : 2.2}" fill="none" stroke-linecap="round"/>${f ? `<path d="M${hx - 8} ${my + 1} Q${hx} ${my + 6} ${hx + 8} ${my + 1}" fill="#c0505a" opacity=".55"/>` : ''}`;
+    return `${occhio(hx - dx, false)}${benda ? '' : occhio(hx + dx, false)}${sopr}${naso}${bocca}`;
+  }
+  function disegnaBarba(tipo, x, y, rx, ry, id, cap) {
+    const g = `url(#${id}ca)`;
+    if (tipo === 'baffi') return `<path d="M${x - 2} ${y + 22} C${x - 10} ${y + 18} ${x - 20} ${y + 24} ${x - 22} ${y + 32} C${x - 14} ${y + 26} ${x - 6} ${y + 28} ${x} ${y + 25} C${x + 6} ${y + 28} ${x + 14} ${y + 26} ${x + 22} ${y + 32} C${x + 20} ${y + 24} ${x + 10} ${y + 18} ${x + 2} ${y + 22} Z" fill="${g}"/>`;
+    if (tipo === 'pizzetto') return `<path d="M${x - 9} ${y + 33} Q${x} ${y + 52} ${x + 9} ${y + 33} Q${x} ${y + 38} ${x - 9} ${y + 33} Z" fill="${g}"/><path d="M${x - 2} ${y + 22} C${x - 8} ${y + 19} ${x - 14} ${y + 23} ${x - 15} ${y + 28} C${x - 9} ${y + 25} ${x - 4} ${y + 26} ${x} ${y + 24} C${x + 4} ${y + 26} ${x + 9} ${y + 25} ${x + 15} ${y + 28} C${x + 14} ${y + 23} ${x + 8} ${y + 19} ${x + 2} ${y + 22} Z" fill="${g}"/>`;
+    const lung = tipo === 'lunga' ? 46 : tipo === 'treccia' ? 40 : 22;
+    let s = `<path d="M${x - rx + 2} ${y + 2} C${x - rx + 2} ${y + 30} ${x - 20} ${y + ry + lung * 0.6} ${x} ${y + ry + lung * 0.75} C${x + 20} ${y + ry + lung * 0.6} ${x + rx - 2} ${y + 30} ${x + rx - 2} ${y + 2} C${x + rx - 8} ${y + 22} ${x + 14} ${y + 30} ${x} ${y + 32} C${x - 14} ${y + 30} ${x - rx + 8} ${y + 22} ${x - rx + 2} ${y + 2} Z" fill="${g}"/>`;
+    s += `<path d="M${x - 11} ${y + 27} Q${x} ${y + 33} ${x + 11} ${y + 27}" stroke="#7a3a2a" stroke-width="2" fill="none"/>`;
+    s += `<g stroke="${scurisci(cap, 0.55)}" stroke-width="1" opacity=".5" fill="none">${Array.from({ length: 7 }, (_, k) => `<path d="M${x - 18 + k * 6} ${y + 34} q${k % 2 ? 2 : -2} ${10 + lung * 0.3} 0 ${14 + lung * 0.4}"/>`).join('')}</g>`;
+    if (tipo === 'treccia') s += `<g fill="${scurisci(cap, 0.8)}">${[0, 1, 2].map((k) => `<ellipse cx="${x}" cy="${y + ry + 26 + k * 9}" rx="6" ry="5"/>`).join('')}</g><circle cx="${x}" cy="${y + ry + 54}" r="3" fill="#d8b25a"/>`;
+    return s;
+  }
+  function capelliDavanti(pett, x, y, rx, ry, id, f) {
+    const g = `url(#${id}ca)`, top = y - ry;
+    switch (pett) {
+      case 'calvo': return `<ellipse cx="${x - 10}" cy="${top + 14}" rx="12" ry="6" fill="#fff" opacity=".18"/>`;
+      case 'cresta': return `<path d="M${x - 8} ${top + 6} C${x - 10} ${top - 22} ${x - 4} ${top - 34} ${x} ${top - 36} C${x + 4} ${top - 34} ${x + 10} ${top - 22} ${x + 8} ${top + 6} Z" fill="${g}"/><path d="M${x - 8} ${top + 6} Q${x} ${top} ${x + 8} ${top + 6}" fill="${g}"/>`;
+      case 'ricci': return `<g fill="${g}">${Array.from({ length: 17 }, (_, k) => { const a = Math.PI * 0.92 + (k / 16) * Math.PI * 1.16; const rr = 7 + ((k * 7) % 4); return `<circle cx="${x + Math.cos(a) * (rx + 1)}" cy="${y - 8 + Math.sin(a) * (ry + 1)}" r="${rr}"/>`; }).join('')}${Array.from({ length: 6 }, (_, k) => `<circle cx="${x - rx * 0.6 + k * rx * 0.24}" cy="${y - ry + 6 + (k % 2) * 4}" r="8"/>`).join('')}</g><g fill="none" stroke="#fff" stroke-opacity=".14">${Array.from({ length: 6 }, (_, k) => `<path d="M${x - 20 + k * 8} ${y - ry - 2} q3 -4 6 0"/>`).join('')}</g>`;
+      case 'spettinati': return `<path d="M${x - rx - 4} ${y - 2} L${x - rx - 6} ${top + 4} L${x - rx + 6} ${top + 8} L${x - 20} ${top - 12} L${x - 8} ${top + 2} L${x} ${top - 16} L${x + 8} ${top + 2} L${x + 22} ${top - 10} L${x + rx - 4} ${top + 8} L${x + rx + 8} ${top + 2} L${x + rx + 4} ${y - 2} C${x + rx - 4} ${top + 18} ${x - rx + 4} ${top + 18} ${x - rx - 4} ${y - 2} Z" fill="${g}"/>`;
+      case 'lunghi': return `<path d="M${x - rx - 6} ${y + 30} C${x - rx - 10} ${top - 4} ${x - 10} ${top - 12} ${x} ${top - 10} C${x + 10} ${top - 12} ${x + rx + 10} ${top - 4} ${x + rx + 6} ${y + 30} C${x + rx} ${y + 4} ${x + rx - 6} ${top + 22} ${x + 6} ${top + 16} C${x - 2} ${top + 22} ${x - rx + 6} ${top + 26} ${x - rx} ${y + 30} Z" fill="${g}"/><path d="M${x} ${top - 6} q-6 14 -2 22" stroke="#fff" stroke-opacity=".15" fill="none" stroke-width="2"/>`;
+      case 'coda': case 'treccia': {
+        let s = `<path d="M${x - rx - 3} ${y - 2} C${x - rx - 6} ${top - 4} ${x + rx + 6} ${top - 4} ${x + rx + 3} ${y - 2} C${x + rx - 6} ${top + 16} ${x - rx + 6} ${top + 14} ${x - rx - 3} ${y - 2} Z" fill="${g}"/>`;
+        if (pett === 'treccia') s += `<g fill="${g}">${[0, 1, 2, 3].map((k) => `<ellipse cx="${x + rx + 4 + k * 1.5}" cy="${y + 8 + k * 12}" rx="7" ry="6.5"/>`).join('')}</g>`;
+        return s;
+      }
+      case 'chignon': return `<path d="M${x - rx - 3} ${y - 4} C${x - rx - 6} ${top - 2} ${x + rx + 6} ${top - 2} ${x + rx + 3} ${y - 4} C${x + rx - 8} ${top + 14} ${x - rx + 8} ${top + 14} ${x - rx - 3} ${y - 4} Z" fill="${g}"/>`;
+      default: // corti, con il ciuffo
+        return `<path d="M${x - rx - 3} ${y - 2} C${x - rx - 8} ${top - 6} ${x + rx + 8} ${top - 6} ${x + rx + 3} ${y - 2} C${x + rx - 2} ${top + 18} ${x + 10} ${top + 12} ${x - 4} ${top + 18} C${x - 14} ${top + 22} ${x - rx + 4} ${top + 16} ${x - rx - 3} ${y - 2} Z" fill="${g}"/>${f ? '' : ''}`;
+    }
+  }
+  function segni(tipo, x, y, rx, ry, col) {
+    const ey = y - 4, dx = rx * 0.42;
+    if (tipo === 'cicatrice') return `<path d="M${x + dx - 6} ${ey - 18} L${x + dx + 8} ${ey + 16}" stroke="#a04848" stroke-width="2.4" stroke-linecap="round" opacity=".8"/><path d="M${x + dx - 3} ${ey - 10} l5 -2 M${x + dx + 1} ${ey} l5 -2 M${x + dx + 4} ${ey + 9} l5 -2" stroke="#a04848" stroke-width="1.2" opacity=".7"/>`;
+    if (tipo === 'tatuaggio') return `<path d="M${x - dx - 14} ${ey + 8} q6 10 2 20 M${x - dx - 8} ${ey + 10} q4 8 0 14 M${x} ${y - ry + 10} l0 10 m-5 -5 l10 0" stroke="#2a4a8a" stroke-width="2" fill="none" opacity=".75"/>`;
+    if (tipo === 'lentiggini') return `<g fill="#a0603a" opacity=".55">${Array.from({ length: 14 }, (_, k) => `<circle cx="${x + (k < 7 ? -1 : 1) * (8 + (k % 7) * 3)}" cy="${ey + 10 + ((k * 7) % 5)}" r="1.1"/>`).join('')}</g>`;
+    if (tipo === 'benda') return `<path d="M${x - rx - 2} ${y - 20} L${x + rx + 2} ${y + 4}" stroke="#1a1a1a" stroke-width="2.4"/><ellipse cx="${x + dx}" cy="${ey}" rx="10" ry="8" fill="#1a1a1a"/>`;
+    if (tipo === 'pitture') return `<path d="M${x - dx - 10} ${ey + 8} l18 -2 M${x - dx - 10} ${ey + 14} l18 -2 M${x + dx - 8} ${ey + 6} l18 2 M${x + dx - 8} ${ey + 12} l18 2" stroke="${col}" stroke-width="3" stroke-linecap="round" opacity=".85"/>`;
+    return '';
+  }
+  // il torso: armatura di piastre, cuoio, pelliccia, veste…
+  function corpo(cl, id, { mant, c1 }) {
+    const piastre = ['guerriero', 'paladino', 'chierico'].includes(cl);
+    if (piastre) {
+      const oro = cl === 'paladino' || cl === 'chierico';
+      return `<path d="M40 240 C44 204 64 188 100 186 C136 188 156 204 160 240 Z" fill="url(#${id}me)"/>
+        <path d="M100 190 L100 240" stroke="#3a404a" stroke-width="2" opacity=".6"/>
+        <path d="M54 214 Q100 230 146 214" stroke="#3a404a" stroke-width="2" fill="none" opacity=".5"/>
+        <ellipse cx="44" cy="200" rx="30" ry="22" fill="url(#${id}me)" stroke="#2a2e36" stroke-width="2"/><ellipse cx="156" cy="200" rx="30" ry="22" fill="url(#${id}me)" stroke="#2a2e36" stroke-width="2"/>
+        <path d="M18 204 Q44 186 70 204 M130 204 Q156 186 182 204" stroke="${oro ? '#d8b25a' : '#2a2e36'}" stroke-width="3" fill="none"/>
+        ${[34, 54, 146, 166].map((x) => `<circle cx="${x}" cy="196" r="2.2" fill="#e8ecf2"/>`).join('')}
+        ${oro ? `<g transform="translate(86 200) scale(.28)" style="color:#d8b25a">${EMBLEMI[cl]}</g>` : ''}`;
+    }
+    if (cl === 'barbaro') return `<path d="M30 240 C34 200 60 186 100 186 C140 186 166 200 170 240 Z" fill="${'#b07a52'}"/>
+      <path d="M14 214 C26 186 58 176 74 188 C62 196 50 206 44 222 Z M186 214 C174 186 142 176 126 188 C138 196 150 206 156 222 Z" fill="#6a4a2a"/>
+      <g stroke="#3a2a14" stroke-width="2" opacity=".6">${Array.from({ length: 10 }, (_, k) => `<path d="M${22 + k * 6} ${200 + (k % 3) * 4} l-3 10"/><path d="M${178 - k * 6} ${200 + (k % 3) * 4} l3 10"/>`).join('')}</g>
+      <path d="M60 196 L140 236" stroke="#4a2e16" stroke-width="9"/><circle cx="100" cy="216" r="5" fill="#c0c0c0"/>`;
+    if (['ranger', 'ladro', 'druido'].includes(cl)) {
+      const verde = cl === 'ranger' ? '#3a5a2a' : cl === 'druido' ? '#4a6a2a' : '#2a2a30';
+      return `<path d="M36 240 C40 202 62 188 100 186 C138 188 160 202 164 240 Z" fill="url(#${id}cu)"/>
+        <path d="M30 210 C36 192 64 182 100 180 C136 182 164 192 170 210 C150 200 124 196 100 198 C76 196 50 200 30 210 Z" fill="${verde}"/>
+        <path d="M70 196 L120 240" stroke="#2a1a0a" stroke-width="6"/><rect x="86" y="214" width="12" height="10" rx="2" fill="#c8a050"/>
+        <g stroke="#2a1a0a" stroke-width="1.2" opacity=".5">${[112, 124, 136, 148].map((y2) => `<path d="M${60} ${y2 + 60} l80 0"/>`).join('')}</g>`;
+    }
+    if (cl === 'monaco') return `<path d="M36 240 C40 202 62 188 100 186 C138 188 160 202 164 240 Z" fill="#d08a3a"/>
+      <path d="M70 188 L130 240 M130 188 L92 222" stroke="#a0581a" stroke-width="8" fill="none"/><path d="M40 226 Q100 236 160 226" stroke="#5a2e08" stroke-width="7" fill="none"/>
+      <g fill="#6a3a1a">${Array.from({ length: 9 }, (_, k) => `<circle cx="${70 + k * 7.5}" cy="${196 + Math.sin(k / 8 * Math.PI) * 14}" r="3.4"/>`).join('')}</g>`;
+    // vesti dei maghi, stregoni, warlock, bardi
+    const veste = cl === 'bardo' ? '#8a3a8a' : cl === 'warlock' ? '#2a1a3a' : cl === 'stregone' ? '#7a1a1a' : '#1e2a6a';
+    return `<path d="M34 240 C38 200 62 186 100 184 C138 186 162 200 166 240 Z" fill="${veste}"/>
+      <path d="M100 186 L100 240" stroke="${c1}" stroke-width="7"/><path d="M100 186 L100 240" stroke="#d8b25a" stroke-width="1.5" stroke-dasharray="3 4"/>
+      <path d="M34 240 C38 200 62 186 100 184 C138 186 162 200 166 240" fill="none" stroke="#d8b25a" stroke-width="2.5" opacity=".7"/>
+      ${cl === 'bardo' ? '<path d="M60 200 l12 8 l-4 8 Z M140 200 l-12 8 l4 8 Z" fill="#e8c860"/>' : ''}`;
+  }
+  function colletto(cl, x, y, id, mant) {
+    if (['mago', 'stregone', 'warlock'].includes(cl)) return `<path d="M${x - 30} ${y + 2} L${x - 16} ${y - 18} L${x} ${y + 4} L${x + 16} ${y - 18} L${x + 30} ${y + 2} Z" fill="${scurisci(mant, 0.7)}" stroke="#d8b25a" stroke-width="1.4"/>`;
+    if (cl === 'chierico') return `<path d="M${x - 8} ${y - 4} L${x} ${y + 14} L${x + 8} ${y - 4}" stroke="#d8b25a" stroke-width="1.6" fill="none"/><circle cx="${x}" cy="${y + 18}" r="6" fill="#e8c860" stroke="#7a5a10"/><path d="M${x} ${y + 13} v10 M${x - 5} ${y + 18} h10" stroke="#7a5a10" stroke-width="1.6"/>`;
+    return '';
+  }
+  function armaDietro(cl, id) {
+    switch (cl) {
+      case 'guerriero': case 'paladino': return `<g transform="rotate(-24 150 120)"><rect x="146" y="20" width="9" height="140" rx="2" fill="url(#${id}me)" stroke="#2a2e36"/><rect x="132" y="150" width="37" height="8" rx="3" fill="#7a5a2a"/><rect x="146" y="158" width="9" height="30" fill="#4a2e16"/><circle cx="150.5" cy="192" r="6" fill="#d8b25a"/></g>`;
+      case 'barbaro': return `<g transform="rotate(-28 150 110)"><rect x="147" y="30" width="7" height="160" rx="3" fill="#5a3a1a"/><path d="M150 36 C178 30 190 54 184 76 C170 66 160 62 150 60 Z" fill="url(#${id}me)" stroke="#2a2e36"/><path d="M150 36 C126 30 114 54 120 76 C134 66 144 62 150 60 Z" fill="url(#${id}me)" stroke="#2a2e36"/></g>`;
+      case 'ranger': return `<g transform="rotate(18 60 120)"><path d="M44 20 C90 60 90 170 44 210" fill="none" stroke="#6a4020" stroke-width="7"/><path d="M44 20 L44 210" stroke="#ddd" stroke-width="1"/></g><g transform="rotate(-18 150 120)"><rect x="140" y="40" width="18" height="70" rx="4" fill="#5a3a1a"/>${[0, 1, 2, 3].map((k) => `<path d="M${143 + k * 4} 40 l0 -18 m-3 0 l3 -6 l3 6" stroke="#ccc" stroke-width="1.5" fill="#c84a3a"/>`).join('')}</g>`;
+      case 'mago': case 'druido': {
+        const gemma = cl === 'mago' ? '#6ab8ff' : '#7ae07a';
+        return `<g transform="rotate(10 160 120)"><rect x="156" y="20" width="8" height="200" rx="3" fill="#5a3a1a"/>${cl === 'druido' ? '<path d="M160 22 C140 10 136 -4 150 -10 C152 6 162 8 160 22 Z M160 22 C180 14 188 0 176 -8 C172 8 162 10 160 22Z" fill="#3a7a2a"/>' : '<path d="M152 24 C152 8 168 8 168 24" stroke="#c8a050" stroke-width="3" fill="none"/>'}<circle cx="160" cy="18" r="9" fill="${gemma}"/><circle cx="160" cy="18" r="16" fill="${gemma}" opacity=".25"/><circle cx="157" cy="15" r="3" fill="#fff" opacity=".8"/></g>`;
+      }
+      case 'bardo': return `<g transform="rotate(-30 150 110)"><rect x="146" y="20" width="8" height="90" fill="#6a3a1a"/><ellipse cx="150" cy="130" rx="24" ry="30" fill="#b06a2a" stroke="#4a2a0a" stroke-width="2"/><circle cx="150" cy="128" r="7" fill="#2a1a0a"/>${[0, 1, 2, 3].map((k) => `<path d="M${144 + k * 4} 20 L${144 + k * 4} 150" stroke="#eee" stroke-width=".7"/>`).join('')}</g>`;
+      case 'ladro': return `<g transform="rotate(-36 156 130)"><path d="M152 60 L160 60 L158 140 L154 140 Z" fill="url(#${id}me)"/><rect x="146" y="138" width="20" height="6" fill="#3a2a1a"/><rect x="152" y="144" width="8" height="20" fill="#2a1a0a"/></g><g transform="rotate(36 44 130)"><path d="M40 60 L48 60 L46 140 L42 140 Z" fill="url(#${id}me)"/><rect x="34" y="138" width="20" height="6" fill="#3a2a1a"/><rect x="40" y="144" width="8" height="20" fill="#2a1a0a"/></g>`;
+      case 'stregone': return `<circle cx="160" cy="70" r="22" fill="#ff7a3a" opacity=".25"/><circle cx="160" cy="70" r="12" fill="#ffb060"/><path d="M160 52 C150 62 154 72 160 76 C166 72 170 62 160 52 Z" fill="#fff4c0"/>`;
+      case 'warlock': return `<g opacity=".9"><circle cx="40" cy="70" r="24" fill="#8a3aff" opacity=".18"/><path d="M22 70 C30 58 50 58 58 70 C50 82 30 82 22 70 Z" fill="#b080ff"/><circle cx="40" cy="70" r="6" fill="#1a0a2a"/></g>`;
+      case 'chierico': return `<g transform="rotate(-22 152 120)"><rect x="148" y="40" width="8" height="140" rx="2" fill="#5a3a1a"/><rect x="138" y="26" width="28" height="30" rx="6" fill="url(#${id}me)" stroke="#2a2e36"/>${[0, 1, 2].map((k) => `<rect x="${137 + k * 11}" y="22" width="6" height="38" rx="2" fill="url(#${id}me)"/>`).join('')}</g>`;
+      case 'monaco': return '';
+      default: return '';
+    }
+  }
+  function accessori(cl, x, y, rx, ry, id, { pett, drago }) {
+    if (cl === 'druido') return `<g fill="#3a7a2a">${Array.from({ length: 7 }, (_, k) => { const a = Math.PI * (1.15 + k * 0.12); return `<path transform="translate(${x + Math.cos(a) * (rx + 2)} ${y - 8 + Math.sin(a) * (ry + 2)}) rotate(${(a * 180) / Math.PI + 90})" d="M0 0 C-5 -6 -5 -12 0 -16 C5 -12 5 -6 0 0 Z"/>`; }).join('')}</g><g fill="#c83a3a">${[0, 1].map((k) => `<circle cx="${x - 18 + k * 36}" cy="${y - ry + 4}" r="2.6"/>`).join('')}</g>`;
+    if (cl === 'stregone') return `<path d="M${x - rx + 2} ${y - ry + 14} Q${x} ${y - ry + 2} ${x + rx - 2} ${y - ry + 14}" stroke="#d8b25a" stroke-width="3" fill="none"/><path d="M${x} ${y - ry + 4} l-5 6 l5 6 l5 -6 Z" fill="#e04040" stroke="#d8b25a"/>`;
+    if (cl === 'monaco') return pett === 'calvo' ? `<g fill="#3a2a1a" opacity=".7">${[0, 1, 2].map((k) => `<circle cx="${x - 8 + k * 8}" cy="${y - ry + 14}" r="1.5"/>`).join('')}</g>` : `<path d="M${x - rx - 2} ${y - ry + 18} Q${x} ${y - ry + 8} ${x + rx + 2} ${y - ry + 18}" stroke="#c83a2a" stroke-width="5" fill="none"/><path d="M${x + rx} ${y - ry + 18} l10 12 m-6 -10 l4 14" stroke="#c83a2a" stroke-width="3"/>`;
+    if (cl === 'ranger') return `<path d="M${x - rx - 22} ${y + ry + 30} C${x - rx - 30} ${y + ry} ${x - rx - 10} ${y + ry - 2} ${x - rx + 8} ${y + ry + 12} M${x + rx + 22} ${y + ry + 30} C${x + rx + 30} ${y + ry} ${x + rx + 10} ${y + ry - 2} ${x + rx - 8} ${y + ry + 12}" stroke="#2a4a1a" stroke-width="10" fill="none" stroke-linecap="round"/>`;
+    if (cl === 'paladino' && !drago) return `<path d="M${x - rx + 6} ${y - ry + 12} Q${x} ${y - ry - 2} ${x + rx - 6} ${y - ry + 12}" stroke="#e8c860" stroke-width="2.4" fill="none" opacity=".9"/>`;
+    return '';
+  }
+
+  // ---------- ICONE DEI LUOGHI (mappa del mondo) ----------
+  const ICONE_LUOGO = {
+    villaggio: '<path d="M-9 4 L-9 -3 L-5 -7 L-1 -3 L-1 4 Z M1 4 L1 -1 L5 -5 L9 -1 L9 4 Z" fill="#7a4a2a" stroke="#2a1a0a"/><path d="M-10 -3 L-5 -8 L0 -3 M0 -1 L5 -6 L10 -1" stroke="#a03a2a" stroke-width="2" fill="none"/>',
+    citta: '<path d="M-11 6 L-11 -4 L-7 -4 L-7 -9 L-3 -9 L-3 -2 L1 -2 L1 -12 L5 -12 L5 -2 L9 -2 L9 6 Z" fill="#8a7a6a" stroke="#2a1a0a"/><path d="M1 -12 L3 -16 L5 -12" fill="#a03a2a"/>',
+    porto: '<path d="M-10 2 L10 2 L7 7 L-7 7 Z" fill="#6a4a2a" stroke="#2a1a0a"/><path d="M0 2 L0 -12 M0 -12 L8 -3 L0 -3" stroke="#2a1a0a" fill="#e8e0c8"/>',
+    taverna: '<path d="M-8 6 L-8 -4 L0 -10 L8 -4 L8 6 Z" fill="#8a5a2a" stroke="#2a1a0a"/><rect x="-3" y="0" width="6" height="6" fill="#2a1a0a"/><circle cx="7" cy="-6" r="3" fill="#e8b030" stroke="#2a1a0a"/>',
+    castello: '<path d="M-11 7 L-11 -6 L-8 -6 L-8 -3 L-5 -3 L-5 -6 L-2 -6 L-2 -3 L2 -3 L2 -6 L5 -6 L5 -3 L8 -3 L8 -6 L11 -6 L11 7 Z" fill="#8a8a90" stroke="#2a2a2a"/><path d="M-2 7 L-2 2 Q0 -1 2 2 L2 7" fill="#2a1a0a"/><path d="M0 -6 L0 -14 L6 -11 L0 -9" stroke="#2a2a2a" fill="#c03030"/>',
+    torre: '<path d="M-5 8 L-4 -8 L4 -8 L5 8 Z" fill="#7a7a80" stroke="#2a2a2a"/><path d="M-6 -8 L0 -15 L6 -8 Z" fill="#4a3a6a" stroke="#2a2a2a"/><rect x="-1.5" y="-4" width="3" height="4" fill="#ffd060"/>',
+    tempio: '<path d="M-10 7 L10 7 L10 5 L-10 5 Z M-9 5 L-9 -3 M-4 5 L-4 -3 M1 5 L1 -3 M6 5 L6 -3" stroke="#8a8070" stroke-width="2" fill="#d8d0c0"/><path d="M-11 -3 L0 -10 L11 -3 Z" fill="#d8d0c0" stroke="#5a5040"/>',
+    rovine: '<path d="M-9 7 L-9 -2 L-6 -5 L-6 7 M-2 7 L-2 -8 L1 -8 L1 0 M5 7 L5 1 L9 -1 L9 7" stroke="#7a7060" stroke-width="2.4" fill="none"/><path d="M-11 7 L11 7" stroke="#5a5040" stroke-width="2"/>',
+    dungeon: '<path d="M-10 6 Q-10 -9 0 -9 Q10 -9 10 6 Z" fill="#4a4040" stroke="#1a1010"/><path d="M-5 6 Q-5 -3 0 -3 Q5 -3 5 6 Z" fill="#100808"/><circle cx="-1.5" cy="-6" r="1" fill="#e04040"/><circle cx="1.5" cy="-6" r="1" fill="#e04040"/>',
+    grotta: '<path d="M-12 7 Q-8 -10 0 -10 Q8 -10 12 7 Z" fill="#6a6058" stroke="#2a2420"/><path d="M-5 7 Q-4 -2 0 -3 Q4 -2 5 7 Z" fill="#100808"/>',
+    cripta: '<path d="M-6 8 L-6 -4 Q0 -10 6 -4 L6 8 Z" fill="#7a7a80" stroke="#2a2a2a"/><path d="M0 -3 L0 5 M-3 0 L3 0" stroke="#2a2a2a" stroke-width="2"/>',
+    foresta: '<path d="M-7 6 L-2 -9 L3 6 Z M1 7 L6 -5 L11 7 Z M-12 7 L-8 -3 L-4 7 Z" fill="#2a5a2a" stroke="#0e2a0e"/>',
+    montagna: '<path d="M-12 7 L-3 -11 L6 7 Z" fill="#7a6a5a" stroke="#2a2018"/><path d="M-3 -11 L-6 -5 L-3 -6 L0 -4 Z" fill="#fff"/><path d="M1 7 L7 -4 L13 7 Z" fill="#6a5a4a" stroke="#2a2018"/>',
+    palude: '<path d="M-10 4 Q-5 1 0 4 Q5 7 10 4" stroke="#3a5a4a" stroke-width="2" fill="none"/><path d="M-6 3 L-6 -6 M-4 3 L-3 -8 M4 4 L4 -5 M6 4 L7 -7" stroke="#4a6a2a" stroke-width="1.6"/>',
+    deserto: '<path d="M-12 6 Q-4 -4 4 6 Z M0 6 Q6 0 12 6 Z" fill="#d8b070" stroke="#7a5a2a"/><circle cx="6" cy="-6" r="3" fill="#f0c040"/>',
+    accampamento: '<path d="M-9 6 L0 -9 L9 6 Z" fill="#a08050" stroke="#3a2a14"/><path d="M0 -9 L0 6 M-3 6 L0 0 L3 6" stroke="#3a2a14" fill="#3a2a14"/>',
+    ponte: '<path d="M-12 4 Q0 -8 12 4" stroke="#6a4a2a" stroke-width="3" fill="none"/><path d="M-8 1 L-8 6 M-3 -2 L-3 6 M3 -2 L3 6 M8 1 L8 6" stroke="#6a4a2a" stroke-width="1.6"/>',
+    miniera: '<path d="M-9 7 L-9 -5 L9 -5 L9 7" stroke="#5a3a1a" stroke-width="3" fill="#100808"/><path d="M-6 -2 L4 -12 M2 -12 L8 -8" stroke="#8a8a90" stroke-width="2.4"/>',
+    fattoria: '<path d="M-8 6 L-8 -3 L0 -9 L8 -3 L8 6 Z" fill="#b03a2a" stroke="#3a1a0a"/><path d="M-3 6 L-3 0 L3 0 L3 6" fill="#e8d8b0"/>',
+    lago: '<ellipse cx="0" cy="1" rx="10" ry="6" fill="#4a7ab0" stroke="#1a3a6a"/><path d="M-5 0 q2 -2 4 0 M1 3 q2 -2 4 0" stroke="#bcd8f0" fill="none"/>',
+    altro: '<circle cx="0" cy="0" r="6" fill="#d8b25a" stroke="#3a2a0a" stroke-width="1.5"/><circle cx="0" cy="0" r="2" fill="#3a2a0a"/>',
+  };
+  const iconaLuogo = (tipo) => ICONE_LUOGO[tipo] || ICONE_LUOGO.altro;
+
+  // ---------- IL d20 ----------
+  function d20(valore, { colore = '#c8343a', dim = 90, animato = false } = {}) {
+    const id = uid();
+    return `<svg class="dr-d20 ${animato ? 'gira' : ''}" viewBox="0 0 100 100" width="${dim}" height="${dim}" aria-label="d20: ${valore}">
+      <defs><linearGradient id="${id}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${scurisci(colore, 1.35)}"/><stop offset="1" stop-color="${scurisci(colore, 0.6)}"/></linearGradient></defs>
+      <polygon points="50,4 92,28 92,72 50,96 8,72 8,28" fill="url(#${id})" stroke="#1a0606" stroke-width="2.5" stroke-linejoin="round"/>
+      <polygon points="50,22 76,64 24,64" fill="${scurisci(colore, 1.15)}" stroke="#1a0606" stroke-width="1.6" stroke-linejoin="round" opacity=".95"/>
+      <path d="M50 4 L50 22 M92 28 L76 64 M8 28 L24 64 M50 96 L24 64 M50 96 L76 64 M8 72 L24 64 M92 72 L76 64 M8 28 L50 22 L92 28" stroke="#1a0606" stroke-width="1.4" fill="none" opacity=".7"/>
+      <text x="50" y="${String(valore).length > 1 ? 56 : 57}" text-anchor="middle" font-family="Georgia, serif" font-weight="700" font-size="${String(valore).length > 1 ? 20 : 24}" fill="#fff8e8" stroke="#1a0606" stroke-width=".6">${valore}</text></svg>`;
+  }
+
+  window.DraghiArte = { ritratto, emblema, EMBLEMI, COLORE_CLASSE, DRAGO_COL, iconaLuogo, ICONE_LUOGO, d20, scurisci };
+})();

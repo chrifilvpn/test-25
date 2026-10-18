@@ -31,6 +31,9 @@ assert.strictEqual(accusiDi([C('1c'), C('2c'), C('3q')]).length, 0);
   const g = M.crea({ n: 2, primo: 0, opzioni: {} });
   g.mani[0] = [C('4c'), C('5c'), C('6c'), C('7c'), C('4q'), C('5q'), C('6q'), C('7q'), C('4f'), C('5f')];
   g.mani[1] = [C('1c'), C('1q'), C('1f'), C('1p'), C('2c'), C('2q'), C('2f'), C('2p'), C('3c'), C('6p')];
+  // il mazzo: le carte che non sono nelle mani scelte qui (sennò si potrebbe pescare un doppione)
+  const inMano = new Set([...g.mani[0], ...g.mani[1]].map((c) => c.id));
+  g.mazzo = require('../../giochi/carte').mazzo40().filter((c) => !inMano.has(c.id));
   g.accusiMano = g.mani.map(accusiDi);
   g.turno = 0;
   assert.ok(g.azione(1, { tipo: 'gioca', carta: '1c' }).errore, 'fuori turno');
