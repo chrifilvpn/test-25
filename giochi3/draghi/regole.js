@@ -266,6 +266,10 @@ function ricalcola(pg) {
   pg.attacchi = attacchiDi(pg);
   pg.privilegi = privilegiDi(pg).map((p) => ({ l: p.l, nome: p.nome, desc: p.desc, da: p.da }));
   pg.tratti = st.tratti.map((t) => ({ nome: t.nome, desc: t.desc }));
+  // per la scheda e i pulsanti del combattimento nel browser
+  pg.bonusAb = {}; for (const k of Object.keys(B.ABILITA)) pg.bonusAb[k] = bonusAbilita(pg, k);
+  pg.bonusTs = {}; for (const k of B.ORDINE_CAR) pg.bonusTs[k] = bonusSalvezza(pg, k);
+  pg.capacita = [...new Set([...privilegiDi(pg).map((p) => p.effetto), ...st.tratti.map((t) => t.effetto)].filter(Boolean))];
   return pg;
 }
 

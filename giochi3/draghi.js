@@ -38,6 +38,7 @@ class Draghi {
     this.fase = 'creazione';
     this.pg = new Array(n).fill(null);
     this.tirati = new Array(n).fill(null);
+    this.suggerite = new Array(n).fill(null);
     this.idea = '';
     this.racconto = []; this.nR = 0;
     this.storia = []; // per il master: [{ ruolo, testo }]
@@ -166,6 +167,14 @@ class Draghi {
       this.pg[p] = r.pg;
       this.annuncia(p, `ha creato ${r.pg.nome}, ${B.STIRPI[r.pg.stirpe].nome.toLowerCase()} ${CLASSI[r.pg.classe].nome.toLowerCase()}`, `${r.pg.nome} è pronto all'avventura!`);
       if (this.pg.every(Boolean)) this.iniziaAvventura();
+      return { ok: true };
+    }
+    if (a.tipo === 'suggerisci') {
+      // "scegli tu per me" in un passaggio della creazione: il server completa le scelte mancanti e le rimanda
+      const s = a.scelte && typeof a.scelte === 'object' ? { ...a.scelte } : {};
+      s.livello = this.livelloIniziale;
+      if (s.metodo === 'dadi') s.tirati = this.tirati[p] ? this.tirati[p].valori : null;
+      try { this.suggerite[p] = { n: (this.suggerite[p] ? this.suggerite[p].n : 0) + 1, scelte: R.completaScelte(s) }; } catch (err) { return { errore: 'Non riesco a scegliere: prova a cambiare qualcosa' }; }
       return { ok: true };
     }
     if (a.tipo === 'rifai') { if (!this.pg[p]) return { errore: 'Non hai ancora un personaggio' }; this.pg[p] = null; return { ok: true }; }
@@ -489,7 +498,7 @@ class Draghi {
     return {
       gioco: this.id, n: this.n, fase: this.fase, host: this.host, bot: this.bot.map(Boolean), ambientazione: this.ambientazione, difficolta: this.difficolta, livelloIniziale: this.livelloIniziale,
       iaAttiva: !!(this.chiave && this.fetch), attesaIA: this.attesaIA, erroreIA: this.erroreIA, idea: this.idea,
-      tirati: this.tirati[p] ? this.tirati[p].valori : null, tiriFatti: this.tirati[p] ? this.tirati[p].volte : 0,
+      suggerite: this.suggerite[p], tirati: this.tirati[p] ? this.tirati[p].valori : null, tiriFatti: this.tirati[p] ? this.tirati[p].volte : 0,
       pg: this.pg, mioPg: mio ? mio.uid : null,
       racconto: this.racconto.slice(-120), scelte: this.scelte, atmosfera: this.atmosfera,
       dichiarazioni: Object.fromEntries(Object.entries(this.dichiarazioni).map(([k, v]) => [k, v])), primaDichiarazione: this.primaDichiarazione ? Math.max(0, this.primaDichiarazione + ATTESA_DICHIARAZIONI - Date.now()) : null,
@@ -498,9 +507,47 @@ class Draghi {
       png: this.png, missioni: this.missioni, diario: this.diario,
       combattimento: cb ? { ...cb.vista(), scena: { w: cb.scena.w, h: cb.scena.h, g: cb.scena.g, stile: cb.scena.stile, luce: cb.scena.luce } } : null,
       mioId: mio ? mio.uid : null,
+      catalogo: this.fase === 'creazione' ? catalogo() : null,
+      incantesimi: this.fase !== 'creazione' ? infoIncantesimi(this.pg) : null,
+      pronti: this.pg.map(Boolean), nomiArmature: NOMI_ARMATURE,
       turno: null, inAttesa: false, finita: this.finita, risultato: this.risultato, evento: this.evento,
     };
   }
+}
+
+const NOMI_ARMATURE = Object.fromEntries(Object.entries(B.ARMATURE).map(([k, v]) => [k, v.nome]));
+
+// ---------- il catalogo per la creazione guidata (si manda solo durante la creazione) ----------
+let CATALOGO = null;
+function catalogo() {
+  if (CATALOGO) return CATALOGO;
+  const { slotPer, STILI, SUPPLICHE } = require('./draghi/classi');
+  const classi = {};
+  for (const [id, c] of Object.entries(CLASSI)) {
+    classi[id] = {
+      nome: c.nome, desc: c.desc, dado: c.dado, principale: c.principale, salvezze: c.salvezze, armature: c.armature, armi: c.armi, abilita: { n: c.abilita.n, tra: R.listaAbilitaClasse(c) },
+      equip: c.equip.map((e) => ({ nome: e.nome, armi: e.armi.map((a) => B.ARMI[a].nome), armatura: e.armatura ? B.ARMATURE[e.armatura].nome : null, scudo: !!e.scudo })),
+      magia: c.magia ? { tipo: c.magia.tipo, car: c.magia.car, modo: c.magia.modo, trucchetti: c.magia.trucchetti || null, conosciuti: c.magia.conosciuti || null, mezzo: !!c.magia.mezzo, libro: c.magia.libro || 0, perLivello: c.magia.perLivello || 0, livMax: Array.from({ length: 20 }, (_, l) => slotPer(c.magia.tipo, l + 1).length) } : null,
+      privilegi: c.privilegi.map((p) => ({ l: p.l, nome: p.nome, desc: p.desc, stile: !!p.stile, maestria: p.maestria || 0 })),
+      sottoclasse: { nome: c.sottoclasse.nome, incantesimi: c.sottoclasse.incantesimi || {}, privilegi: c.sottoclasse.privilegi.map((p) => ({ l: p.l, nome: p.nome, desc: p.desc, stile: !!p.stile, abilitaScelte: p.abilitaScelte || 0 })) },
+      aumentiExtra: c.aumentiExtra || [],
+    };
+  }
+  const inc = {};
+  for (const [id, x] of Object.entries(INCANTESIMI)) inc[id] = { nome: x.nome, liv: x.liv, scuola: x.scuola, classi: x.classiIds, tempo: x.tempo, gittata: x.gittata, durata: x.durata, conc: !!x.conc, rituale: !!x.rituale, desc: x.desc };
+  CATALOGO = {
+    caratteristiche: B.CARATTERISTICHE, ordine: B.ORDINE_CAR, abilita: B.ABILITA, stirpi: B.STIRPI, discendenze: B.DISCENDENZE, background: B.BACKGROUND,
+    classi, incantesimi: inc, stili: STILI, suppliche: SUPPLICHE, aspetto: R.ASPETTO, costoPunti: R.COSTO_PUNTI, standard: R.STANDARD, lingue: B.LINGUE,
+  };
+  return CATALOGO;
+}
+// le informazioni sugli incantesimi che conosce il gruppo (per il pannello del combattimento e la scheda)
+function infoIncantesimi(pgs) {
+  const ids = new Set();
+  for (const p of pgs) if (p && p.magia) for (const id of [...p.magia.trucchetti, ...p.magia.incantesimi, ...p.magia.sempre, ...(p.magia.libro || [])]) ids.add(id);
+  const out = {};
+  for (const id of ids) { const x = INCANTESIMI[id]; if (x) out[id] = { nome: x.nome, liv: x.liv, scuola: x.scuola, tempo: x.tempo, gittata: x.gittata, durata: x.durata, conc: !!x.conc, desc: x.desc, tipo: x.e ? x.e.tipo : 'utilita', area: x.e && x.e.area ? x.e.area : null, bersagli: x.e ? x.e.bersagli || 1 : 1, alleati: x.e ? ['cura', 'buff', 'stabilizza', 'ristora', 'rianima'].includes(x.e.tipo) : false }; }
+  return out;
 }
 
 // ---------- il computer (compagni e chi è via) ----------

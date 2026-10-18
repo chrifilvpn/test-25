@@ -689,6 +689,12 @@ class Combattimento {
       if (!punto) punto = listaB[0] ? { x: listaB[0].x, y: listaB[0].y } : null;
       if (!punto) return { errore: 'Scegli dove' };
       if (this.dist(c, punto) > gitt) return { errore: `Troppo lontano (massimo ${gitt} m)` };
+    } else if (e.area && !e.area.suDiMe) {
+      // coni, linee e cubi che partono da chi lancia: il punto dà solo la direzione (il cubo deve toccare chi lancia)
+      if (!punto) punto = listaB[0] ? { x: listaB[0].x, y: listaB[0].y } : this.puntoVerso(c);
+      punto = { x: Math.round(Number(punto.x)) || 0, y: Math.round(Number(punto.y)) || 0 };
+      if (punto.x === c.x && punto.y === c.y) return { errore: 'Scegli una direzione' };
+      if (e.area.forma === 'cubo' && this.dist(c, punto) > e.area.m) return { errore: `Il cubo parte da te: massimo ${e.area.m} m` };
     } else if (['attacco', 'salvezza', 'cura', 'buff', 'auto', 'stabilizza', 'ristora', 'rianima', 'uccidi', 'sonno'].includes(e.tipo) && !e.area) {
       if (!listaB.length && inc.gittata !== 'se' && !['buff'].includes(e.tipo)) return { errore: 'Scegli il bersaglio' };
       for (const b of listaB) {
