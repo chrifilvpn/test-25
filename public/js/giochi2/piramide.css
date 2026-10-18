@@ -1,0 +1,26 @@
+/* SOLITARIO PIRAMIDE: carte vere che si accavallano a piramide; le coperte sono un po' più scure */
+.pi { width: min(52rem, 100%); margin: 0 auto; display: grid; justify-items: center; gap: .8rem; padding: .3rem 0 1rem; }
+.pi-tavolo { --cw: min(5.2rem, 11.5vw); display: grid; justify-items: center; gap: 1rem; }
+.pi-piramide { display: grid; justify-items: center; }
+.pi-fila { display: flex; gap: calc(var(--cw) * .1); }
+.pi-fila + .pi-fila { margin-top: calc(var(--cw) * -0.82); }
+.pi-posto { width: var(--cw); height: calc(var(--cw) * 1.4); }
+.pi .carta { --w: var(--cw); transition: transform .12s, filter .12s; }
+.pi .carta.pi-coperta { filter: brightness(.82) saturate(.8); }
+.pi .carta.pi-libera { cursor: pointer; }
+.pi .carta.pi-libera:hover { transform: translateY(-3px); }
+.pi .carta.pi-sel { transform: translateY(-8px); box-shadow: 0 0 0 3px #ffd166, 0 10px 16px rgba(0, 0, 0, .4); }
+.pi .carta.pi-aiuto, .pi-tallone.pi-aiuto { animation: pi-aiuto 1s ease-in-out infinite; }
+@keyframes pi-aiuto { 50% { box-shadow: 0 0 0 4px #7cc4ff, 0 0 18px #7cc4ff; } }
+.pi-mazzi { display: flex; gap: 1.4rem; align-items: center; }
+.pi-tallone { position: relative; cursor: pointer; border-radius: 8px; }
+.pi-tallone > span { position: absolute; right: -.4rem; bottom: -.4rem; min-width: 1.5rem; padding: .1rem .3rem; border-radius: 999px; background: #1d2b24; color: #fff; font: 700 .8rem var(--sans); text-align: center; }
+.pi-tallone.vuoto { width: var(--cw); height: calc(var(--cw) * 1.4); display: grid; place-items: center; align-content: center; border: 2px dashed rgba(255, 255, 255, .3); color: var(--tenue); font-size: 1.4rem; cursor: default; }
+.pi-tallone.vuoto[data-az] { cursor: pointer; color: #ffd166; border-color: #ffd166; }
+.pi-tallone.vuoto small { font-size: .7rem; }
+.pi-scarti { position: relative; display: flex; align-items: center; min-width: calc(var(--cw) * 1.7); height: calc(var(--cw) * 1.4); }
+.pi-sotto { position: absolute; left: calc(var(--k) * var(--cw) * .25); top: 0; }
+.pi-scarti > .carta { position: absolute; left: calc(var(--cw) * .5); top: 0; }
+.pi-vuoto { width: var(--cw); height: calc(var(--cw) * 1.4); display: grid; place-items: center; border-radius: 8px; border: 2px dashed rgba(255, 255, 255, .2); color: var(--tenue); font-size: .75rem; }
+.pi.finito .pi-tavolo { animation: nk-fine 1.1s ease-out; }
+@media (prefers-reduced-motion: reduce) { .pi .carta.pi-aiuto, .pi-tallone.pi-aiuto { animation: none; } }

@@ -122,6 +122,7 @@ giochi2/calamaro.js
 giochi2/calcetto.js
 giochi2/capitali.js
 giochi2/carri.js
+giochi2/chiamata.js
 giochi2/codenames-dati.js
 giochi2/codenames.js
 giochi2/connessioni-dati.js
@@ -130,6 +131,7 @@ giochi2/corsa.js
 giochi2/cucu.js
 giochi2/damacinese.js
 giochi2/duemila.js
+giochi2/freecell.js
 giochi2/geo-dati.js
 giochi2/geo-quiz.js
 giochi2/go.js
@@ -165,6 +167,7 @@ giochi2/patata.js
 giochi2/picross-dati.js
 giochi2/picross-logica.js
 giochi2/picross.js
+giochi2/piramide.js
 giochi2/pong4.js
 giochi2/quiz-dati-a.js
 giochi2/quiz-dati-b.js
@@ -292,6 +295,8 @@ public/js/giochi2/burraco.js
 public/js/giochi2/calamaro.js
 public/js/giochi2/calcetto.js
 public/js/giochi2/carri.js
+public/js/giochi2/chiamata.css
+public/js/giochi2/chiamata.js
 public/js/giochi2/codenames.css
 public/js/giochi2/codenames.js
 public/js/giochi2/connessioni.css
@@ -304,6 +309,8 @@ public/js/giochi2/damacinese.css
 public/js/giochi2/damacinese.js
 public/js/giochi2/duemila.css
 public/js/giochi2/duemila.js
+public/js/giochi2/freecell.css
+public/js/giochi2/freecell.js
 public/js/giochi2/go.css
 public/js/giochi2/go.js
 public/js/giochi2/hanoi.css
@@ -345,6 +352,8 @@ public/js/giochi2/paroliere.js
 public/js/giochi2/patata.js
 public/js/giochi2/picross.css
 public/js/giochi2/picross.js
+public/js/giochi2/piramide.css
+public/js/giochi2/piramide.js
 public/js/giochi2/pong4.js
 public/js/giochi2/quiz.css
 public/js/giochi2/quiz.js
@@ -388,6 +397,7 @@ test/giochi2/burraco.js
 test/giochi2/calamaro.js
 test/giochi2/calcetto.js
 test/giochi2/carri.js
+test/giochi2/chiamata.js
 test/giochi2/codenames.js
 test/giochi2/connessioni.js
 test/giochi2/corsa.js
@@ -395,6 +405,7 @@ test/giochi2/css-nomi.js
 test/giochi2/cucu.js
 test/giochi2/damacinese.js
 test/giochi2/duemila.js
+test/giochi2/freecell.js
 test/giochi2/go.js
 test/giochi2/hanoi.js
 test/giochi2/kakuro.js
@@ -416,6 +427,7 @@ test/giochi2/otello.js
 test/giochi2/paroliere.js
 test/giochi2/patata.js
 test/giochi2/picross.js
+test/giochi2/piramide.js
 test/giochi2/pong4.js
 test/giochi2/quiz.js
 test/giochi2/quoridor.js
