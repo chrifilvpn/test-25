@@ -631,3 +631,10 @@
 @keyframes dr-velo { from { opacity: 0; } }
 @keyframes dr-respira { 50% { transform: translateY(-3px) scale(1.01); } }
 @media (prefers-reduced-motion: reduce) { .dr *, .dr *::before { animation: none !important; } }
+.dr textarea::placeholder, .dr input::placeholder { color: rgba(60, 40, 20, .5); }
+.dr .dr-sugg-tit { width: 100%; font-size: .7rem; opacity: .6; letter-spacing: .02em; }
+.dr .dr-sugg.tu { border-color: rgba(243, 213, 138, .7); color: #ffe6a8; background: rgba(216, 178, 90, .2); font-weight: 600; }
+.dr .dr-cb-libera { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: .4rem; align-items: center; }
+.dr .dr-cb-libera textarea { resize: none; width: 100%; padding: .45rem .6rem; border-radius: 8px; font: .92rem/1.3 var(--dr-libro); background: linear-gradient(#f6ecd2, #ecdcb4); color: #2b1b0c; border: 1px solid #8a6a3a; }
+.dr .dr-cb-libera .dr-bt { width: 44px; height: 44px; padding: 0; border-radius: 50%; }
+@media (max-width: 760px) { .dr .dr-sugg-tit { display: none; } }

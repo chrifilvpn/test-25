@@ -244,6 +244,27 @@ const { R, B, CLASSI, INCANTESIMI, MOSTRI, MAP, Combattimento, MASTER } = G._tes
     assert.ok(g.azione(0, { tipo: 'termina' }).ok && g.finita && g.risultato.fazioni.length === 3);
     console.log(`  campagna di prova con il finto master: ${chiamate} risposte, ${g.racconto.length} voci nel racconto`);
   }
+  // ---------- azione libera in combattimento: decide il master, il gioco applica gli effetti ----------
+  {
+    const g = G.crea({ n: 1, bot: [null], opzioni: {} });
+    g.chiave = 'finta';
+    g.fetch = async (url, o) => { const t = JSON.parse(o.body).contents[0].parts[0].text; assert.ok(t.includes('rovescio il braciere') && t.includes('d20 =')); const nem = g.combattimento.creature.find((c) => c.lato === 'nemici'); return { ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text: JSON.stringify({ narrazione: 'Le braci investono il nemico.', riuscita: true, effetti: [{ bersaglio: nem.ref.nome, danno: '50', tipoDanno: 'fuoco', condizione: 'prono', turni: 1 }] }) }] } }] }) }; };
+    g.azione(0, { tipo: 'crea', casuale: true, scelte: {} });
+    g.attesaIA = false; g.rispostaIA = null; g.ultimaRichiesta = null;
+    g.iniziaCombattimento({ nemici: [{ id: 'ogre' }], scena: 'taverna' });
+    const cb = g.combattimento;
+    for (let k = 0; k < 10 && cb.attivo.ref !== g.pg[0]; k++) { cb.turnoAutomatico('medio'); }
+    if (!cb.finito && cb.attivo.ref === g.pg[0]) {
+      const nem = cb.creature.find((c) => c.lato === 'nemici'), prima = nem.ref.pf;
+      assert.ok(g.azione(0, { tipo: 'libera', testo: '' }).errore, 'serve un testo');
+      assert.ok(g.azione(0, { tipo: 'libera', testo: 'rovescio il braciere addosso all\'ogre' }).ok);
+      assert.ok(g.azione(0, { tipo: 'libera', testo: 'ancora' }).errore, 'una sola azione');
+      for (let k = 0; k < 10 && !g.liberaPronta; k++) await new Promise((r) => setImmediate(r));
+      g.controllaTempo();
+      assert.ok(nem.ref.pf < prima, 'il danno deciso dal master è applicato');
+      assert.ok(g.racconto.some((x) => x.tipo === 'master' && x.testo.includes('braci')));
+    }
+  }
   // ---------- senza IA: il master di riserva ----------
   {
     const g = G.crea({ n: 1, bot: [null], opzioni: {} });

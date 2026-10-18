@@ -181,6 +181,15 @@ giochi3/conquista.js
 giochi3/cruciverba-dati.js
 giochi3/cruciverba.js
 giochi3/damaint.js
+giochi3/draghi.js
+giochi3/draghi/base.js
+giochi3/draghi/classi.js
+giochi3/draghi/combattimento.js
+giochi3/draghi/incantesimi.js
+giochi3/draghi/mappe.js
+giochi3/draghi/master.js
+giochi3/draghi/mostri.js
+giochi3/draghi/regole.js
 giochi3/forza3d.js
 giochi3/freecell.js
 giochi3/hex.js
@@ -383,6 +392,12 @@ public/js/giochi3/cruciverba.css
 public/js/giochi3/cruciverba.js
 public/js/giochi3/damaint.css
 public/js/giochi3/damaint.js
+public/js/giochi3/draghi-arte.js
+public/js/giochi3/draghi-campo.js
+public/js/giochi3/draghi-crea.js
+public/js/giochi3/draghi-mappe.js
+public/js/giochi3/draghi.css
+public/js/giochi3/draghi.js
 public/js/giochi3/forza3d.css
 public/js/giochi3/forza3d.js
 public/js/giochi3/freecell.css
@@ -465,6 +480,7 @@ test/giochi3/chiamata.js
 test/giochi3/conquista.js
 test/giochi3/cruciverba.js
 test/giochi3/damaint.js
+test/giochi3/draghi.js
 test/giochi3/forza3d.js
 test/giochi3/freecell.js
 test/giochi3/hex.js

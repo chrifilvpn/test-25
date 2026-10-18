@@ -92,7 +92,7 @@ class Draghi {
   }
   scadenza() {
     if (this.finita) return null;
-    if (this.attesaIA || this.attesaRacconto) return Date.now() + 400;
+    if (this.attesaIA || this.attesaRacconto || this.attesaLibera || this.liberaPronta) return Date.now() + 400;
     if (this.erroreIA && this.ultimaRichiesta && this.tentativi < 3) return Date.now() + 6000;
     if (this.fase === 'combattimento' && this.combattimento) {
       const cb = this.combattimento;
@@ -107,6 +107,7 @@ class Draghi {
     if (this.finita) return false;
     let cambiato = false;
     if (this.raccontoPronto) { const r = this.raccontoPronto; this.raccontoPronto = null; if (r.narrazione) this.scrivi('master', r.narrazione, { combattimento: true }); cambiato = true; }
+    if (this.liberaPronta) { this.applicaLibera(); cambiato = true; }
     if (this.rispostaIA) { const r = this.rispostaIA; this.rispostaIA = null; this.applicaRisposta(r); return true; }
     if (this.attesaIA) return cambiato;
     if (this.erroreIA && this.ultimaRichiesta && this.tentativi < 3 && !this.attesaIA) { this.ripeti(); return true; }
@@ -424,6 +425,7 @@ class Draghi {
     const c = this.creaturaDi(p);
     if (a.tipo === 'autoTurno') { if (!c || cb.attivo !== c) return { errore: 'Non è il tuo turno' }; cb.turnoAutomatico(this.bot[p] || 'medio'); this.dopoAzioneCombattimento(); return { ok: true }; }
     if (!c || cb.attivo !== c) return { errore: 'Non è il turno del tuo personaggio' };
+    if (a.tipo === 'libera') return this.azioneLibera(p, c, a);
     let r;
     if (a.tipo === 'muovi') r = cb.muovi(c.id, a.x, a.y);
     else if (a.tipo === 'attacca') r = cb.attacca(c.id, a.bersaglio, { arma: a.arma, punizione: a.punizione, dueMani: !!a.dueMani });
@@ -434,6 +436,47 @@ class Draghi {
     if (r && r.errore) return r;
     this.dopoAzioneCombattimento();
     return { ok: true };
+  }
+  // AZIONE LIBERA in combattimento: il giocatore scrive qualsiasi cosa (spingere un nemico nel fuoco, far crollare una
+  // colonna, convincerlo ad arrendersi…). Usa l'azione; il gioco tira un d20 e il master decide l'esito secondo le
+  // regole, con danni, cure e condizioni che il gioco applica alle creature sulla mappa.
+  azioneLibera(p, c, a) {
+    const cb = this.combattimento, pg = this.pg[p];
+    const testo = String(a.testo || '').replace(/\s+/g, ' ').trim().slice(0, 600);
+    if (!testo) return { errore: 'Scrivi cosa vuoi fare' };
+    if (!c.turno.azione) return { errore: 'Hai già usato l\'azione' };
+    if (this.attesaLibera) return { errore: 'Il master sta ancora decidendo l\'azione di prima' };
+    c.turno.azione = false;
+    const d20 = R.d20().valore;
+    cb.evento({ tipo: 'nota', id: c.id, testo: `${pg.nome} tenta: «${testo}» (d20: ${d20})` });
+    this.scrivi('azione', testo, { posto: p, chi: pg.nome, combattimento: true });
+    if (!(this.chiave && this.fetch)) { cb.evento({ tipo: 'nota', id: c.id, testo: d20 >= 11 ? 'Riesce, ma senza effetti sulle regole (senza IA il master di riserva non può giudicarlo).' : 'Non riesce.' }); this.dopoAzioneCombattimento(); return { ok: true }; }
+    const creature = cb.creature.filter((x) => cb.vivo(x)).map((x) => `${x.ref.nome} (${x.lato === 'gruppo' ? 'gruppo' : 'nemico'}, ${x.ref.pf}/${x.ref.pfMax} PF, CA ${x.ref.ca}, a ${cb.dist(c, x)} m da ${pg.nome}${x.ref.condizioni && x.ref.condizioni.length ? `, ${x.ref.condizioni.join(', ')}` : ''})`).join('; ');
+    const msg = `COMBATTIMENTO IN CORSO (round ${cb.round}). Al suo turno ${pg.nome} usa la sua azione per fare una cosa non prevista dai pulsanti: «${testo}».\nIl gioco ha già tirato per lui un d20 = ${d20} (aggiungi tu il modificatore giusto dalla sua scheda e confronta con una CD sensata, o con la CA/tiro salvezza del bersaglio).\nCreature sulla mappa: ${creature}.\nDecidi l'esito secondo le regole e rispondi SOLO con JSON: {"narrazione": "3-5 frasi vivide e senza censure", "riuscita": true/false, "effetti": [{"bersaglio": "nome esatto della creatura", "danno": "2d6", "tipoDanno": "contundente", "cura": null, "condizione": "prono|afferrato|accecato|spaventato|stordito|trattenuto|avvelenato|incapacitato|null", "turni": 1}]}. Niente effetti se l'azione non riesce o non ha senso.`;
+    this.attesaLibera = true;
+    const io = cb;
+    MASTER.chiamaGemini({ chiave: this.chiave, sistema: this.sistema(), messaggi: [{ ruolo: 'giocatori', testo: `${this.contesto()}\n\n=== ADESSO ===\n${msg}` }], fetch: this.fetch, maxToken: 1500 })
+      .then((x) => { this.attesaLibera = false; if (x.errore || this.combattimento !== io) return; let o = null; const t = String(x.testo || ''); try { const i = t.indexOf('{'), j = t.lastIndexOf('}'); o = JSON.parse(t.slice(i, j + 1)); } catch (e) { o = { narrazione: MASTER.leggiRisposta(t).narrazione }; } this.liberaPronta = { o, c, cb: io }; })
+      .catch(() => { this.attesaLibera = false; });
+    this.dopoAzioneCombattimento();
+    return { ok: true };
+  }
+  applicaLibera() {
+    const { o, c, cb } = this.liberaPronta; this.liberaPronta = null;
+    if (!o || this.combattimento !== cb) return;
+    if (o.narrazione) this.scrivi('master', String(o.narrazione).slice(0, 3000), { combattimento: true });
+    const trova = (nome) => { const n = norm(nome); return cb.creature.find((x) => cb.vivo(x) && norm(x.ref.nome) === n) || cb.creature.find((x) => cb.vivo(x) && n && (norm(x.ref.nome).startsWith(n) || n.startsWith(norm(x.ref.nome)))); };
+    const esiti = [];
+    for (const e of (Array.isArray(o.effetti) ? o.effetti : []).slice(0, 6)) {
+      const b = e && trova(e.bersaglio); if (!b) continue;
+      try {
+        if (e.danno && /^[\dd+\- ]+$/i.test(String(e.danno))) { const q = cb.danneggia(b, R.tira(String(e.danno).replace(/\s/g, '')).totale, B.TIPI_DANNO[e.tipoDanno] ? e.tipoDanno : 'contundente', { da: c }); esiti.push(`${b.ref.nome} −${q} PF`); cb.evento({ tipo: 'attacco', da: c.id, a: b.id, arma: 'azione libera', colpito: true, danno: q, testo: `${b.ref.nome} subisce ${q} danni.` }); }
+        if (e.cura && /^[\dd+\- ]+$/i.test(String(e.cura))) { const q = R.cura(b.ref, R.tira(String(e.cura).replace(/\s/g, '')).totale); cb.evento({ tipo: 'cura', id: b.id, quanti: q, testo: `${b.ref.nome} recupera ${q} PF.` }); }
+        const cond = norm(e.condizione); if (B.CONDIZIONI[cond]) { cb.mettiCondizione(b, cond, { da: c.id, turni: Math.max(1, Math.min(10, Number(e.turni) || 1)) }); cb.evento({ tipo: 'nota', id: b.id, testo: `${b.ref.nome}: ${cond}.` }); }
+      } catch (err) { /* un effetto sbagliato non ferma gli altri */ }
+    }
+    if (!esiti.length && o.riuscita === false) cb.evento({ tipo: 'nota', id: c.id, testo: `Il tentativo di ${c.ref.nome} non riesce.` });
+    cb.controllaFine();
   }
   dopoAzioneCombattimento() {
     const cb = this.combattimento;
@@ -497,7 +540,7 @@ class Draghi {
     const mio = this.pg[p] || null;
     return {
       gioco: this.id, n: this.n, fase: this.fase, host: this.host, bot: this.bot.map(Boolean), ambientazione: this.ambientazione, difficolta: this.difficolta, livelloIniziale: this.livelloIniziale,
-      iaAttiva: !!(this.chiave && this.fetch), attesaIA: this.attesaIA, erroreIA: this.erroreIA, idea: this.idea,
+      iaAttiva: !!(this.chiave && this.fetch), attesaIA: this.attesaIA, attesaLibera: !!this.attesaLibera, erroreIA: this.erroreIA, idea: this.idea,
       suggerite: this.suggerite[p], tirati: this.tirati[p] ? this.tirati[p].valori : null, tiriFatti: this.tirati[p] ? this.tirati[p].volte : 0,
       pg: this.pg, mioPg: mio ? mio.uid : null,
       racconto: this.racconto.slice(-120), scelte: this.scelte, atmosfera: this.atmosfera,

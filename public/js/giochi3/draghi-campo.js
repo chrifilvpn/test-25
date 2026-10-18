@@ -154,8 +154,8 @@
     const z = zonaUtile(cb), zw = (z.x1 - z.x0 + 1) * C, zh = (z.y1 - z.y0 + 1) * C;
     const kFit = Math.min(F.W / zw, F.H / zh, 2.2);
     if (s.cam.fit || forza) {
-      if (kFit * C >= 21 || forza) { s.cam.k = kFit; s.cam.ox = (F.W - zw * kFit) / 2 - z.x0 * C * kFit; s.cam.oy = (F.H - zh * kFit) / 2 - z.y0 * C * kFit; s.cam.fit = true; s.cam.zona = true; return; }
-      s.cam.k = 26 / C; s.cam.fit = false; centra(F, io(F.ctx) || cb.creature.find((c) => c.id === cb.attivo), false);
+      if (kFit * C >= 30 || forza) { s.cam.k = kFit; s.cam.ox = (F.W - zw * kFit) / 2 - z.x0 * C * kFit; s.cam.oy = (F.H - zh * kFit) / 2 - z.y0 * C * kFit; s.cam.fit = true; s.cam.zona = true; return; }
+      s.cam.k = (F.W < 600 ? 28 : 36) / C; s.cam.fit = false; centra(F, io(F.ctx) || cb.creature.find((c) => c.id === cb.attivo), false);
     }
     limita(F, s);
   }
@@ -542,6 +542,7 @@
       <div class="dr-cb-sez"><h4>⚔️ Attacchi</h4><div class="dr-cb-armi">${armi}</div>${extraArmi}</div>
       ${magie}
       <div class="dr-cb-sez"><h4>🎲 Azioni</h4><div class="dr-cb-azioni">${azioni}${classe}</div></div>
+      <div class="dr-cb-sez"><h4>✍️ Azione libera <small>qualsiasi cosa ti venga in mente: decide il master</small></h4><div class="dr-cb-libera"><textarea data-tieni="libera" rows="2" maxlength="600" placeholder="Es.: rovescio il braciere addosso al goblin, poi gli urlo di arrendersi…">${esc(ctx.ui.t_libera || '')}</textarea><button type="button" class="dr-bt dr-bt-oro" data-az="dr-cb-libera" aria-label="Fallo" ${t.azione && !p.attesaLibera ? '' : 'disabled'}>➤</button></div>${p.attesaLibera ? '<small class="dr-nota">🪶 Il master sta decidendo cosa succede…</small>' : !t.azione ? '<small class="dr-nota">Serve l\'azione: l\'hai già usata in questo turno.</small>' : ''}</div>
       <div class="dr-cb-fine"><button type="button" class="dr-bt" data-az="dr-cb-auto" title="Il computer gioca questo turno per te">🤖 Gioca per me</button><button type="button" class="dr-bt dr-bt-oro" data-az="dr-cb-fine">Fine turno ⏭</button></div>
       ${registro}</div>`;
   }
@@ -595,6 +596,13 @@
         const area = id === 'soffio' && pg ? (['rosso', 'oro', 'verde', 'bianco', 'argento'].includes(pg.discendenza) ? { forma: 'cono', m: 4.5 } : { forma: 'linea', m: 9 }) : null;
         s.sel = { tipo: 'az', az: id, chi, portata: Number(el.dataset.portata) || CELLA, area };
         return ctx.ridisegna();
+      }
+      case 'dr-cb-libera': {
+        const testo = String(ctx.ui.t_libera || '').trim();
+        if (!testo) return ctx.avviso('Scrivi cosa vuoi fare');
+        ctx.ui.t_libera = ''; ctx.ui.fuoco = null; s.sel = null;
+        suono([[440, 0.05], [660, 0.07]], { tipo: 'sine', volume: 0.03 });
+        return ctx.invia({ tipo: 'libera', testo });
       }
       case 'dr-cb-fine': s.sel = null; suono([[392, 0.05], [330, 0.06]], { tipo: 'triangle', volume: 0.03 }); return ctx.invia({ tipo: 'fine' });
       case 'dr-cb-auto': s.sel = null; return ctx.invia({ tipo: 'autoTurno' });

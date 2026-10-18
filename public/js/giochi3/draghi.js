@@ -10,7 +10,7 @@
   const AMBIENTI = { classica: 'Fantasy classico', oscura: 'Oscura e horror', pirati: 'Mari e pirati', citta: 'Intrighi in città', selvaggia: 'Terre selvagge' };
   const NOMI_CAR = { for: 'Forza', des: 'Destrezza', cos: 'Costituzione', int: 'Intelligenza', sag: 'Saggezza', car: 'Carisma' };
   const BREVI_CAR = { for: 'FOR', des: 'DES', cos: 'COS', int: 'INT', sag: 'SAG', car: 'CAR' };
-  const NOMI_AB = { acrobazia: ['Acrobazia', 'des'], addestrare: ['Addestrare animali', 'sag'], arcano: ['Arcano', 'int'], atletica: ['Atletica', 'for'], furtivita: ['Furtività', 'des'], indagare: ['Indagare', 'int'], inganno: ['Inganno', 'car'], intimidire: ['Intimidire', 'car'], intrattenere: ['Intrattenere', 'car'], intuizione: ['Intuizione', 'sag'], medicina: ['Medicina', 'sag'], natura: ['Natura', 'int'], percezione: ['Percezione', 'sag'], persuasione: ['Persuasione', 'car'], rapidita: ['Rapidità di mano', 'des'], religione: ['Religione', 'int'], sopravvivenza: ['Sopravvivenza', 'sag'], storia: ['Storia', 'int'] };
+  const NOMI_AB = { acrobazia: ['Acrobazia', 'des'], animali: ['Addestrare animali', 'sag'], arcano: ['Arcano', 'int'], atletica: ['Atletica', 'for'], furtivita: ['Furtività', 'des'], indagare: ['Indagare', 'int'], inganno: ['Inganno', 'car'], intimidire: ['Intimidire', 'car'], intrattenere: ['Intrattenere', 'car'], intuizione: ['Intuizione', 'sag'], medicina: ['Medicina', 'sag'], natura: ['Natura', 'int'], percezione: ['Percezione', 'sag'], persuasione: ['Persuasione', 'car'], rapidita: ['Rapidità di mano', 'des'], religione: ['Religione', 'int'], sopravvivenza: ['Sopravvivenza', 'sag'], storia: ['Storia', 'int'] };
   const NOMI_STIRPE = { umano: 'Umano', elfo: 'Alto elfo', nano: 'Nano', halfling: 'Halfling', gnomo: 'Gnomo', mezzelfo: 'Mezzelfo', mezzorco: 'Mezzorco', dragonide: 'Dragonide', tiefling: 'Tiefling' };
   const NOMI_CLASSE = { barbaro: 'Barbaro', bardo: 'Bardo', chierico: 'Chierico', druido: 'Druido', guerriero: 'Guerriero', ladro: 'Ladro', mago: 'Mago', monaco: 'Monaco', paladino: 'Paladino', ranger: 'Ranger', stregone: 'Stregone', warlock: 'Warlock' };
   const PX = [0, 300, 900, 2700, 6500, 14000, 23000, 34000, 48000, 64000, 85000, 100000, 120000, 140000, 165000, 195000, 225000, 265000, 305000, 355000];
@@ -101,7 +101,7 @@
     return `<div class="dr-sotto"><div class="dr-scrivi" style="--cc:${colClasse(pg.classe)}"><span class="dr-scrivi-ritr">${A().ritratto(pg, { cornice: false })}</span>
       <textarea data-tieni="dich" maxlength="1500" rows="2" placeholder="Cosa fa ${esc(pg.nome)}? Scrivi azioni, parole, idee… (Invio per mandare)">${esc(ui.t_dich || '')}</textarea>
       <button type="button" class="dr-bt dr-bt-oro dr-invia" data-az="dr-dichiara" aria-label="Manda">➤</button></div>
-      <div class="dr-suggerimenti">${sugg}${rapidi}<button type="button" class="dr-sugg niente" data-az="dr-segui" title="Non fai niente di particolare">🚶 Seguo il gruppo</button></div>${chiAspetta}${manda && !mancano.includes(ctx.mio) ? '' : ''}</div>`;
+      <div class="dr-suggerimenti"><span class="dr-sugg-tit">Idee del master — oppure scrivi tu qualsiasi cosa:</span>${sugg}<button type="button" class="dr-sugg tu" data-az="dr-scrivitu">✍️ Scegli tu</button>${rapidi}<button type="button" class="dr-sugg niente" data-az="dr-segui" title="Non fai niente di particolare">🚶 Seguo il gruppo</button></div>${chiAspetta}${manda && !mancano.includes(ctx.mio) ? '' : ''}</div>`;
   }
   function prove(ctx) {
     const p = ctx.partita, pg = mioPg(ctx);
@@ -323,6 +323,7 @@
           suono([[440, 0.05], [550, 0.07]], { tipo: 'sine', volume: 0.03 });
           return ctx.invia({ tipo: 'dichiara', testo: t });
         }
+        case 'dr-scrivitu': { const el2 = document.querySelector('#panno [data-tieni="dich"]'); if (el2) { el2.focus(); el2.placeholder = 'Scrivi qualsiasi cosa: parlare, rubare, mentire, sedurre, uccidere, fuggire… il master risponde di conseguenza'; } return undefined; }
         case 'dr-segui': ui.t_dich = ''; return ctx.invia({ tipo: 'dichiara', testo: '' });
         case 'dr-sugg': { const s = (p.scelte || [])[Number(el.dataset.k)]; if (s) { ui.t_dich = ui.t_dich && ui.t_dich.trim() ? `${ui.t_dich.trim()} ${s}` : s; ui.fuoco = 'dich'; } return ctx.ridisegna(); }
         case 'dr-rapido': ui.t_dich = el.dataset.t; ui.fuoco = 'dich'; return ctx.ridisegna();
@@ -347,9 +348,9 @@
   };
   // Invio nella casella dell'azione = manda (Maiusc+Invio per andare a capo)
   document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Enter' || e.shiftKey || !e.target || !e.target.matches || !e.target.matches('#panno textarea[data-tieni="dich"]')) return;
+    if (e.key !== 'Enter' || e.shiftKey || !e.target || !e.target.matches || !e.target.matches('#panno textarea[data-tieni="dich"], #panno textarea[data-tieni="libera"]')) return;
     e.preventDefault();
-    const b = document.querySelector('#panno [data-az="dr-dichiara"]'); if (b) b.click();
+    const b = document.querySelector(`#panno [data-az="${e.target.dataset.tieni === 'libera' ? 'dr-cb-libera' : 'dr-dichiara'}"]`); if (b && !b.disabled) b.click();
   });
   // Esc chiude la scheda
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { const x = document.querySelector('#panno .dr-scheda .dr-x'); if (x) x.click(); } });
