@@ -1297,3 +1297,8 @@ body.spettatore #tavolo canvas { pointer-events: none; }
 .cs-tab-scheda .piccolo { color: #55554f; opacity: 1; }
 .imp-casella input[type="checkbox"] { justify-self: start; width: 1.35rem; height: 1.35rem; accent-color: var(--oro); cursor: pointer; }
 @media (max-width: 620px) { .imp-casella { grid-template-columns: 1fr auto; } }
+/* il suggerimento segreto (!win): piccolo, in basso a sinistra, sparisce da solo (un tocco lo nasconde subito) */
+#segreto { position: fixed; left: .6rem; bottom: .6rem; z-index: 9999; max-width: min(22rem, 80vw); padding: .3rem .6rem; border-radius: 8px;
+  background: rgba(10, 14, 12, .82); color: #d8e6dc; font-size: .78rem; line-height: 1.3; box-shadow: 0 2px 8px rgba(0, 0, 0, .4); cursor: pointer; }
+#segreto.va { animation: segreto-va 4.5s ease-out both; }
+@keyframes segreto-va { 0% { opacity: 0; } 8% { opacity: 1; } 80% { opacity: 1; } 100% { opacity: .15; } }

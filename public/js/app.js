@@ -431,6 +431,16 @@
     if (!stato && /Nessun tavolo|pieno|iniziata/.test(m)) mem.del('tavolo');
     if (stato && stato.partita) disegnaGioco(); // rimette a posto le carte se la mossa non era valida
   });
+  // il trucco segreto (!win): un suggerimento piccolo e discreto che sparisce da solo, e non resta da nessuna parte
+  socket.on('segreto', ({ testo, durata } = {}) => {
+    let el = document.getElementById('segreto');
+    if (!el) { el = document.createElement('div'); el.id = 'segreto'; el.setAttribute('aria-live', 'polite'); el.addEventListener('click', () => { el.hidden = true; }); document.body.append(el); }
+    el.textContent = testo || '';
+    el.hidden = false;
+    el.classList.remove('va'); void el.offsetWidth; el.classList.add('va');
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.hidden = true; el.textContent = ''; }, Math.min(8000, Math.max(1500, Number(durata) || 4500)));
+  });
   // avviso solo per me scritto da un gioco (es. "ci sei quasi!" in Disegna e indovina): va anche nella chat
   socket.on('avvisoPrivato', (m) => {
     avviso(m);

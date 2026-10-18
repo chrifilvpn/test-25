@@ -3,6 +3,7 @@
 // Raddoppio su due carte (anche dopo lo split), split fino a 4 mani; gli assi divisi ricevono una carta sola.
 // Il banco controlla subito se ha blackjack quando mostra un asso o una figura/10.
 const { Casino, scarpa, puntataBot } = require('./casino');
+const T = require('./trucco');
 
 const MAZZI = 6;
 const TAGLIO = 0.25; // si rimescola quando resta meno di un quarto della scarpa
@@ -28,6 +29,16 @@ class Blackjack extends Casino {
     this.mani = Array.from({ length: this.n }, () => []);
     this.banco = [];
     this.coperta = true;
+  }
+
+  serviBlackjack(m) {
+    if (this.scarpa.length < 20) this.scarpa.unshift(...scarpa(1));
+    this.scarpa.unshift(...m.carte); // le carte di prima tornano in fondo alla scarpa
+    const asso = this.scarpa.findIndex((c) => c.rango === 1);
+    const [a] = this.scarpa.splice(asso, 1);
+    const dieci = this.scarpa.findIndex((c) => valoreCarta(c) === 10);
+    const [d] = this.scarpa.splice(dieci, 1);
+    m.carte = Math.random() < 0.5 ? [a, d] : [d, a];
   }
 
   pesca() {
@@ -121,6 +132,10 @@ class Blackjack extends Casino {
       for (const i of inGioco) this.mani[i][0].carte.push(this.pesca());
       this.banco.push(this.pesca());
     }
+    // il trucco segreto (!win): blackjack servito, e il banco non ce l'ha
+    const truccati = inGioco.filter((i) => T.consuma(this, i));
+    for (const i of truccati) this.serviBlackjack(this.mani[i][0]);
+    if (truccati.length && conta(this.banco).tot === 21) { const j = this.scarpa.findIndex((c) => valoreCarta(c) <= 6); if (j >= 0) [this.banco[1], this.scarpa[j]] = [this.scarpa[j], this.banco[1]]; }
     for (const i of inGioco) if (isBlackjack(this.mani[i][0])) this.mani[i][0].stato = 'blackjack';
     // il banco controlla la carta coperta se mostra asso o 10
     if (valoreCarta(this.banco[0]) >= 10 && conta(this.banco).tot === 21) {
