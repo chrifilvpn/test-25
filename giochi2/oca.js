@@ -5,6 +5,9 @@
 // lo scheletro (58) fa ricominciare da capo. Al 63 si arriva col numero esatto: i punti in più si fanno all'indietro.
 // Al primo tiro, chi fa 9 con 6 e 3 va al 26, chi fa 9 con 5 e 4 va al 53 (altrimenti rimbalzerebbe di oca in oca
 // fino alla fine).
+// A SQUADRE (4 o 6 giocatori): squadre di due, compagni uno di fronte all'altro. Vince la squadra che porta al 63
+// tutte e due le pedine; chi è già arrivato tira i dadi per il compagno. Tra compagni non ci si manda via dalla
+// casella, e chi arriva nel pozzo o in prigione dove c'è il compagno lo libera (come tutti).
 const FINE = 63;
 const OCHE = new Set([5, 9, 14, 18, 23, 27, 32, 36, 41, 45, 50, 54, 59]);
 const PONTE = 6, LOCANDA = 19, POZZO = 31, LABIRINTO = 42, PRIGIONE = 52, SCHELETRO = 58;
@@ -16,6 +19,9 @@ class Oca {
     this.n = n;
     this.scambio = opzioni.scambio !== 'no';
     this.locanda = Number(opzioni.locanda) === 3 ? 3 : 1;
+    this.aSquadre = opzioni.squadre === 'si' && (n === 4 || n === 6);
+    // squadra di ogni posto: i compagni sono uno di fronte all'altro (0-2 e 1-3; con 6: 0-3, 1-4, 2-5)
+    this.squadra = Array.from({ length: n }, (_, i) => (this.aSquadre ? i % (n / 2) : i));
     this.pos = new Array(n).fill(0);
     this.fermo = new Array(n).fill(0);           // turni da saltare (locanda)
     this.bloccato = new Array(n).fill(null);     // 'pozzo' | 'prigione' | null
@@ -36,9 +42,13 @@ class Oca {
     if (!a || a.tipo !== 'tira') return { errore: 'Mossa non valida' };
     return this.tira(p, [dado(), dado()]);
   }
+  compagno(p) { return this.aSquadre ? (p + this.n / 2) % this.n : p; }
+  // la pedina che muove chi è di turno: la sua, o quella del compagno se la sua è già arrivata
+  pedina(p) { return this.aSquadre && this.pos[p] === FINE ? this.compagno(p) : p; }
 
   // il tiro: cammino casella per casella, poi gli effetti delle caselle speciali (anche a catena)
-  tira(p, dadi) {
+  tira(chi, dadi) {
+    const p = this.pedina(chi); // da qui in poi p è la pedina che si muove
     const s = dadi[0] + dadi[1];
     const passi = [], righe = [];
     const da = this.pos[p];
@@ -51,6 +61,7 @@ class Oca {
       }
     };
     const salta = (dove) => { c = dove; passi.push({ c, salto: true }); };
+    if (p !== chi) righe.push('tira per il compagno');
     righe.push(`${dadi[0]} + ${dadi[1]} = ${s}`);
     if (this.tiri[p] === 0 && da === 0 && s === 9) {
       const alto = Math.max(...dadi);
@@ -95,7 +106,7 @@ class Oca {
     // casella occupata: chi c'era va dove era partito chi arriva
     if (this.scambio && c !== 0 && c !== FINE && c !== POZZO && c !== PRIGIONE && c !== da) {
       for (let q = 0; q < this.n; q++) {
-        if (q === p || this.pos[q] !== c) continue;
+        if (q === p || this.pos[q] !== c || this.squadra[q] === this.squadra[p]) continue;
         this.pos[q] = da;
         if (this.bloccato[q]) this.bloccato[q] = null;
         this.fermo[q] = 0;
@@ -104,10 +115,14 @@ class Oca {
       if (spostati.length) righe.push(`casella occupata: ${spostati.length === 1 ? 'l\'altro va' : 'gli altri vanno'} al ${da}`);
     }
     this.dadi = dadi; this.nTiro++;
-    this.ultimo = { n: this.nTiro, posto: p, da, dadi, passi, spostati, righe };
-    if (c === FINE) {
-      righe.push('arriva al 63: ha vinto! 🏆');
-      this.annuncia(p, 'arriva al 63 e vince! 🏆', 'sei arrivato al 63: hai vinto! 🏆', true);
+    this.ultimo = { n: this.nTiro, posto: p, chi, da, dadi, passi, spostati, righe };
+    if (c === FINE && this.aSquadre && this.pos[this.compagno(p)] !== FINE) {
+      righe.push('arriva al 63! Ora si tira per il compagno');
+      this.annuncia(chi, p === chi ? 'arriva al 63! Ora tira per il compagno 🏁' : 'porta il compagno al 63! 🏁', p === chi ? 'sei arrivato al 63! Ora tiri per il compagno 🏁' : 'hai portato il compagno al 63! 🏁', true);
+    } else if (c === FINE) {
+      righe.push(this.aSquadre ? 'tutta la squadra è al 63: ha vinto! 🏆' : 'arriva al 63: ha vinto! 🏆');
+      if (this.aSquadre) this.annuncia(chi, 'porta la squadra al 63 e vince! 🏆', 'tutta la tua squadra è al 63: avete vinto! 🏆', true);
+      else this.annuncia(p, 'arriva al 63 e vince! 🏆', 'sei arrivato al 63: hai vinto! 🏆', true);
       return this.chiudi(p);
     }
     if (testoForte) this.annuncia(p, testoForte[0], testoForte[1]);
@@ -125,7 +140,7 @@ class Oca {
   // il turno passa al prossimo che può tirare: chi è alla locanda salta, chi è nel pozzo o in prigione aspetta
   prossimo() {
     this.saltati = [];
-    if (this.bloccato.every((b) => b)) {
+    if (this.bloccato.every((b, i) => b || this.pos[i] === FINE)) {
       // tutti bloccati (si può solo in due): si liberano tutti, altrimenti la partita non finirebbe mai
       this.bloccato.fill(null);
       this.annuncia(null, 'Tutti bloccati: si liberano tutti! 🔓', '');
@@ -133,8 +148,10 @@ class Oca {
     let q = this.turno;
     for (let k = 0; k < this.n * 4; k++) {
       q = (q + 1) % this.n;
-      if (this.bloccato[q]) { this.saltati.push({ posto: q, perche: this.bloccato[q] }); continue; }
-      if (this.fermo[q] > 0) { this.fermo[q]--; this.saltati.push({ posto: q, perche: 'locanda' }); continue; }
+      const m = this.pedina(q); // conta la pedina che muoverebbe (la propria, o quella del compagno)
+      if (this.pos[m] === FINE) continue;
+      if (this.bloccato[m]) { this.saltati.push({ posto: q, perche: this.bloccato[m] }); continue; }
+      if (this.fermo[m] > 0) { this.fermo[m]--; this.saltati.push({ posto: q, perche: 'locanda' }); continue; }
       this.turno = q;
       return;
     }
@@ -142,13 +159,19 @@ class Oca {
   }
   chiudi(v) {
     this.finita = true; this.turno = null; this.inAttesa = false;
-    this.risultato = { fazioni: this.pos.map((x, i) => ({ posti: [i], punti: x })), etichetta: 'casella', pareggio: false, vincitori: [v] };
+    if (this.aSquadre) {
+      // per squadra: le caselle delle due pedine sommate
+      const fazioni = [];
+      for (let t = 0; t < this.n / 2; t++) fazioni.push({ posti: [t, t + this.n / 2], punti: this.pos[t] + this.pos[t + this.n / 2] });
+      this.risultato = { fazioni, etichetta: 'caselle', pareggio: false, vincitori: fazioni[this.squadra[v]].posti };
+    } else this.risultato = { fazioni: this.pos.map((x, i) => ({ posti: [i], punti: x })), etichetta: 'casella', pareggio: false, vincitori: [v] };
     return { ok: true };
   }
   vista() {
     return {
       gioco: this.id, n: this.n, pos: this.pos, fermo: this.fermo, bloccato: this.bloccato, dadi: this.dadi, nTiro: this.nTiro,
       ultimo: this.ultimo, saltati: this.saltati, locanda: this.locanda, primoTiro: this.tiri.map((t) => t === 0),
+      aSquadre: this.aSquadre, squadra: this.squadra, pedina: this.turno == null ? null : this.pedina(this.turno),
       turno: this.turno, finita: this.finita, risultato: this.risultato, evento: this.evento, inAttesa: this.inAttesa, pausaMs: this.pausaMs,
     };
   }
@@ -165,6 +188,7 @@ module.exports = {
     alias: ['oca', 'gioco dell oca', 'spirale', 'dadi', 'percorso', '63'],
     opzioni: [
       { id: 'scambio', nome: 'Casella occupata', valori: ['si', 'no'], etichette: ['Chi c\'era torna dove sei partito', 'Si sta insieme'], predefinito: 'si' },
+      { id: 'squadre', nome: 'Squadre', valori: ['no', 'si'], etichette: ['Ognuno per sé', 'A squadre di due (con 4 o 6 giocatori)'], predefinito: 'no' },
       { id: 'locanda', nome: 'Locanda', valori: [1, 3], etichette: ['Ferma un turno', 'Ferma tre turni'], predefinito: 1 },
     ],
     regole: [
@@ -176,6 +200,7 @@ module.exports = {
       'Il LABIRINTO (42) fa tornare indietro al 39. Lo SCHELETRO (58) fa ricominciare dalla partenza.',
       'Al 63 si deve arrivare col numero esatto: i punti in più si contano all\'indietro (se così si finisce su un\'oca, si va indietro ancora).',
       'Casella occupata (opzione, attiva di solito): se arrivi dove c\'è già un altro giocatore, lui torna nella casella da cui sei partito tu. Non vale per la partenza, il pozzo e la prigione.',
+      'A SQUADRE (con 4 o 6 giocatori): squadre di due, i compagni seduti uno di fronte all\'altro. Vince la squadra che porta al 63 tutte e due le pedine: chi arriva prima continua a tirare i dadi per il compagno. Tra compagni non ci si manda via dalla casella.',
       'Al tuo turno premi "Tira i dadi" (o la barra spaziatrice) e guarda la pedina camminare. Nel gioco dell\'oca decide solo la fortuna: il computer tira i dadi come tutti.',
     ],
   },

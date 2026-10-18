@@ -1,7 +1,8 @@
 // GIOCO DELL'OCA: la spirale di 64 caselle (partenza + 63) su una griglia 8 × 8, dall'angolo in basso a sinistra
 // verso il centro. Tra un giro e l'altro della spirale c'è un "muro" più spesso, così il percorso si legge bene.
 // Le pedine camminano casella per casella (Web Animations, riprendono da dove erano se il tavolo si ridisegna);
-// i salti (ponte, labirinto, scheletro, primo tiro) sono un volo ad arco.
+// i salti (ponte, labirinto, scheletro, primo tiro) sono un volo ad arco. A squadre l'elenco dei giocatori è diviso per
+// squadra e chi è già al 63 tira per il compagno.
 (() => {
   const { esc, primaVolta, suono, ritardo, trascorso, calmo } = window.Nuovi;
   const L = 8;
@@ -77,7 +78,12 @@
         return `<div class="oca-ped ${q === p.turno && !p.finita ? 'turno' : ''}" data-ped="${q}" style="left:${x}%;top:${y}%">${pedinaSvg(q)}</div>`;
       }).join('');
       const stato = (q) => (p.bloccato[q] === 'pozzo' ? '🕳️ nel pozzo' : p.bloccato[q] === 'prigione' ? '⛓️ in prigione' : p.fermo[q] > 0 ? `🍺 ferma ${p.fermo[q]}` : '');
-      const giocatori = Array.from({ length: p.n }, (_, q) => `<li class="oca-gio ${q === p.turno && !p.finita ? 'di-turno' : ''}" style="--c:${COL[q]}"><span class="oca-pal"></span><b>${esc(q === ctx.mio ? 'Tu' : ctx.nome(q))}</b><small>${stato(q)}</small><strong>${p.pos[q]}</strong></li>`).join('');
+      const riga = (q) => `<li class="oca-gio ${q === p.turno && !p.finita ? 'di-turno' : ''}" style="--c:${COL[q]}"><span class="oca-pal"></span><b>${esc(q === ctx.mio ? 'Tu' : ctx.nome(q))}</b><small>${p.pos[q] === 63 ? '🏁 arrivato' : stato(q)}</small><strong>${p.pos[q]}</strong></li>`;
+      let giocatori;
+      if (p.aSquadre) {
+        const metà = p.n / 2;
+        giocatori = Array.from({ length: metà }, (_, t) => `<li class="oca-sq ${p.squadra[ctx.mio] === t ? 'mia' : ''}"><span class="oca-sq-nome">${p.squadra[ctx.mio] === t ? 'La tua squadra' : `Squadra ${t + 1}`} · ${p.pos[t] + p.pos[t + metà]} caselle</span><ul>${riga(t)}${riga(t + metà)}</ul></li>`).join('');
+      } else giocatori = Array.from({ length: p.n }, (_, q) => riga(q)).join('');
       const u = p.ultimo;
       const dadi = p.dadi ? p.dadi.map((v, i) => dadoSvg(v, `${ritardo(ui, `oca-d-${p.nTiro}`)};--k:${i};--c:${COL[u.posto]}`)).join('') : dadoSvg(5, '--c:#888;opacity:.4') + dadoSvg(2, '--c:#888;opacity:.4');
       const puo = mio && !inviato(ui, p.nTiro);
@@ -85,13 +91,18 @@
       // racconto dell'ultimo tiro (le righe compaiono man mano che la pedina cammina)
       let racconto = '';
       if (u) {
-        const chi = u.posto === ctx.mio ? 'Tu' : esc(ctx.nome(u.posto));
+        const tiratore = u.chi ?? u.posto;
+        const chi = tiratore === ctx.mio ? 'Tu' : esc(ctx.nome(tiratore));
         racconto = `<div class="oca-racc" style="--c:${COL[u.posto]}"><b>${chi}</b>: ${u.righe.map((r, i) => `<span style="--i:${i};${ritardo(ui, `oca-r-${u.n}`)}">${esc(r)}</span>`).join(' → ')}</div>`;
       }
       const saltati = (p.saltati || []).filter((s) => !p.inAttesa).map((s) => `${esc(s.posto === ctx.mio ? 'Tu' : ctx.nome(s.posto))} ${s.perche === 'locanda' ? 'alla locanda, salta il turno' : s.perche === 'pozzo' ? 'è nel pozzo' : 'è in prigione'}`);
       let msg;
-      if (p.finita) msg = p.risultato.vincitori[0] === ctx.mio ? 'Sei arrivato al 63: hai vinto! 🏆' : `${esc(ctx.nome(p.risultato.vincitori[0]))} è arrivato al 63! 🏆`;
-      else if (p.inAttesa) msg = u && u.posto === ctx.mio ? 'La tua pedina cammina…' : `${esc(ctx.nome(u ? u.posto : p.turno))} cammina…`;
+      if (p.finita && p.aSquadre) {
+        const v = p.risultato.vincitori;
+        msg = v.includes(ctx.mio) ? 'Tutta la squadra al 63: avete vinto! 🏆' : `Vince la squadra di ${v.map((q) => esc(ctx.nome(q))).join(' e ')}! 🏆`;
+      } else if (p.finita) msg = p.risultato.vincitori[0] === ctx.mio ? 'Sei arrivato al 63: hai vinto! 🏆' : `${esc(ctx.nome(p.risultato.vincitori[0]))} è arrivato al 63! 🏆`;
+      else if (p.inAttesa) msg = u && u.posto === ctx.mio ? 'La tua pedina cammina…' : `La pedina di ${esc(ctx.nome(u ? u.posto : p.turno))} cammina…`;
+      else if (mio && p.pedina != null && p.pedina !== ctx.mio) msg = `<b>Tocca a te: tira per ${esc(ctx.nome(p.pedina))}!</b> <small>(sei già al 63)</small>`;
       else if (mio) msg = `<b>Tocca a te: tira i dadi!</b>${p.primoTiro[ctx.mio] ? ' <small>(al primo tiro il 9 fa volare!)</small>' : ''}`;
       else msg = `Tocca a ${esc(ctx.nome(p.turno))}…`;
       const tasto = puo ? '<button type="button" class="bottone primario oca-tira" data-az="tira">🎲 Tira i dadi</button>' : '';

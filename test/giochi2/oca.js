@@ -133,3 +133,47 @@ const fine = (g) => { if (g.inAttesa) g.avanza(); };
   }
   console.log(`✓ Gioco dell'oca: oche a catena, primo tiro col 9, ponte, locanda, pozzo, prigione, labirinto, scheletro, rimbalzo; ${tot} partite da 2 a 6 giocatori in ${Date.now() - t0} ms`);
 }
+
+// ---- a squadre ----
+{
+  const t0 = Date.now();
+  // con 2, 3 o 5 giocatori l'opzione non vale
+  assert.ok(!M.crea({ n: 3, opzioni: { squadre: 'si' } }).aSquadre && M.crea({ n: 4, opzioni: { squadre: 'si' } }).aSquadre);
+  const g = M.crea({ n: 4, primo: 0, opzioni: { squadre: 'si', scambio: 'si' } });
+  assert.deepStrictEqual(g.squadra, [0, 1, 0, 1], 'compagni uno di fronte all\'altro');
+  // arrivato al 63 si tira per il compagno
+  g.pos[0] = 60; g.tiri[0] = 1;
+  g.tira(0, [1, 2]);
+  assert.ok(!g.finita && g.pos[0] === 63, 'il primo della squadra arrivato non basta');
+  g.avanza();
+  g.turno = 0;
+  assert.strictEqual(g.pedina(0), 2);
+  g.pos[2] = 10; g.tiri[2] = 1;
+  g.tira(0, [1, 1]);
+  assert.ok(g.pos[2] === 12 && g.pos[0] === 63, 'muove la pedina del compagno');
+  // tra compagni niente scambio, con gli avversari sì
+  const h = M.crea({ n: 4, primo: 0, opzioni: { squadre: 'si', scambio: 'si' } });
+  h.tiri.fill(1); h.pos[2] = 13; h.pos[1] = 13;
+  h.tira(0, [6, 7]);
+  assert.ok(h.pos[2] === 13 && h.pos[1] === 0, 'il compagno resta, l\'avversario torna indietro');
+  // e la vittoria: tutta la squadra al 63
+  h.avanza(); h.turno = 1; h.pos[1] = 63; h.pos[3] = 61; h.tiri[3] = 1;
+  h.tira(1, [1, 1]);
+  assert.ok(h.finita && h.risultato.vincitori.join() === '1,3' && h.risultato.fazioni.length === 2);
+  let tot = 0;
+  for (const n of [4, 6]) for (let i = 0; i < (VELOCE ? 150 : 400); i++) {
+    const m = M.crea({ n, primo: i % n, opzioni: { squadre: 'si', scambio: i % 2 ? 'si' : 'no', locanda: i % 3 ? 1 : 3 } });
+    let k = 0;
+    while (!m.finita) {
+      assert.ok(++k < 40000, 'la partita a squadre finisce');
+      if (m.inAttesa) { m.avanza(); continue; }
+      const t = m.turno, pd = m.pedina(t);
+      assert.ok(m.pos[pd] !== 63 && !m.bloccato[pd], 'si muove una pedina in gioco');
+      assert.ok(m.azione(t, M.bot(m, t, 'medio')).ok);
+    }
+    const v = m.risultato.vincitori;
+    assert.ok(v.length === 2 && v.every((q) => m.pos[q] === 63), 'vince la squadra con tutte e due le pedine al 63');
+    tot++;
+  }
+  console.log(`✓ Gioco dell'oca a squadre: compagni di fronte, chi arriva tira per il compagno, niente scambio tra compagni; ${tot} partite a 4 e 6 in ${Date.now() - t0} ms`);
+}

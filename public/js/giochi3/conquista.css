@@ -1,0 +1,33 @@
+/* CONQUISTA DEL MONDO: oceano blu, terre color sabbia che si fondono, gettoni colorati dei giocatori */
+.cq { width: min(64rem, 100%); margin: 0 auto; display: grid; justify-items: center; gap: .6rem; padding: .3rem 0 1rem; }
+.cq-legenda { display: flex; flex-wrap: wrap; gap: .3rem .9rem; justify-content: center; font-size: .88rem; }
+.cq-legenda span { display: inline-flex; align-items: center; gap: .35rem; padding: .15rem .55rem; border-radius: 999px; border: 2px solid transparent; }
+.cq-legenda span.di-turno { border-color: var(--oro); }
+.cq-legenda span.fuori { opacity: .4; text-decoration: line-through; }
+.cq-legenda i { width: .8rem; height: .8rem; border-radius: 50%; }
+.cq-mappa { width: min(100%, calc((100vh - 17rem) * 1.78)); min-width: 18rem; height: auto; border-radius: 18px; box-shadow: 0 12px 26px rgba(0, 0, 0, .45); }
+.cq-oceano { fill: #2b6a9a; }
+.cq-terra { stroke: rgba(70, 50, 30, .45); stroke-width: 2.5; }
+.cq-mare { stroke: rgba(255, 255, 255, .55); stroke-width: 2.5; stroke-dasharray: 7 6; }
+.cq-attacco { stroke: #ffd166; stroke-width: 5; stroke-dasharray: none; }
+.cq-gettone { stroke: rgba(0, 0, 0, .45); stroke-width: 2; filter: drop-shadow(0 3px 3px rgba(0, 0, 0, .35)); }
+.cq-num { fill: #fff; font: 800 21px var(--sans); text-anchor: middle; pointer-events: none; paint-order: stroke; stroke: rgba(0, 0, 0, .35); stroke-width: 2; }
+.cq-nome { fill: #1f2a33; font: 700 14px var(--sans); text-anchor: middle; pointer-events: none; paint-order: stroke; stroke: rgba(255, 255, 255, .7); stroke-width: 3; }
+.cq-t.tocca { cursor: pointer; }
+.cq-t.tocca .cq-gettone { stroke: #ffd166; stroke-width: 3; }
+.cq-t.sel .cq-gettone { stroke: #fff; stroke-width: 5; }
+.cq-t.bersaglio { cursor: pointer; }
+.cq-t.bersaglio .cq-gettone { stroke: #ff4d3d; stroke-width: 5; animation: cq-pulsa 1s ease-in-out infinite; }
+.cq-t.colpito .cq-gettone { stroke: #ffd166; stroke-width: 4; }
+@keyframes cq-pulsa { 50% { stroke-width: 8; } }
+.cq-fase { margin: 0; text-align: center; }
+.cq-bottoni { display: flex; gap: .4rem; flex-wrap: wrap; justify-content: center; }
+.cq-bottoni .attivo { background: #f2c14e; color: #2b2208; }
+.cq-dadi { display: flex; align-items: center; gap: .3rem; flex-wrap: wrap; justify-content: center; padding: .4rem .7rem; border-radius: 12px; background: rgba(0, 0, 0, .22); }
+.cq-dadi small { width: 100%; text-align: center; color: var(--tenue); }
+.cq-dado { width: 1.8rem; height: 1.8rem; }
+.cq-dado rect { stroke-width: 3; }
+.cq-dado.att rect { fill: #e74c3c; stroke: #9c2a1f; } .cq-dado.att circle { fill: #fff; }
+.cq-dado.dif rect { fill: #3a86ff; stroke: #1d4f99; } .cq-dado.dif circle { fill: #fff; }
+.cq-dado.vince { filter: drop-shadow(0 0 5px #ffd166); }
+@media (prefers-reduced-motion: reduce) { .cq-t.bersaglio .cq-gettone { animation: none; } }

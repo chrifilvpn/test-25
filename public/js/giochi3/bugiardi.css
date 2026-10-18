@@ -1,0 +1,44 @@
+/* DADI BUGIARDI: tavolo da taverna, bicchieri di cuoio, dadi d'avorio con i punti neri (quelli che contano in oro) */
+.db { width: min(52rem, 100%); margin: 0 auto; display: grid; justify-items: center; gap: .8rem; padding: .3rem 0 1rem; }
+.db-tavolo { display: flex; flex-wrap: wrap; gap: .8rem 1.1rem; justify-content: center; }
+.db-posto { display: grid; justify-items: center; gap: .3rem; padding: .4rem .5rem; border-radius: 14px; border: 2px solid transparent; transition: border-color .2s; }
+.db-posto.di-turno { border-color: var(--oro); box-shadow: 0 0 14px rgba(209, 154, 42, .35); }
+.db-posto.fuori { opacity: .4; }
+.db-posto b { font-size: .85rem; font-weight: 600; max-width: 7rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.db-posto.perde .db-bicchiere { box-shadow: 0 0 0 3px #e74c3c; }
+.db-posto.guadagna .db-bicchiere { box-shadow: 0 0 0 3px #59c46f; }
+.db-bicchiere {
+  width: 3.4rem; height: 3.6rem; display: grid; place-items: center; border-radius: 12px 12px 18px 18px / 10px 10px 22px 22px;
+  background: linear-gradient(90deg, #5a3218, #8b5229 35%, #6d3d1d 70%, #4a2812); box-shadow: inset 0 4px 0 rgba(255, 255, 255, .12), 0 6px 10px rgba(0, 0, 0, .4);
+  color: #f6e3c2; font: 800 1.2rem var(--sans); transition: transform .4s cubic-bezier(.3, 1.4, .5, 1);
+}
+.db-bicchiere.alzato { transform: translateY(-.6rem) rotate(-8deg); }
+.db-scoperti { display: flex; flex-wrap: wrap; gap: 2px; max-width: 7rem; justify-content: center; }
+.db-scoperti .db-dado { width: 1.25rem; height: 1.25rem; }
+.db-dado { width: 2.4rem; height: 2.4rem; }
+.db-dado rect { fill: #fbf6ea; stroke: #c9bb9b; stroke-width: 3; }
+.db-dado circle { fill: #1f1a14; }
+.db-dado.conta rect { fill: #ffe08a; stroke: #d19a2a; }
+.db-dado.spento { opacity: .45; }
+.db-dado.grande { width: 3.2rem; height: 3.2rem; }
+.db-centro { display: grid; justify-items: center; gap: .3rem; padding: .7rem 1.1rem; border-radius: 16px; background: rgba(0, 0, 0, .22); text-align: center; min-width: min(22rem, 92vw); box-sizing: border-box; }
+.db-centro p { margin: 0; }
+.db-puntata { display: flex; align-items: center; gap: .6rem; font-size: 1.15rem; }
+.db-puntata b { font: 400 2rem var(--serif); }
+.db-conto b { font: 400 2.2rem var(--serif); color: #ffd166; }
+.db-storia { display: flex; flex-wrap: wrap; gap: .3rem; justify-content: center; }
+.db-storia span { padding: .1rem .5rem; border-radius: 999px; background: rgba(255, 255, 255, .08); font-size: .78rem; color: var(--tenue); }
+.db-miei { display: grid; justify-items: center; gap: .3rem; }
+.db-miei small { color: var(--tenue); }
+.db-miei > div { display: flex; gap: .4rem; }
+.db-miei .db-dado { width: 3rem; height: 3rem; filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .35)); }
+.db-comandi { display: grid; justify-items: center; gap: .55rem; }
+.db-quanti { display: flex; align-items: center; gap: .5rem; }
+.db-quanti b { font: 400 1.8rem var(--serif); min-width: 2rem; text-align: center; }
+.db-facce { display: flex; gap: .35rem; flex-wrap: wrap; justify-content: center; }
+.db-faccia { padding: 3px; border: 2px solid transparent; border-radius: 12px; background: transparent; cursor: pointer; }
+.db-faccia.scelta { border-color: #ffd166; background: rgba(255, 209, 102, .15); }
+.db-faccia:disabled { opacity: .3; cursor: default; }
+.db-azioni { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: center; }
+.db-dubito { background: #b23a2e; color: #fff; }
+@media (prefers-reduced-motion: reduce) { .db-bicchiere { transition: none; } }
