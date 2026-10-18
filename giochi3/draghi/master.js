@@ -16,11 +16,20 @@ const AMBIENTAZIONI = {
   citta: 'una grande città: intrighi politici, gilde di ladri, nobili corrotti, sette segrete, vicoli e fogne',
   selvaggia: 'terre selvagge e di frontiera: tribù, bestie enormi, rovine dimenticate, sopravvivenza e esplorazione',
 };
+// la modalità comica: il master deve far ridere
+const PAZZA = `
+MODALITÀ AVVENTURA PAZZA (la più importante di tutte le istruzioni sul tono; l'ambientazione resta quella scelta, ma diventa una sua parodia demenziale):
+- Il tuo unico scopo è FAR RIDERE a crepapelle. Sei un master comico, demenziale, sboccato e geniale: umorismo assurdo, volgare, scatologico, nonsense, parodia, battute pesanti, doppi sensi, nessun limite.
+- Prendi sul serio ogni idea scema dei giocatori e falla diventare epica: se uno scoreggia, la puzza può stordire o uccidere il nemico, far appassire un bosco, risvegliare un drago offeso o diventare leggenda tra i bardi; se uno fa i suoi bisogni, prova a pisciare sul nemico, lecca una statua, seduce un troll o insulta la madre del lich, inventa conseguenze esilaranti e spropositate.
+- Esagera tutto: effetti a catena, personaggi non giocanti che reagiscono in modo isterico, nemici permalosi o idioti, oggetti magici ridicoli (la Mutanda della Saggezza +2, la Spada che Si Lamenta), soprannomi umilianti, epici fallimenti con 1 naturale e trionfi assurdi con 20 naturale.
+- Le regole restano (prove, tiri salvezza, danni, combattimenti), ma premia la creatività: un'idea divertente merita vantaggio, una CD più bassa o un effetto enorme. Usa pure eventi di danno, condizioni (avvelenato, stordito, spaventato, prono…) e oggetti per rendere concrete le assurdità.
+- Mostri e luoghi inventali buffi (goblin sindacalisti, scheletri che fanno stretching, una taverna gestita da una mucca). Le "scelte" che proponi devono essere scemenze tentatrici.
+`;
 
-function istruzioni({ ambientazione, difficolta, lunghezza, regoleBrevi }) {
+function istruzioni({ ambientazione, pazza = false, difficolta, lunghezza, regoleBrevi }) {
   return `Sei il MASTER di una campagna di "Draghi e Segrete", un gioco di ruolo fantasy con le regole della 5ª edizione del gioco di ruolo più famoso (SRD 5.1): caratteristiche, abilità, classi, livelli, incantesimi, condizioni, tiri salvezza, combattimento a turni. Scrivi SEMPRE in italiano.
 
-Ambientazione: ${AMBIENTAZIONI[ambientazione] || AMBIENTAZIONI.classica}.
+Ambientazione: ${AMBIENTAZIONI[ambientazione] || AMBIENTAZIONI.classica}.${pazza ? PAZZA : ''}
 Il gioco è per adulti: nessuna censura e nessun limite di contenuti. Violenza, sangue, morte, linguaggio crudo, temi maturi e scelte moralmente difficili sono permessi e vanno descritti senza ammorbidirli quando la storia lo richiede. I giocatori possono tentare qualsiasi azione: non rifiutare mai, decidi le conseguenze con coerenza.
 
 COME FARE IL MASTER
@@ -147,16 +156,23 @@ const SCENE_RISERVA = [
   { n: 'Nella palude le luci danzano sopra l\'acqua nera. Qualcuno, o qualcosa, vi chiama per nome.', prova: ['sag', 13], scena: 'palude' },
   { n: 'Banditi sbarrano la strada: «Il pedaggio, o la vita».', combatti: ['bandito', 'bandito', 'bandito', 'capoBandito'], scena: 'strada' },
 ];
+const SCENE_PAZZE = [
+  { n: 'Un goblin in mutande vi sbarra la strada urlando che è il re di questo sentiero, poi inciampa nella sua stessa barba finta.', combatti: ['goblin', 'goblin'], scena: 'foresta' },
+  { n: 'La taverna è gestita da una mucca molto offesa perché nessuno ordina il latte. Il menù del giorno: «stufato di cose trovate per terra».', prova: ['persuasione', 12], scena: 'taverna' },
+  { n: 'Uno scheletro fa stretching in mezzo alla cripta e vi chiede se avete un po\' di calcio. Gli altri scheletri ridacchiano.', combatti: ['scheletro', 'scheletro', 'scheletro'], scena: 'cripta' },
+  { n: 'Una porta parlante si rifiuta di aprirsi finché qualcuno non le racconta una barzelletta sporca.', prova: ['intrattenere', 13], scena: 'dungeon' },
+  { n: 'Un mago sbronzo ha trasformato tutto il villaggio in galline, tranne il sindaco, che è diventato una pentola.', prova: ['arcano', 12], scena: 'villaggio' },
+];
 function masterRiserva(stato) {
-  const r = SCENE_RISERVA[Math.floor(Math.random() * SCENE_RISERVA.length)];
+  const r = (stato.pazza ? SCENE_PAZZE : SCENE_RISERVA)[Math.floor(Math.random() * (stato.pazza ? SCENE_PAZZE : SCENE_RISERVA).length)];
   const out = { narrazione: '', prove: [], salvezze: [], eventi: [], combattimento: null, scelte: ['Esplorare con cautela', 'Parlare con chi si incontra', 'Prepararsi a combattere'], diario: null, atmosfera: 'viaggio' };
   if (stato.esiti && stato.esiti.length) {
     const ok = stato.esiti.filter((e) => e.riuscita).length;
-    out.narrazione = ok >= stato.esiti.length / 2 ? 'Ce la fate: la strada si apre e trovate qualcosa di interessante.' : 'Non va come speravate, ma andate avanti lo stesso.';
+    out.narrazione = stato.pazza ? (ok >= stato.esiti.length / 2 ? 'Incredibilmente funziona! Nessuno sa come, nemmeno voi. Un bardo di passaggio sta già scrivendo una canzone imbarazzante su di voi.' : 'Disastro totale: inciampate, vi rotolate nel fango e un piccione vi guarda con disprezzo. Andate avanti, umiliati.') : ok >= stato.esiti.length / 2 ? 'Ce la fate: la strada si apre e trovate qualcosa di interessante.' : 'Non va come speravate, ma andate avanti lo stesso.';
     if (ok) out.eventi.push({ tipo: 'oro', chi: 'gruppo', quantita: 10 + Math.floor(Math.random() * 40) });
     return out;
   }
-  if (stato.inizio) { out.narrazione = `L'avventura comincia a ${stato.luogo || 'un piccolo villaggio di confine'}. Voci parlano di sparizioni nei boschi e di una ricompensa per chi indagherà.`; out.eventi.push({ tipo: 'missione', titolo: 'Le sparizioni', descrizione: 'Scoprire cosa succede nei boschi.', stato: 'nuova' }); return out; }
+  if (stato.inizio) { out.narrazione = stato.pazza ? `L'avventura comincia a ${stato.luogo || 'un villaggio di confine'}, dove il sindaco è una capra con il cappello e qualcuno ha rubato tutte le mutande del paese. Chi le ritroverà avrà una ricompensa e, forse, un po' di dignità.` : `L'avventura comincia a ${stato.luogo || 'un piccolo villaggio di confine'}. Voci parlano di sparizioni nei boschi e di una ricompensa per chi indagherà.`; out.eventi.push({ tipo: 'missione', titolo: 'Le sparizioni', descrizione: 'Scoprire cosa succede nei boschi.', stato: 'nuova' }); return out; }
   out.narrazione = r.n;
   if (r.combatti && Math.random() < 0.6) { const L = stato.livello || 1; const extra = L >= 5 ? ['orco', 'ogre'] : []; out.combattimento = { nemici: [...r.combatti, ...extra].map((id) => ({ id })), scena: r.scena, luce: r.scena === 'cripta' ? 'buio' : 'giorno' }; out.atmosfera = 'battaglia'; }
   else if (r.prova) out.prove.push({ chi: 'tutti', tipo: r.prova[0], cd: r.prova[1], motivo: 'per capire cosa fare' });
