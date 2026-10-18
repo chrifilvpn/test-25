@@ -5,7 +5,7 @@ process.env.TEST_VELOCE = process.env.TEST_VELOCE || '1';
 const M = require('../../giochi2/anno');
 const { EVENTI, puntiPer, scegli, scritto } = M._test;
 
-assert.ok(EVENTI.length >= 400, `almeno 400 eventi (${EVENTI.length})`);
+assert.ok(EVENTI.length >= 650, `almeno 650 eventi (${EVENTI.length})`);
 const visti = new Set();
 for (const e of EVENTI) {
   assert.ok(Number.isInteger(e.anno) && e.anno !== 0 && e.anno >= -3000 && e.anno <= new Date().getFullYear(), `anno valido: ${e.anno}`);

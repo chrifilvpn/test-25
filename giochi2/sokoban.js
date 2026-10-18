@@ -153,7 +153,7 @@ class Casse extends SfidaRompicapo {
     super('sokoban', o, 30 * 60000);
     const op = o.opzioni || {};
     const lista = dati();
-    this.gruppo = ['facile', 'medio', 'difficile', 'tutti'].includes(op.livelli) ? op.livelli : 'facile';
+    this.gruppo = ['facile', 'medio', 'difficile', 'esperto', 'tutti'].includes(op.livelli) ? op.livelli : 'facile';
     const scelti = lista.filter((x) => this.gruppo === 'tutti' || x.gruppo === this.gruppo);
     // da soli si parte dal livello scelto (numero) e si va avanti; in sfida un livello a caso del gruppo
     const n = Number(op.livello);
@@ -166,6 +166,52 @@ class Casse extends SfidaRompicapo {
     this.L = leggi(lv.mappa);
     this.L.morta = morte(this.L);
     this.tavole = Array.from({ length: this.n }, () => ({ casse: this.L.casse.slice(), io: this.L.io, indietro: [], mosse: 0, spinte: 0, seq: 0, fatto: null, aiuti: 0, penale: 0 }));
+    // le "tappe" della soluzione salvata: per ogni posizione prima di una spinta (casse + zona del magazziniere),
+    // dove mettersi e in che direzione spingere. Servono all'aiuto e al computer anche sui livelli grandi, dove
+    // il risolutore durante la partita sarebbe troppo lento.
+    this.tappe = new Map();
+    const t = { casse: this.L.casse.slice(), io: this.L.io, indietro: [], mosse: 0, spinte: 0 };
+    let mancano = (lv.soluzione || '').replace(/[a-z]/g, '').length;
+    for (const ch of lv.soluzione || '') {
+      if (ch === ch.toUpperCase()) { const k = this.chiave(t); if (!this.tappe.has(k)) this.tappe.set(k, { da: t.io, dir: ch.toLowerCase(), mancano }); mancano--; }
+      this.passo(t, ch.toLowerCase());
+    }
+  }
+  // la posizione: casse in ordine + la casella più piccola della zona dove può camminare il magazziniere
+  chiave(t) {
+    const { W, muro } = this.L, occ = new Set(t.casse), vis = new Set([t.io]), coda = [t.io];
+    let min = t.io;
+    for (let q = 0; q < coda.length; q++) {
+      const i = coda[q]; if (i < min) min = i;
+      for (const d of NOMI_DIR) { const j = i + DIR[d][0] + DIR[d][1] * W; if (!muro[j] && !occ.has(j) && !vis.has(j)) { vis.add(j); coda.push(j); } }
+    }
+    return `${t.casse.slice().sort((a, b) => a - b).join(',')}|${min}`;
+  }
+  // il percorso a piedi (senza spingere) da t.io a dest: lettere udlr, o null
+  strada(t, dest) {
+    const { W, muro } = this.L, prec = new Map([[t.io, null]]), coda = [t.io];
+    for (let q = 0; q < coda.length && !prec.has(dest); q++) {
+      const i = coda[q];
+      for (const d of NOMI_DIR) { const j = i + DIR[d][0] + DIR[d][1] * W; if (!muro[j] && !t.casse.includes(j) && !prec.has(j)) { prec.set(j, [i, d]); coda.push(j); } }
+    }
+    if (!prec.has(dest)) return null;
+    const out = [];
+    for (let i = dest; prec.get(i); i = prec.get(i)[0]) out.push(prec.get(i)[1]);
+    return out.reverse();
+  }
+  // la prossima spinta giusta: dalla soluzione salvata se si è sulla sua strada, altrimenti col risolutore.
+  // Restituisce { passi: 'udlr…' (l'ultima lettera è la spinta), mancano } oppure { errore }
+  prossimaSpinta(t, limite = 25000) {
+    const tappa = this.tappe.get(this.chiave(t));
+    if (tappa) {
+      const a = this.strada(t, tappa.da);
+      if (a) return { passi: [...a, tappa.dir], mancano: tappa.mancano };
+    }
+    const r = risolvi(this.L, t.casse, t.io, limite);
+    if (!r) return { errore: 'Da qui non si può più risolvere: annulla qualche mossa (o ricomincia)' };
+    if (r.troppo) return { errore: 'Questa posizione è troppo complicata per l\'aiuto: prova ad annullare qualche mossa (o ricomincia)' };
+    const fino = r.mosse.search(/[UDLR]/);
+    return { passi: r.mosse.slice(0, fino + 1).toLowerCase().split(''), mancano: r.spinte };
   }
 
   tempoDi(p) { const t = this.tavole[p]; return t.fatto != null ? t.fatto : this.cronometro() + t.penale; }
@@ -198,15 +244,9 @@ class Casse extends SfidaRompicapo {
       // camminare fino a una casella (senza spingere): il percorso più corto
       const dest = Number(a.i), { W, muro } = this.L;
       if (!Number.isInteger(dest) || dest < 0 || dest >= W * this.L.H || muro[dest] || t.casse.includes(dest)) return { errore: 'Lì non si può andare' };
-      const prec = new Map([[t.io, null]]), coda = [t.io];
-      for (let q = 0; q < coda.length && !prec.has(dest); q++) {
-        const i = coda[q];
-        for (const d of NOMI_DIR) { const j = i + DIR[d][0] + DIR[d][1] * W; if (!muro[j] && !t.casse.includes(j) && !prec.has(j)) { prec.set(j, [i, d]); coda.push(j); } }
-      }
-      if (!prec.has(dest)) return { errore: 'Lì non si arriva senza spingere casse' };
-      const strada = [];
-      for (let i = dest; prec.get(i); i = prec.get(i)[0]) strada.push(prec.get(i)[1]);
-      for (const d of strada.reverse()) this.passo(t, d);
+      const strada = this.strada(t, dest);
+      if (!strada) return { errore: 'Lì non si arriva senza spingere casse' };
+      for (const d of strada) this.passo(t, d);
       return { ok: true };
     }
     if (a.tipo === 'annulla') {
@@ -227,13 +267,11 @@ class Casse extends SfidaRompicapo {
   // AIUTO: la prossima spinta giusta da qui (il risolutore riparte dalla posizione attuale); costa 20 secondi.
   // Se da qui non c'è più soluzione lo dice: bisogna annullare.
   aiuto(p, t) {
-    const r = risolvi(this.L, t.casse, t.io, 25000); // al massimo un paio di decimi di secondo
-    if (!r) return { errore: 'Da qui non si può più risolvere: annulla qualche mossa (o ricomincia)' };
-    if (r.troppo) return { errore: 'Questa posizione è troppo complicata per l\'aiuto: prova ad annullare qualche mossa' };
-    const fino = r.mosse.search(/[UDLR]/);
-    for (const ch of r.mosse.slice(0, fino + 1)) this.passo(t, ch.toLowerCase());
+    const r = this.prossimaSpinta(t); // il risolutore al massimo un paio di decimi di secondo
+    if (r.errore) return r;
+    for (const d of r.passi) this.passo(t, d);
     t.aiuti++; t.penale += AIUTO_MS;
-    this.annuncia(p, 'chiede un aiuto (+20 s)', `aiuto: una spinta giusta (+20 s)${r.spinte > 1 ? ` · ne mancano ${r.spinte - 1}` : ''}`);
+    this.annuncia(p, 'chiede un aiuto (+20 s)', `aiuto: una spinta giusta (+20 s)${r.mancano > 1 ? ` · ne mancano ${r.mancano - 1}` : ''}`);
     return { ok: true };
   }
 
@@ -245,6 +283,11 @@ class Casse extends SfidaRompicapo {
     // (per esempio dopo aver preso il posto di una persona) la cerca, con un limite, oppure ricomincia
     const allInizio = t.io === this.L.io && t.casse.every((c, k) => c === this.L.casse[k]);
     let mosse = allInizio ? this.lv.soluzione : null;
+    if (!mosse && this.tappe.has(this.chiave(t))) {
+      // sulla strada della soluzione salvata: si va avanti una spinta alla volta (poi si ripensa)
+      const r = this.prossimaSpinta(t);
+      mosse = r.errore ? null : r.passi.join('');
+    }
     if (!mosse) { const r = risolvi(this.L, t.casse, t.io, 25000); mosse = r && !r.troppo ? r.mosse : null; }
     if (!mosse) return (this.menti[p] = { strada: [], ricomincia: true, totale: 1000, passi: 1, annulla: 0 });
     const strada = mosse.toLowerCase().split('');
@@ -301,14 +344,14 @@ module.exports = {
     descrizione: 'Il magazziniere deve spingere tutte le casse sulle caselle segnate, senza incastrarle. Livelli dal facile al difficilissimo.',
     alias: ['sokoban', 'casse', 'spingi le casse', 'magazziniere', 'magazzino', 'spingere'],
     opzioni: [
-      { id: 'livelli', nome: 'Livelli', valori: ['facile', 'medio', 'difficile', 'tutti'], etichette: ['Facili', 'Medi', 'Difficili', 'Tutti'], predefinito: 'facile' },
+      { id: 'livelli', nome: 'Livelli', valori: ['facile', 'medio', 'difficile', 'esperto', 'tutti'], etichette: ['Facili', 'Medi', 'Difficili', 'Esperti (40-55 spinte)', 'Tutti'], predefinito: 'facile' },
       { id: 'livello', nome: 'Da soli: livello', valori: ['caso', ...dati().map((_, i) => i + 1)], etichette: ['Uno a caso del gruppo', ...dati().map((x, i) => `Livello ${i + 1} (${x.gruppo})`)], predefinito: 'caso' },
     ],
     regole: [
       'Sei il magazziniere 👷: devi portare tutte le casse sulle caselle segnate (le mete). Quando una cassa è sulla meta diventa verde.',
       'Ti muovi di una casella alla volta in orizzontale o in verticale. Le casse si possono solo spingere, una alla volta: non si tirano e non se ne spingono due in fila. Attento a non incastrarle negli angoli o contro i muri!',
       'Comandi: frecce o WASD (sul telefono i tasti freccia sotto il livello, o strisciando il dito). Cliccando una casella libera il magazziniere ci va da solo. Ctrl+Z (o U) annulla l\'ultimo passo, R ricomincia il livello.',
-      `I livelli sono ${dati().length}, divisi in facili, medi e difficili; sono stati creati al computer e un risolutore ha controllato che ognuno abbia una soluzione e il minimo di spinte che serve. Da soli scegli il livello (o uno a caso); finisci con il minimo di spinte per la medaglia.`,
+      `I livelli sono ${dati().length}, divisi in facili, medi, difficili ed esperti (da 40 a 55 spinte: stanze grandi, con tante casse); sono stati creati al computer e un risolutore ha controllato che ognuno abbia una soluzione e il minimo di spinte che serve. Da soli scegli il livello (o uno a caso); finisci con il minimo di spinte per la medaglia.`,
       '💡 Aiuto: fa da solo la prossima spinta giusta partendo da dove sei (+20 secondi). Se le casse sono ormai incastrate, l\'aiuto te lo dice: annulla qualche passo.',
       'Sfida (da 2 a 8): tutti hanno lo stesso livello; vince chi porta per primo tutte le casse a posto. Punti: 10 al primo, 7 al secondo, 5 al terzo e poi a scendere.',
       'Il computer conosce la soluzione: il difficile è veloce e preciso, il medio più lento, il facile è lento e ogni tanto fa un passo inutile.',

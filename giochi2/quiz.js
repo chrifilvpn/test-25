@@ -1,19 +1,21 @@
-// QUIZ DI CULTURA GENERALE: più di 600 domande in sette argomenti, 4 risposte, con il motore di "Indovina la
+// QUIZ DI CULTURA GENERALE: più di 800 domande in otto argomenti, 4 risposte, con il motore di "Indovina la
 // bandiera" (giochi/bandiere.js: tempo, punti per velocità in sfida, serie, ripasso). Le risposte sbagliate sono
 // scritte apposta per ogni domanda (sono "elementi" che non finiscono mai nei mazzi).
 const { Bandiere, mescola, bot } = require('../giochi/bandiere');
-const A = require('./quiz-dati-a'), B = require('./quiz-dati-b'), C = require('./quiz-dati-c');
+const PARTI = [require('./quiz-dati-a'), require('./quiz-dati-b'), require('./quiz-dati-c'), require('./quiz-dati-d')];
 
 const ARGOMENTI = {
   storia: ['Storia', '🏛️'], geografia: ['Geografia', '🌍'], scienze: ['Scienze e natura', '🔬'], arte: ['Arte, letteratura e musica', '🎨'],
-  sport: ['Sport e giochi', '⚽'], spettacolo: ['Cinema, musica e tv', '🎬'], varie: ['Lingua, cucina e curiosità', '💡'],
+  sport: ['Sport e giochi', '⚽'], spettacolo: ['Cinema, musica e tv', '🎬'], varie: ['Lingua, cucina e curiosità', '💡'], italia: ['Italia: città, feste, cucina e dialetti', '🇮🇹'],
 };
-const TESTI = { ...A, ...B, ...C };
+// le parti possono avere lo stesso argomento: le righe si sommano
+const TESTI = {};
+for (const parte of PARTI) for (const [arg, testo] of Object.entries(parte)) TESTI[arg] = (TESTI[arg] || '') + testo;
 const elementi = [];
 const sbagliate = new Map(); // indice della risposta giusta -> indici delle 3 sbagliate
 const DOMANDE = [];
 for (const [arg, testo] of Object.entries(TESTI)) {
-  for (const riga of testo.trim().split('\n')) {
+  for (const riga of testo.trim().split('\n').filter((r) => r.trim())) {
     const [domanda, giusta, s1, s2, s3, liv] = riga.split('|');
     const i = elementi.length;
     elementi.push({ nome: giusta, domanda, fama: Number(liv), argomento: arg, icona: ARGOMENTI[arg][1] });
@@ -38,7 +40,7 @@ module.exports = {
     nome: 'Quiz di cultura generale',
     tipo: 'tabellone',
     giocatori: [1, 2, 3, 4, 5, 6, 7, 8],
-    descrizione: `${DOMANDE.length} domande su storia, geografia, scienze, arte, sport, spettacolo e curiosità: 4 risposte, una sola giusta. Da soli o in sfida.`,
+    descrizione: `${DOMANDE.length} domande su storia, geografia, scienze, arte, sport, spettacolo, curiosità e Italia: 4 risposte, una sola giusta. Da soli o in sfida.`,
     alias: ['quiz', 'cultura generale', 'domande', 'trivia', 'sapientino', 'chi vuol essere', 'risposte'],
     opzioni: [
       { id: 'argomento', nome: 'Argomento', valori, etichette, predefinito: 'tutte' },
@@ -46,7 +48,7 @@ module.exports = {
       { id: 'tempo', nome: 'Tempo', valori: [15, 10, 6], etichette: ['15 secondi', '10 secondi', '6 secondi (veloce)'], predefinito: 15 },
     ],
     regole: [
-      `Ci sono ${DOMANDE.length} domande divise in sette argomenti: ${Object.values(ARGOMENTI).map((x) => x[0].toLowerCase()).join(', ')}. Prima di iniziare puoi sceglierne uno, oppure solo le facili o solo le difficili.`,
+      `Ci sono ${DOMANDE.length} domande divise in otto argomenti: ${Object.values(ARGOMENTI).map((x) => x[0].toLowerCase()).join(', ')}. Prima di iniziare puoi sceglierne uno, oppure solo le facili o solo le difficili.`,
       'Compare una domanda con 4 risposte: tocca quella giusta (o premi i tasti da 1 a 4) prima che finisca il tempo. Si può rispondere una volta sola.',
       'Quando hanno risposto tutti, o quando finisce il tempo, si vede la risposta giusta (in verde) e la tua se era sbagliata (in rosso), poi arriva la domanda dopo.',
       'Da soli: 1 punto per ogni risposta giusta; si tiene anche la serie di risposte giuste di fila.',

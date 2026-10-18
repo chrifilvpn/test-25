@@ -62,7 +62,6 @@ giochi/mensola.js
 giochi/mind.js
 giochi/morra.js
 giochi/nascondino.js
-giochi/navale-regole.js
 giochi/numero.js
 giochi/paintball.js
 giochi/palloncini.js
@@ -104,6 +103,7 @@ giochi/wanted.js
 giochi/wordle.js
 giochi2/affari-dati.js
 giochi2/affari.js
+giochi2/anagrammi-parole.js
 giochi2/anagrammi.js
 giochi2/anno-dati.js
 giochi2/anno.js
@@ -158,6 +158,7 @@ giochi2/pong4.js
 giochi2/quiz-dati-a.js
 giochi2/quiz-dati-b.js
 giochi2/quiz-dati-c.js
+giochi2/quiz-dati-d.js
 giochi2/quiz.js
 giochi2/quoridor.js
 giochi2/rompicapo-sfida.js

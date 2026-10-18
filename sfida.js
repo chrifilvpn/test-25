@@ -1,4 +1,5 @@
-// SFIDA DEL GIORNO: ogni giorno un Sudoku, un Wordle, un puzzle di Sblocca e un quiz di Bandiere uguali per tutti.
+// SFIDA DEL GIORNO: ogni giorno un Sudoku, un Wordle, un puzzle di Sblocca, un quiz di Bandiere, un Kakuro, un livello
+// di Spingi le casse e un Mahjong uguali per tutti.
 // La partita si crea con un generatore di numeri "a caso" che parte da un seme fisso (la data + il gioco), così a
 // tutti esce lo stesso schema. Conta per la classifica del giorno solo il primo tentativo di ognuno; le classifiche
 // stanno nell'archivio (archivio.js).
@@ -40,6 +41,8 @@ function creaConSeme(mod, opzioniCrea, seme) {
 const secondi = (ms) => Math.max(0, Math.round(ms / 1000));
 const tempo = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 // per ogni gioco: le opzioni fisse della sfida e come si misura il risultato (valore più alto = meglio)
+// i rompicapo (giochi2/rompicapo-sfida.js): conta il tempo finale, penalità degli aiuti comprese
+const tempoRompicapo = (extra) => (p) => { const t = p.tavole[0]; if (t.fatto == null) return null; const s = secondi(t.fatto); const e = extra(t); return { valore: -s, testo: `${tempo(s)}${e ? ` · ${e}` : ''}` }; };
 const SFIDE = {
   sudoku: {
     titolo: 'difficoltà media', opzioni: { difficolta: 'medio', errori: 'visibili' },
@@ -56,6 +59,18 @@ const SFIDE = {
   bandiere: {
     titolo: '10 bandiere', opzioni: { bandiere: 'tutte', domande: 10, tempo: 10 },
     misura(p) { return { valore: p.punti[0], testo: `${p.punti[0]}/10` }; },
+  },
+  kakuro: {
+    titolo: 'griglia 10×10, media', opzioni: { grandezza: 'media', difficolta: 'medio', errori: 'regole' },
+    misura: tempoRompicapo((t) => (t.aiuti ? `${t.aiuti} aiuti` : '')),
+  },
+  sokoban: {
+    titolo: 'un livello difficile', opzioni: { livelli: 'difficile', livello: 'caso' },
+    misura: tempoRompicapo((t) => `${t.spinte} spinte${t.aiuti ? ` · ${t.aiuti} aiuti` : ''}`),
+  },
+  mahjong: {
+    titolo: 'la piramide', opzioni: { figura: 'piramide' },
+    misura: tempoRompicapo((t) => [t.aiuti ? `${t.aiuti} aiuti` : '', t.mescolate ? `${t.mescolate} rimescolate` : ''].filter(Boolean).join(' · ')),
   },
 };
 

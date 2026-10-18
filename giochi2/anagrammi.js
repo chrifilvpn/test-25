@@ -9,9 +9,8 @@ const TEST = !!process.env.TEST_VELOCE;
 const PAUSA_FINE = TEST ? 50 : 40000;
 const SQUADRE = ['Squadra Sole', 'Squadra Luna'];
 
-// le parole del gioco: comuni, da 5 a 8 lettere, niente forme verbali poco adatte a un indovinello
-const NO_FINALI = /(iamo|iate|ete|iano|ebbe|ebbero|arono|irono|erono|avano|evano|ivano|assero|essero|issero|ando|endo|rono|remo|rete)$/;
-const PAROLE = D.dizionario().filter((w) => w.length >= 5 && w.length <= 8 && D.fascia(w) === 3 && /^[a-z]+$/.test(w) && !NO_FINALI.test(w));
+// le parole del gioco: una lista scelta a mano (anagrammi-parole.js), così non escono forme verbali o parole strane
+const PAROLE = require('./anagrammi-parole');
 const chiave = (w) => w.split('').sort().join('');
 
 function mescola(a) {

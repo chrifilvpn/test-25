@@ -124,7 +124,7 @@ class SfidaRompicapo {
 
   arriva(p) {
     const t = this.tavole[p];
-    t.fatto = this.cronometro();
+    t.fatto = this.cronometro() + (t.penale || 0); // il tempo finale comprende le penalità (aiuti, rimescolate)
     this.arrivi.push(p);
     const pos = this.arrivi.length;
     const frase = this.fraseArrivo(p, t);

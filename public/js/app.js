@@ -363,7 +363,7 @@
   $('#codice').addEventListener('keydown', (e) => e.key === 'Enter' && entra());
 
   // =================== SFIDA DEL GIORNO ===================
-  const SFIDE = [['sudoku', '🔢', 'Sudoku'], ['wordle', '🟩', 'Wordle'], ['sblocca', '🧱', 'Sblocca'], ['bandiere', '🏳️', 'Bandiere']];
+  const SFIDE = [['sudoku', '🔢', 'Sudoku'], ['wordle', '🟩', 'Wordle'], ['sblocca', '🧱', 'Sblocca'], ['bandiere', '🏳️', 'Bandiere'], ['kakuro', '➕', 'Kakuro'], ['sokoban', '📦', 'Spingi le casse'], ['mahjong', '🀄', 'Mahjong']];
   let sfidaDati = null;
   function disegnaSfide() {
     const fatte = (sfidaDati && sfidaDati.fatte) || [];

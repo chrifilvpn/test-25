@@ -15,6 +15,18 @@ const archivio = require('../archivio');
   assert.strictEqual(crea('wordle', '2026-01-01').segreta, crea('wordle', '2026-01-01').segreta, 'wordle: stessa parola');
   const b1 = crea('bandiere', '2026-01-01'), b2 = crea('bandiere', '2026-01-01');
   assert.deepStrictEqual(b1.ordine, b2.ordine, 'bandiere: stessa sequenza');
+  assert.deepStrictEqual(crea('kakuro', '2026-01-01').soluzione, crea('kakuro', '2026-01-01').soluzione, 'kakuro: stessa griglia');
+  assert.strictEqual(crea('sokoban', '2026-01-01').lv.mappa, crea('sokoban', '2026-01-01').lv.mappa, 'casse: stesso livello');
+  assert.deepStrictEqual(crea('mahjong', '2026-01-01').iniziali, crea('mahjong', '2026-01-01').iniziali, 'mahjong: stesse tessere');
+  assert.ok(crea('sokoban', '2026-01-01').lv.gruppo === 'difficile' && crea('mahjong', '2026-01-01').figura === 'piramide');
+  // casse: si gioca la soluzione; il risultato è tempo e spinte (un aiuto aggiunge la sua penalità al tempo)
+  const k = crea('sokoban', '2026-01-03');
+  assert.strictEqual(sfida.SFIDE.sokoban.misura(k), null, 'non finito: nessun risultato');
+  k.tavole[0].penale = 20000; k.tavole[0].aiuti = 1; // come dopo un aiuto
+  for (const d of k.lv.soluzione.toLowerCase()) k.azione(0, { tipo: 'passo', dir: d });
+  assert.ok(k.finita, 'casse finito');
+  const mk = sfida.SFIDE.sokoban.misura(k);
+  assert.ok(mk.valore <= -20 && /spinte/.test(mk.testo) && /1 aiuti/.test(mk.testo), `risultato casse ${JSON.stringify(mk)}`);
   assert.ok(Math.random() !== Math.random(), 'fuori dalla sfida Math.random torna normale');
   assert.match(sfida.oggi(Date.UTC(2026, 0, 1, 23, 30)), /^2026-01-02$/, 'il giorno cambia a mezzanotte italiana');
   // classifica: conta solo il primo tentativo
@@ -25,7 +37,7 @@ const archivio = require('../archivio');
   b2.punti[0] = 10;
   assert.ok(sfida.registra(s2, b2).prova, 'il secondo tentativo non conta');
   assert.deepStrictEqual(sfida.classifiche('2026-01-01').giochi.bandiere.lista, [{ nome: 'Ada', testo: '7/10' }]);
-  console.log('✓ Sfida del giorno: stessa partita per tutti (Sudoku, Wordle, Sblocca, Bandiere), giorno italiano, classifica col primo tentativo');
+  console.log('✓ Sfida del giorno: stessa partita per tutti (Sudoku, Wordle, Sblocca, Bandiere, Kakuro, Spingi le casse, Mahjong), giorno italiano, classifica col primo tentativo');
 }
 
 {

@@ -6,7 +6,13 @@ const M = require('../../giochi2/anagrammi');
 const D = require('../../giochi2/paroliere-dati');
 const { PAROLE, anagramma, mazzo, chiave } = M._test;
 
-assert.ok(PAROLE.length > 2000, `tante parole (${PAROLE.length})`);
+assert.ok(PAROLE.length > 700, `tante parole (${PAROLE.length})`);
+assert.strictEqual(new Set(PAROLE).size, PAROLE.length, 'nessuna parola ripetuta');
+for (const w of ['dovrai', 'potrei', 'mangio', 'prendi', 'citta', 'realta', 'percio', 'horror', 'quelle', 'nella', 'stato', 'chiamano']) assert.ok(!PAROLE.includes(w), w);
+for (const w of PAROLE) {
+  assert.ok(/^[a-z]{5,8}$/.test(w), w);
+  assert.ok(!/(iamo|iate|ebbe|ebbero|arono|irono|avano|evano|ando|endo|rai|rei|remmo|resti)$/.test(w), `non una forma verbale: ${w}`);
+}
 for (let k = 0; k < 300; k++) {
   const w = PAROLE[Math.floor(Math.random() * PAROLE.length)];
   const m = anagramma(w);

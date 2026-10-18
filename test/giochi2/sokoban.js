@@ -17,8 +17,9 @@ assert.ok(LIVELLI.length >= 60, `almeno 60 livelli (${LIVELLI.length})`);
     assert.strictEqual(L.casse.length, Array.from(L.meta).filter(Boolean).length, `livello ${k + 1}: casse e mete`);
     assert.ok(L.casse.length >= 2 && L.io >= 0, `livello ${k + 1}`);
     assert.ok(L.casse.every((c) => !L.meta[c]), `livello ${k + 1}: nessuna cassa già a posto`);
-    // il minimo di spinte si ricontrolla con il risolutore su un livello ogni tre (tutti richiederebbero mezzo minuto)
-    if (k % 3 === 0) {
+    // il minimo di spinte si ricontrolla con il risolutore su un livello ogni tre (tutti richiederebbero mezzo minuto);
+    // gli esperti hanno milioni di posizioni: il minimo lo ha calcolato il generatore con la ricerca a ritroso completa
+    if (k % 3 === 0 && lv.gruppo !== 'esperto') {
       const r = risolvi(L, L.casse, L.io, 2000000);
       assert.ok(r && !r.troppo, `livello ${k + 1}: risolvibile`);
       assert.strictEqual(r.spinte, lv.spinte, `livello ${k + 1}: minimo di spinte`);
@@ -53,13 +54,27 @@ assert.ok(LIVELLI.length >= 60, `almeno 60 livelli (${LIVELLI.length})`);
   assert.strictEqual(h.tavole[0].spinte, 1);
   assert.strictEqual(h.tavole[0].penale, 20000);
 }
+// ---- livelli esperti: l'aiuto e il computer seguono la soluzione salvata anche a metà strada ----
+{
+  const esperti = LIVELLI.map((lv, k) => [lv, k]).filter(([lv]) => lv.gruppo === 'esperto');
+  assert.ok(esperti.length >= 30 && esperti.every(([lv]) => lv.spinte >= 40), 'livelli esperti da 40 spinte in su');
+  for (const [lv, k] of esperti.slice(0, 12)) {
+    const g = M.crea({ n: 1, opzioni: { livello: k + 1 }, bot: [null] });
+    const meta = Math.floor(lv.soluzione.length / 2);
+    for (const ch of lv.soluzione.slice(0, meta)) g.azione(0, { tipo: 'passo', dir: ch.toLowerCase() });
+    const t0 = Date.now();
+    let giri = 0;
+    while (!g.finita && giri++ < 200) assert.ok(g.azione(0, { tipo: 'aiuto' }).ok, `esperto ${k + 1}: aiuto`);
+    assert.ok(g.finita && Date.now() - t0 < 3000, `esperto ${k + 1}: finito a forza di aiuti, in fretta`);
+  }
+}
 // ---- sfide tra computer ----
 {
   const t0 = Date.now();
   const N = 60;
   for (let k = 0; k < N; k++) {
     const liv = ['facile', 'medio', 'difficile'];
-    const g = M.crea({ n: 3, opzioni: { livelli: ['facile', 'medio', 'difficile'][k % 3] }, bot: liv });
+    const g = M.crea({ n: 3, opzioni: { livelli: ['facile', 'medio', 'difficile', 'esperto'][k % 4] }, bot: liv });
     let giri = 0;
     while (!g.finita && giri++ < 20000) { g.prossimaBot = g.prossimaBot.map(() => 0); g.controllaTempo(); }
     assert.ok(g.finita, 'la sfida finisce');

@@ -419,4 +419,278 @@ module.exports = `
 2017|La sonda Cassini termina la missione tuffandosi su Saturno|i
 2018|La Francia vince il suo secondo Mondiale di calcio|p
 2021|Il rover Perseverance atterra su Marte|i
+1950|Si corre il primo Mondiale di Formula 1|p
+1948|Gino Bartali vince il suo secondo Tour de France, dieci anni dopo il primo|p
+1955|Si gioca la prima partita della Coppa dei Campioni di calcio|p
+1963|Il Milan vince la sua prima Coppa dei Campioni a Wembley|p
+1964|L'Inter vince la sua prima Coppa dei Campioni|p
+1975|Niki Lauda vince il suo primo Mondiale di Formula 1 con la Ferrari|p
+1979|Pietro Mennea stabilisce il record mondiale dei 200 metri a Città del Messico|p
+1980|Le Olimpiadi di Mosca, boicottate dagli Stati Uniti|p
+1984|Le Olimpiadi di Los Angeles, boicottate dall'Unione Sovietica|p
+1985|Il Verona vince il suo unico scudetto|p
+1987|Il Napoli di Maradona vince il suo primo scudetto|p
+1988|Ben Johnson squalificato per doping alle Olimpiadi di Seul|p
+1991|La Sampdoria vince il suo unico scudetto|p
+1992|Il "Dream Team" del basket americano alle Olimpiadi di Barcellona|p
+1996|Le Olimpiadi del centenario ad Atlanta|p
+2000|Michael Schumacher vince il primo Mondiale con la Ferrari|p
+2001|La Roma vince il suo terzo scudetto|p
+1983|La Roma vince il suo secondo scudetto|p
+1942|La Roma vince il suo primo scudetto|p
+1970|Il Cagliari di Gigi Riva vince il suo unico scudetto|p
+1974|La Lazio vince il suo primo scudetto|p
+2000|La Lazio vince il suo secondo scudetto all'ultima giornata|p
+1976|Il Torino vince il suo ultimo scudetto|p
+2004|La Grecia vince a sorpresa l'Europeo di calcio|p
+2004|Le Olimpiadi tornano ad Atene|p
+2008|Michael Phelps vince otto ori alle Olimpiadi di Pechino|p
+2009|Usain Bolt corre i 100 metri in 9"58 ai Mondiali di Berlino|p
+2010|La Spagna vince il suo primo Mondiale, in Sudafrica|p
+2014|La Germania vince il Mondiale in Brasile dopo il 7-1 ai padroni di casa in semifinale|p
+2016|Il Leicester vince a sorpresa il campionato inglese|p
+2016|Il Portogallo di Cristiano Ronaldo vince l'Europeo|p
+2022|L'Argentina di Messi vince il Mondiale in Qatar|p
+2024|Jannik Sinner vince il suo primo torneo del Grande Slam, in Australia|p
+1976|Adriano Panatta vince il Roland Garros e l'Italia la Coppa Davis|p
+1998|La Francia vince il suo primo Mondiale, giocato in casa|p
+1958|Pelé, a 17 anni, vince il Mondiale in Svezia con il Brasile|p
+1974|La Germania Ovest vince il Mondiale giocato in casa|p
+1978|L'Argentina vince il Mondiale giocato in casa|p
+1994|Il Brasile vince il Mondiale negli Stati Uniti battendo l'Italia ai rigori|p
+2002|Il Brasile vince il suo quinto Mondiale, in Corea del Sud e Giappone|p
+1978|Sara Simeoni stabilisce il record mondiale di salto in alto|p
+1980|Pietro Mennea vince l'oro olimpico nei 200 metri a Mosca|p
+1988|Alberto Tomba vince due ori alle Olimpiadi invernali di Calgary|p
+2001|Valentino Rossi vince l'ultimo Mondiale della classe 500|p
+1968|Le Olimpiadi di Città del Messico e il salto di Fosbury|p
+1954|Roger Bannister corre il miglio in meno di quattro minuti|p
+1976|Nadia Comăneci prende il primo 10 della storia della ginnastica, a Montréal|p
+1985|La tragedia dello stadio Heysel prima della finale di Coppa dei Campioni|p
+2005|Il Liverpool rimonta tre gol al Milan nella finale di Champions League a Istanbul|p
+2007|Il Milan vince la Champions League ad Atene contro il Liverpool|p
+1996|La Juventus vince la Champions League a Roma|p
+1989|Il Milan di Sacchi vince la Coppa dei Campioni a Barcellona|p
+1960|Abebe Bikila vince a piedi nudi la maratona olimpica di Roma|p
+2026|Le Olimpiadi invernali di Milano e Cortina|p
+2012|Le Olimpiadi di Londra, la terza volta nella stessa città|p
+2016|Le prime Olimpiadi in Sudamerica, a Rio de Janeiro|p
+1983|I primi Mondiali di atletica, a Helsinki|p
+1965|Felice Gimondi vince il Tour de France al suo debutto|p
+1969|Eddy Merckx vince il suo primo Tour de France|p
+2003|Roger Federer vince il suo primo Wimbledon|p
+2005|Rafael Nadal vince il suo primo Roland Garros|p
+1877|Si gioca il primo torneo di Wimbledon|p
+1863|Nasce in Inghilterra la Football Association con le prime regole del calcio|p
+1904|Nasce la Fifa a Parigi|p
+1927|Si corre la prima Mille Miglia|p
+1923|Si corre la prima 24 Ore di Le Mans|p
+1929|Comincia il primo campionato di Serie A a girone unico|p
+1265|La nascita di Dante Alighieri a Firenze|c
+1472|La prima edizione a stampa della "Divina Commedia", a Foligno|c
+1452|La nascita di Leonardo da Vinci|c
+1475|La nascita di Michelangelo Buonarroti|c
+1483|La nascita di Raffaello Sanzio a Urbino|c
+1498|Leonardo finisce l'"Ultima cena" a Milano|c
+1597|Viene stampata la prima edizione di "Romeo e Giulietta"|c
+1607|La prima rappresentazione dell'"Orfeo" di Monteverdi a Mantova|c
+1616|La morte di William Shakespeare e di Miguel de Cervantes|c
+1719|Esce "Robinson Crusoe" di Daniel Defoe|c
+1726|Escono "I viaggi di Gulliver" di Jonathan Swift|c
+1750|La morte di Johann Sebastian Bach|c
+1756|La nascita di Wolfgang Amadeus Mozart a Salisburgo|c
+1774|Esce "I dolori del giovane Werther" di Goethe|c
+1813|Esce "Orgoglio e pregiudizio" di Jane Austen|c
+1813|La nascita di Giuseppe Verdi e di Richard Wagner|c
+1831|Esce "Notre-Dame de Paris" di Victor Hugo|c
+1837|La morte di Giacomo Leopardi a Napoli|c
+1843|Esce "Canto di Natale" di Charles Dickens|c
+1844|Esce "I tre moschettieri" di Alexandre Dumas|c
+1847|Escono "Jane Eyre" e "Cime tempestose"|c
+1851|Esce "Moby Dick" di Herman Melville|c
+1851|La prima del "Rigoletto" di Verdi a Venezia|c
+1866|Esce "Delitto e castigo" di Dostoevskij|c
+1869|Esce l'ultima parte di "Guerra e pace" di Tolstoj|c
+1871|La prima dell'"Aida" di Verdi al Cairo|c
+1874|La prima mostra degli impressionisti a Parigi|c
+1883|Esce in volume "L'isola del tesoro" di Stevenson|c
+1886|Esce "Cuore" di Edmondo De Amicis|c
+1887|La prima dell'"Otello" di Verdi alla Scala|c
+1890|La morte di Vincent van Gogh|c
+1893|Edvard Munch dipinge "L'urlo"|c
+1897|Esce "Dracula" di Bram Stoker|c
+1900|La prima della "Tosca" di Puccini a Roma|c
+1902|Esce "Viaggio nella Luna" di Georges Méliès|c
+1904|Esce "Il fu Mattia Pascal" di Pirandello|c
+1907|Picasso dipinge "Les Demoiselles d'Avignon"|c
+1913|La prima della "Sagra della primavera" di Stravinskij a Parigi|c
+1921|La prima di "Sei personaggi in cerca d'autore" a Roma|c
+1922|Esce "Ulisse" di James Joyce|c
+1923|Esce "La coscienza di Zeno" di Italo Svevo|c
+1925|Esce "Il grande Gatsby" di Fitzgerald|c
+1925|Esce "La corazzata Potëmkin" di Ėjzenštejn|c
+1926|La prima della "Turandot" di Puccini alla Scala|c
+1929|Esce "Gli indifferenti" di Alberto Moravia|c
+1934|Luigi Pirandello vince il Nobel per la letteratura|c
+1936|Esce "Tempi moderni" di Charlie Chaplin|c
+1938|Lo sceneggiato radiofonico "La guerra dei mondi" di Orson Welles spaventa l'America|c
+1940|Esce "Il grande dittatore" di Charlie Chaplin|c
+1941|Esce "Quarto potere" di Orson Welles|c
+1942|Esce il film "Casablanca"|c
+1943|Esce "Il piccolo principe" di Saint-Exupéry|c
+1945|Esce "Roma città aperta" di Roberto Rossellini|c
+1945|Esce "La fattoria degli animali" di George Orwell|c
+1947|Esce la prima edizione di "Se questo è un uomo" di Primo Levi|c
+1949|Esce "1984" di George Orwell|c
+1951|Esce "Il giovane Holden" di Salinger|c
+1954|Esce "La strada" di Federico Fellini|c
+1954|Esce il primo volume del "Signore degli anelli"|c
+1955|Va in onda la prima puntata del quiz "Lascia o raddoppia" con Mike Bongiorno|c
+1957|Va in onda il primo "Carosello"|c
+1958|Esce "Il Gattopardo" di Tomasi di Lampedusa|c
+1959|Salvatore Quasimodo vince il Nobel per la letteratura|c
+1962|Esce "Love Me Do", il primo singolo dei Beatles|c
+1963|"Il Gattopardo" di Luchino Visconti vince la Palma d'oro a Cannes|c
+1964|Esce "Per un pugno di dollari" di Sergio Leone|c
+1966|Esce "Il buono, il brutto, il cattivo" di Sergio Leone|c
+1967|Esce l'album "Sgt. Pepper's Lonely Hearts Club Band" dei Beatles|c
+1967|Esce "Cent'anni di solitudine" di García Márquez|c
+1968|Esce "2001: Odissea nello spazio" di Stanley Kubrick|c
+1971|Esce "Imagine" di John Lennon|c
+1973|Esce l'album "The Dark Side of the Moon" dei Pink Floyd|c
+1974|Gli ABBA vincono l'Eurovision con "Waterloo"|c
+1975|Esce "Bohemian Rhapsody" dei Queen|c
+1975|Esce il primo film di "Fantozzi"|c
+1976|Esce il primo film di "Rocky"|c
+1977|La morte di Elvis Presley|c
+1980|Esce "Il nome della rosa" di Umberto Eco|c
+1981|Nasce Mtv, il canale dei videoclip|c
+1982|Esce "E.T. l'extra-terrestre" di Spielberg|c
+1985|Esce "Ritorno al futuro"|c
+1989|Va in onda la prima puntata dei "Simpson"|c
+1990|"Nuovo Cinema Paradiso" di Tornatore vince l'Oscar per il film straniero|c
+1991|Esce l'album "Nevermind" dei Nirvana|c
+1993|Esce "Jurassic Park" di Spielberg|c
+1994|Esce il film d'animazione "Il re leone"|c
+1994|Va in onda la prima puntata di "Friends"|c
+1997|Dario Fo vince il Nobel per la letteratura|c
+1999|Esce il film "Matrix"|c
+2001|Esce il primo film di "Harry Potter"|c
+2001|Esce il film d'animazione "Shrek"|c
+2003|Esce il film d'animazione "Alla ricerca di Nemo"|c
+2009|Esce "Avatar" di James Cameron|c
+2013|Esce il film d'animazione "Frozen"|c
+2014|Paolo Sorrentino vince l'Oscar con "La grande bellezza"|c
+2016|Bob Dylan vince il Nobel per la letteratura|c
+1970|Va in onda la prima puntata di "Rischiatutto"|c
+1643|Evangelista Torricelli inventa il barometro|i
+1656|Christiaan Huygens costruisce il primo orologio a pendolo|i
+1665|Robert Hooke osserva al microscopio le "cellule" del sughero|i
+1712|Thomas Newcomen costruisce la sua macchina a vapore|i
+1769|James Watt brevetta la sua macchina a vapore migliorata|i
+1774|Joseph Priestley scopre l'ossigeno|i
+1791|Luigi Galvani pubblica i suoi esperimenti sull'elettricità delle rane|i
+1799|Viene trovata la stele di Rosetta|i
+1822|Champollion decifra i geroglifici egizi|i
+1831|Michael Faraday scopre l'induzione elettromagnetica|i
+1839|Charles Goodyear scopre la vulcanizzazione della gomma|i
+1846|La prima operazione pubblica con l'anestesia a etere, a Boston|i
+1852|Henri Giffard vola con il primo dirigibile a vapore|i
+1863|Apre la prima metropolitana del mondo, a Londra|i
+1865|Gregor Mendel presenta le sue leggi sull'ereditarietà|i
+1877|Thomas Edison inventa il fonografo|i
+1888|John Dunlop brevetta lo pneumatico gonfiabile per biciclette|i
+1898|Marie e Pierre Curie scoprono il polonio e il radio|i
+1899|Viene brevettata l'aspirina|i
+1902|Willis Carrier inventa il condizionatore d'aria|i
+1913|Henry Ford introduce la catena di montaggio|i
+1915|Einstein presenta la teoria della relatività generale|i
+1924|La prima trasmissione radiofonica regolare in Italia|i
+1926|John Logie Baird mostra la televisione al pubblico|i
+1929|Edwin Hubble mostra che l'universo si espande|i
+1930|Viene scoperto Plutone|i
+1932|James Chadwick scopre il neutrone|i
+1938|Otto Hahn scopre la fissione nucleare|i
+1938|László Bíró brevetta la penna a sfera|i
+1947|Chuck Yeager supera per primo la barriera del suono|i
+1957|La cagnolina Laika, primo animale in orbita intorno alla Terra|i
+1958|Nasce la Nasa|i
+1958|Viene presentato il primo circuito integrato|i
+1960|Viene costruito il primo laser|i
+1963|Valentina Tereškova, la prima donna nello spazio|i
+1965|Aleksej Leonov fa la prima passeggiata nello spazio|i
+1969|Il primo collegamento di Arpanet, l'antenata di Internet|i
+1970|La missione Apollo 13 torna a casa dopo l'incidente|i
+1971|Ray Tomlinson invia la prima email tra due computer|i
+1972|L'ultima missione con astronauti sulla Luna, Apollo 17|i
+1977|Vengono lanciate le sonde Voyager|i
+1981|Esce il personal computer di Ibm|i
+1983|Arpanet adotta il protocollo TCP/IP: nasce Internet come la conosciamo|i
+1984|Esce il primo Macintosh della Apple|i
+1992|Viene inviato il primo sms|i
+1997|Il computer Deep Blue batte il campione di scacchi Garri Kasparov|i
+2004|I rover Spirit e Opportunity atterrano su Marte|i
+2015|Le onde gravitazionali vengono rilevate per la prima volta|i
+2020|Viene approvato il primo vaccino a mRNA contro il Covid-19|i
+2021|Viene lanciato il telescopio spaziale James Webb|i
+1796|La prima campagna d'Italia di Napoleone|s
+1799|La Repubblica Napoletana|s
+1814|Si apre il Congresso di Vienna|s
+1848|Carlo Alberto concede lo Statuto Albertino|s
+1855|Il Regno di Sardegna partecipa alla guerra di Crimea|s
+1859|La battaglia di Solferino nella seconda guerra d'indipendenza|s
+1861|La morte di Camillo Benso di Cavour|s
+1872|La morte di Giuseppe Mazzini a Pisa|s
+1896|La sconfitta italiana ad Adua|s
+1911|L'Italia entra in guerra con l'Impero ottomano per la Libia|s
+1938|Le leggi razziali in Italia|s
+1943|Il 25 luglio cade il governo di Mussolini|s
+1955|L'Italia entra nell'Onu|s
+1969|La strage di piazza Fontana a Milano|s
+1970|Viene approvato lo Statuto dei lavoratori|s
+1978|Nasce il Servizio sanitario nazionale|s
+1989|La protesta e la repressione in piazza Tienanmen|s
+1990|La riunificazione della Germania|s
+2003|L'inizio della guerra in Iraq|s
+2011|I 150 anni dell'Unità d'Italia|s
+2011|Le primavere arabe|s
+2020|Il Regno Unito esce dall'Unione europea|s
+2022|La Russia invade l'Ucraina|s
+2025|La morte di papa Francesco e l'elezione di papa Leone XIV|s
+1861|Comincia la guerra di secessione americana|s
+1865|Finisce la guerra di secessione americana|s
+1914|Si apre il canale di Panama|s
+1917|Gli Stati Uniti entrano nella Prima guerra mondiale|s
+1945|La conferenza di Jalta|s
+1948|L'Onu approva la Dichiarazione universale dei diritti umani|s
+1948|Comincia il Piano Marshall|s
+1956|La rivolta d'Ungheria|s
+1975|La caduta di Saigon e la fine della guerra del Vietnam|s
+1979|La rivoluzione iraniana|s
+1985|Michail Gorbačëv diventa segretario del partito comunista sovietico|s
+1991|La guerra del Golfo|s
+1994|Il genocidio in Ruanda|s
+1492|La caduta di Granada, l'ultimo regno musulmano in Spagna|s
+1500|Pedro Álvares Cabral arriva in Brasile|s
+1507|Una carta geografica usa per la prima volta il nome "America"|s
+1513|Vasco Núñez de Balboa vede per primo l'oceano Pacifico dalle Americhe|s
+1555|La pace di Augusta tra cattolici e luterani|s
+1572|La notte di San Bartolomeo a Parigi|s
+1598|L'editto di Nantes|s
+1607|Gli inglesi fondano Jamestown, in Virginia|s
+1649|Carlo I d'Inghilterra viene decapitato|s
+1688|La Gloriosa rivoluzione in Inghilterra|s
+1703|Pietro il Grande fonda San Pietroburgo|s
+1713|La pace di Utrecht|s
+1756|L'inizio della guerra dei sette anni|s
+1773|Il Boston Tea Party|s
+1787|Viene scritta la Costituzione degli Stati Uniti|s
+1793|Luigi XVI viene ghigliottinato|s
+1794|La caduta e la morte di Robespierre|s
+1803|Gli Stati Uniti comprano la Louisiana dalla Francia|s
+1833|Il Regno Unito abolisce la schiavitù nel suo impero|s
+1848|Marx ed Engels pubblicano il "Manifesto del partito comunista"|s
+1853|Le navi del commodoro Perry arrivano in Giappone|s
+1868|La restaurazione Meiji in Giappone|s
+1884|Si apre la conferenza di Berlino sulla spartizione dell'Africa|s
 `;
