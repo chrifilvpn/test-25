@@ -183,6 +183,9 @@ class Impiccato {
     return { ok: true };
   }
 
+  // il trucco segreto (!win): quando tocca a lui indovinare gli sussurra la parola
+  suggerimentoWin(posto) { return this.fase === 'gioco' && !this.inAttesa && this.turno === posto && posto !== this.boia ? `🔤 ${this.parola.toUpperCase()}` : null; }
+
   vista(p) {
     const svela = this.fase !== 'gioco' || p === this.boia;
     return {
