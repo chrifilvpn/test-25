@@ -1,0 +1,31 @@
+/* LUCI SPENTE: pannello di metallo scuro, lucine di vetro che si accendono di giallo caldo (o rosso e verde) */
+.lc { width: min(40rem, 100%); margin: 0 auto; display: grid; justify-items: center; gap: .9rem; padding: .3rem 0 1rem; }
+.lc-pannello {
+  width: min(30rem, 92vw); padding: clamp(.6rem, 2.5vw, 1.1rem); box-sizing: border-box; border-radius: 22px;
+  background: linear-gradient(160deg, #3a4150, #1d222c 60%, #262c38); box-shadow: 0 14px 30px rgba(0, 0, 0, .45), inset 0 1px 0 rgba(255, 255, 255, .12), inset 0 -2px 0 rgba(0, 0, 0, .4);
+}
+.lc-griglia { display: grid; grid-template-columns: repeat(var(--lato), 1fr); gap: clamp(.3rem, 1.4vw, .6rem); user-select: none; -webkit-user-select: none; touch-action: manipulation; }
+.lc-cella {
+  position: relative; aspect-ratio: 1; padding: 0; border: 0; border-radius: 22%; cursor: pointer; background: #12161d;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, .7), 0 1px 0 rgba(255, 255, 255, .08); transition: transform .08s;
+}
+.lc-cella > i {
+  position: absolute; inset: 12%; border-radius: 20%; transition: background .18s, box-shadow .18s;
+  background: radial-gradient(circle at 35% 30%, #3b4252, #20252f 70%); box-shadow: inset 0 1px 2px rgba(255, 255, 255, .08);
+}
+.lc-cella.s1 > i { background: radial-gradient(circle at 35% 30%, #fffbe0, #ffd34d 45%, #f2a600); box-shadow: 0 0 18px 4px rgba(255, 196, 40, .55), inset 0 -3px 6px rgba(160, 90, 0, .35); }
+.lc.tre .lc-cella.s1 > i { background: radial-gradient(circle at 35% 30%, #ffe1dc, #ff5b4a 45%, #c8251b); box-shadow: 0 0 18px 4px rgba(255, 70, 50, .5), inset 0 -3px 6px rgba(100, 0, 0, .35); }
+.lc.tre .lc-cella.s2 > i { background: radial-gradient(circle at 35% 30%, #e4ffe6, #4fd86a 45%, #1d9a3a); box-shadow: 0 0 18px 4px rgba(60, 220, 100, .45), inset 0 -3px 6px rgba(0, 80, 20, .35); }
+.lc-cella:active { transform: scale(.94); }
+.lc-cella.lc-croce { box-shadow: inset 0 2px 5px rgba(0, 0, 0, .7), 0 0 0 2px rgba(255, 255, 255, .28); }
+.lc-cella.centro { box-shadow: inset 0 2px 5px rgba(0, 0, 0, .7), 0 0 0 3px rgba(255, 255, 255, .55); }
+.lc-cella.cur { outline: 3px solid #7cc4ff; outline-offset: 2px; }
+.lc-cella.aiuto { animation: lc-aiuto 1s ease-in-out infinite; }
+@keyframes lc-aiuto { 50% { box-shadow: inset 0 2px 5px rgba(0, 0, 0, .7), 0 0 0 4px #7cc4ff, 0 0 18px #7cc4ff; } }
+.lc-comandi { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: center; }
+.lc-guida { margin: 0; font-size: .8rem; color: var(--tenue); text-align: center; }
+.lc-guida .r { color: #ff7b6b; } .lc-guida .v { color: #6fe08a; }
+.lc.finito .lc-pannello { animation: lc-fine 1.1s ease-out; }
+@keyframes lc-fine { 30% { box-shadow: 0 0 0 4px #ffd166, 0 0 40px rgba(255, 209, 102, .6); } }
+@media (hover: none) { .lc-guida b:last-child { display: none; } }
+@media (prefers-reduced-motion: reduce) { .lc-cella.aiuto, .lc.finito .lc-pannello { animation: none; } .lc-cella > i { transition: none; } }

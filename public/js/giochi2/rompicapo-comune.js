@@ -5,7 +5,7 @@
 (() => {
   const { esc } = window.Nuovi;
   const fmt = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); const h = Math.floor(s / 3600); const m = Math.floor((s % 3600) / 60); return `${h ? `${h}:${String(m).padStart(2, '0')}` : m}:${String(s % 60).padStart(2, '0')}`; };
-  const GIOCHI = ['kakuro', 'kenken', 'hanoi', 'sokoban', 'mahjong'];
+  const GIOCHI = ['kakuro', 'kenken', 'hanoi', 'sokoban', 'mahjong', 'luci', 'nurikabe', 'navale', 'picross'];
   const ricevuto = new WeakMap();
   let ctxA = null;
   const tempo = (p) => p.tempo + (p.corre ? Date.now() - (ricevuto.get(p) || Date.now()) : 0);

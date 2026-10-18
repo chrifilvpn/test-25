@@ -1,0 +1,38 @@
+/* NURIKABE: sabbia chiara per le isole, mare blu con le onde, numeri come sassi tondi */
+.nk { width: min(44rem, 100%); margin: 0 auto; display: grid; justify-items: center; gap: .8rem; padding: .3rem 0 1rem; }
+.nk-griglia {
+  --lato: min(calc(min(34rem, 94vw) / var(--w)), calc(52vh / var(--h)));
+  display: grid; grid-template-columns: repeat(var(--w), var(--lato)); grid-auto-rows: var(--lato); gap: 2px; padding: 6px; border-radius: 14px;
+  background: #b39a6a; box-shadow: 0 10px 26px rgba(0, 0, 0, .4); user-select: none; -webkit-user-select: none; touch-action: none;
+}
+.nk-c {
+  position: relative; display: grid; place-items: center; border-radius: 4px; cursor: pointer;
+  background: linear-gradient(160deg, #f7e7c1, #ead39f); transition: background .12s;
+}
+.nk-c:hover { filter: brightness(1.05); }
+.nk-c.mare {
+  background: radial-gradient(ellipse 60% 30% at 30% 35%, rgba(255, 255, 255, .22), transparent 70%), radial-gradient(ellipse 50% 25% at 70% 72%, rgba(255, 255, 255, .14), transparent 70%), linear-gradient(160deg, #2f7fc1, #1b5a96);
+}
+.nk-c.punto i { width: 22%; height: 22%; border-radius: 50%; background: #8a6a33; }
+.nk-c.num { cursor: default; }
+.nk-c.num b {
+  display: grid; place-items: center; width: 78%; height: 78%; border-radius: 50%; font: 800 calc(var(--lato) * .48) var(--sans); color: #3b2a12;
+  background: radial-gradient(circle at 35% 30%, #fff9e8, #e0c48a); box-shadow: 0 2px 3px rgba(0, 0, 0, .3), inset 0 -2px 3px rgba(120, 80, 20, .3);
+}
+.nk-c.num.piena b { color: #2a7a3a; box-shadow: 0 0 0 2px #59c46f, 0 2px 3px rgba(0, 0, 0, .3); }
+.nk-c.male { box-shadow: inset 0 0 0 3px #ff4d3d; }
+.nk-c.sbagliata::after { content: ""; position: absolute; inset: 0; border-radius: 4px; background: repeating-linear-gradient(45deg, rgba(255, 60, 40, .55) 0 4px, transparent 4px 8px); }
+.nk-c.aiutata { animation: nk-aiuto 1.2s ease-out 2; }
+@keyframes nk-aiuto { 50% { box-shadow: inset 0 0 0 3px #7cc4ff, 0 0 12px #7cc4ff; } }
+.nk-c.cur { outline: 3px solid #7cc4ff; outline-offset: -2px; z-index: 1; }
+.nk-avviso { color: #ff8a7a; font-weight: 700; }
+.nk-comandi { display: grid; gap: .5rem; justify-items: center; }
+.nk-pennelli { display: inline-flex; border-radius: 999px; overflow: hidden; border: 1px solid rgba(255, 255, 255, .2); }
+.nk-pennelli button { border: 0; padding: .45rem .8rem; background: rgba(0, 0, 0, .2); color: var(--testo); font: inherit; cursor: pointer; }
+.nk-pennelli button.attivo { background: #f2c14e; color: #2b2208; font-weight: 700; }
+.nk-bottoni { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: center; }
+.nk-guida { margin: 0; font-size: .8rem; color: var(--tenue); text-align: center; }
+.nk.finito .nk-griglia { animation: nk-fine 1.1s ease-out; }
+@keyframes nk-fine { 30% { box-shadow: 0 0 0 5px #ffd166, 0 0 40px rgba(255, 209, 102, .6); } }
+@media (hover: none) { .nk-guida { display: none; } }
+@media (prefers-reduced-motion: reduce) { .nk-c.aiutata, .nk.finito .nk-griglia { animation: none; } }
