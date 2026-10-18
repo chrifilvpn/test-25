@@ -155,6 +155,10 @@ class Combattimento {
     return { ok: true };
   }
   controllaFine() {
+    if (!this.finito && (this.round - (this.ultimoDannoRound || 1) >= 8 || this.round > 60)) {
+      for (const c of this.creature) if (c.lato === 'nemici' && this.inPiedi(c)) c.fuggito = true;
+      this.evento({ tipo: 'fuga', testo: 'Lo scontro si blocca: i nemici rimasti si ritirano.' });
+    }
     const gruppo = this.creature.filter((c) => c.lato === 'gruppo');
     const nemici = this.creature.filter((c) => c.lato === 'nemici');
     if (!nemici.some((c) => this.inPiedi(c))) this.finito = 'vittoria';
@@ -219,6 +223,8 @@ class Combattimento {
       }
       if (!this.inPiedi(c)) break;
     }
+    // caduto a metà strada sopra un alleato: resta nell'ultima casella libera
+    if (this.occupata(c.x, c.y, c)) { const libera = fatto.slice().reverse().find((q) => !this.occupata(q.x, q.y, c)) || this.cellaLibera(c); c.x = libera.x; c.y = libera.y; }
     c.turno.movimento = Math.max(0, Math.round((c.turno.movimento - costo[j]) * 10) / 10);
     this.evento({ tipo: 'movimento', id: c.id, percorso: fatto, testo: `${nomeDi(c)} si muove.` });
     this.controllaFine();
@@ -365,6 +371,7 @@ class Combattimento {
   }
   danneggia(c, quanti, tipo, opz = {}) {
     const primaPf = c.ref.pf;
+    if (quanti > 0) this.ultimoDannoRound = this.round;
     const subiti = R.applicaDanno(c.ref, quanti, tipo, opz);
     if (tipo === 'fuoco' || tipo === 'acido') c.bruciato = true;
     if (c.ref.ultimoEvento === 'concentrazione') { c.ref.ultimoEvento = null; this.fineConcentrazione(c); this.evento({ tipo: 'nota', id: c.id, testo: `${nomeDi(c)} perde la concentrazione.` }); }
@@ -825,7 +832,8 @@ class Combattimento {
     if (this.attivo === c && !this.finito) this.fineTurno(c.id);
   }
   bersaglioPreferito(c, furbo) {
-    const nemici = this.nemiciDi(c);
+    // anche chi è a terra (ma vivo) può essere colpito: serve quando blocca un corridoio, e i mostri crudeli lo fanno
+    const nemici = this.creature.filter((x) => x.lato !== c.lato && this.vivo(x));
     if (!nemici.length) return null;
     const voto = (n) => {
       let v = -this.dist(c, n);
@@ -933,7 +941,7 @@ class Combattimento {
     while ((t.azione || (t.attacchi > 0 && t.attacchi < t.attacchiMax)) && this.vivo(ber) && ber.ref.pf > 0 && n < 6) {
       const ma = c.pg ? a : (c.ref.multi > 1 ? this.attacchiDi(c)[t.attacchi % this.attacchiDi(c).filter((x) => x.mischia === a.mischia).length] || a : a);
       const usa = ma && ma.mischia === a.mischia ? ma : a;
-      if (usa.mischia && this.dist(c, ber) > (usa.portata || CELLA)) break;
+      if (usa.mischia && this.dist(c, ber) > (usa.portata || CELLA) && !(usa.lancio && usa.gittata && this.dist(c, ber) <= usa.gittata[1])) break;
       const r = this.attacca(c.id, ber.id, { arma: usa.id || usa.nome, punizione: c.pg && c.ref.classe === 'paladino' && usa.mischia && this.puoSpendere(c, 1) && Math.random() < 0.4 ? 1 : null });
       if (r.errore) break;
       n++;

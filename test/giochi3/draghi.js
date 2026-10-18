@@ -111,7 +111,7 @@ const { R, B, CLASSI, INCANTESIMI, MOSTRI, MAP, Combattimento, MASTER } = G._tes
       if (L >= 5) nem.push(R.mostroDa('ogre'));
       const cb = new Combattimento({ scena: MAP.scena(MAP.STILI_SCENA[k % MAP.STILI_SCENA.length], k * 13 + 1), gruppo, nemici: nem, livelloIA: ['facile', 'medio', 'difficile'][k % 3] });
       let giri = 0;
-      while (!cb.finito && giri++ < 600) cb.turnoAutomatico();
+      while (!cb.finito && giri++ < 2000) cb.turnoAutomatico();
       if (cb.finito) finite++;
       if (cb.finito === 'vittoria') vinte++;
       eventi += cb.eventi.length;
@@ -141,8 +141,8 @@ const { R, B, CLASSI, INCANTESIMI, MOSTRI, MAP, Combattimento, MASTER } = G._tes
     cb.ordine = [cg.id, cm.id, g1.id, g2.id, g3.id]; cb.indice = 0; cb.iniziaTurno();
     const r1 = cb.attacca(cg.id, g1.id);
     assert.ok(r1.ok && cb.attivo === cg && cg.turno.attacchi === 1, 'primo dei due attacchi');
-    assert.ok(cb.attacca(cg.id, g1.id).ok || !cb.vivo(g1));
-    assert.ok(cb.attacca(cg.id, g2.id).errore, 'finiti gli attacchi');
+    assert.ok(cb.attacca(cg.id, cb.vivo(g1) ? g1.id : g2.id).ok, 'secondo attacco (attacco extra)');
+    assert.ok(cb.attacca(cg.id, cb.vivo(g2) ? g2.id : g3.id).errore, 'finiti gli attacchi');
     cb.fineTurno(cg.id);
     assert.strictEqual(cb.attivo, cm);
     const pfPrima = gob.map((g) => g.pf);
@@ -189,7 +189,7 @@ const { R, B, CLASSI, INCANTESIMI, MOSTRI, MAP, Combattimento, MASTER } = G._tes
     assert.ok(g.azione(0, { tipo: 'idea', testo: 'Una campana che suona da sola' }).ok);
     assert.ok(g.azione(0, { tipo: 'crea', scelte: { nome: '' } }).errore);
     assert.ok(g.azione(0, { tipo: 'tiraCaratteristiche' }).ok && g.vista(0).tirati.length === 6);
-    const s0 = R.completaScelte({ classe: 'paladino', stirpe: 'umano', nome: 'Aldo', metodo: 'dadi', tirati: g.tirati[0].valori });
+    const s0 = R.completaScelte({ classe: 'paladino', stirpe: 'umano', nome: 'Aldo', livello: 3, metodo: 'dadi', tirati: g.tirati[0].valori });
     assert.ok(g.azione(0, { tipo: 'crea', scelte: s0 }).ok, 'crea con i dadi tirati');
     assert.strictEqual(g.pg[0].livello, 3);
     assert.deepStrictEqual(g.attesi(), [1, 2]);

@@ -155,8 +155,9 @@ class Draghi {
     if (a.tipo === 'idea') { if (p !== this.host) return { errore: 'L\'idea la scrive chi ha aperto il tavolo' }; this.idea = String(a.testo || '').slice(0, 2000); return { ok: true }; }
     if (a.tipo === 'crea') {
       let s = a.scelte && typeof a.scelte === 'object' ? { ...a.scelte } : {};
-      if (a.casuale || this.bot[p]) s = R.completaScelte({ ...s, classe: s.classe || this.classeCompagno(p) });
       s.livello = this.livelloIniziale;
+      if (s.metodo === 'dadi') s.tirati = this.tirati[p] ? this.tirati[p].valori : null;
+      if (a.casuale || this.bot[p]) s = R.completaScelte({ ...s, classe: s.classe || this.classeCompagno(p) });
       if (s.metodo === 'dadi') s.tirati = this.tirati[p] ? this.tirati[p].valori : null;
       const r = R.creaPersonaggio(s);
       if (r.errore) return r;
