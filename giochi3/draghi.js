@@ -30,6 +30,7 @@ class Draghi {
     this.bot = Array.from({ length: n }, (_, i) => bot[i] || null);
     this.host = this.bot.findIndex((b) => !b); if (this.host < 0) this.host = 0;
     this.ambientazione = AMBIENTAZIONI.includes(opzioni.ambientazione) ? opzioni.ambientazione : opzioni.ambientazione === 'caso' ? AMBIENTAZIONI[Math.floor(Math.random() * AMBIENTAZIONI.length)] : 'classica';
+    this.pazza = opzioni.pazza === true || opzioni.pazza === 'true';
     this.livelloIniziale = [1, 3, 5].includes(Number(opzioni.livello)) ? Number(opzioni.livello) : 1;
     this.difficolta = ['storia', 'normale', 'mortale'].includes(opzioni.difficolta) ? opzioni.difficolta : 'normale';
     this.lunghezza = ['normali', 'brevi', 'lunghe'].includes(opzioni.lunghezza) ? opzioni.lunghezza : 'normali';
@@ -263,7 +264,7 @@ class Draghi {
     const storia = this.storia.slice(-12).map((s) => `${s.ruolo === 'master' ? 'MASTER' : 'GIOCATORI'}: ${s.testo}`).join('\n\n');
     return `IL GRUPPO\n${gruppo}\n\nLUOGO ATTUALE: ${luogo ? `${luogo.nome} (${luogo.tipo})${luogo.descrizione ? ` — ${luogo.descrizione}` : ''}` : 'sconosciuto'}\nLUOGHI NOTI: ${luoghi || 'nessuno'}\n\nPERSONAGGI NON GIOCANTI INCONTRATI:\n${png || 'nessuno'}\n\nMISSIONI:\n${miss || 'nessuna'}\n\nDIARIO DELLA CAMPAGNA:\n${this.diario || '(appena cominciata)'}\n\nSTORIA RECENTE:\n${storia || '(niente)'}`;
   }
-  sistema() { return MASTER.istruzioni({ ambientazione: this.ambientazione, difficolta: this.difficolta, lunghezza: this.lunghezza, regoleBrevi: MASTER.regoleBrevi(MOSTRI, B.CONDIZIONI) }); }
+  sistema() { return MASTER.istruzioni({ ambientazione: this.ambientazione, pazza: this.pazza, difficolta: this.difficolta, lunghezza: this.lunghezza, regoleBrevi: MASTER.regoleBrevi(MOSTRI, B.CONDIZIONI) }); }
   chiediMaster(tipo, richiesta) {
     this.ultimaRichiesta = { tipo, richiesta };
     this.erroreIA = null;
@@ -273,7 +274,7 @@ class Draghi {
     const lv = Math.round(this.pgVivi().reduce((s, i) => s + this.pg[i].livello, 0) / Math.max(1, this.pgVivi().length));
     const fai = this.chiave && this.fetch
       ? MASTER.chiamaGemini({ chiave: this.chiave, sistema: this.sistema(), messaggi: [{ ruolo: 'giocatori', testo: messaggio }], fetch: this.fetch, maxToken: this.lunghezza === 'lunghe' ? 6000 : 4096 }).then((r) => (r.errore ? { errore: r.errore } : MASTER.leggiRisposta(r.testo)))
-      : Promise.resolve(MASTER.masterRiserva({ inizio: tipo === 'inizio', esiti: tipo === 'esiti' ? this.ultimiEsiti : null, livello: lv, luogo: (this.mondo.luoghi.find((l) => l.id === this.posizione) || {}).nome }));
+      : Promise.resolve(MASTER.masterRiserva({ pazza: this.pazza, inizio: tipo === 'inizio', esiti: tipo === 'esiti' ? this.ultimiEsiti : null, livello: lv, luogo: (this.mondo.luoghi.find((l) => l.id === this.posizione) || {}).nome }));
     const io = this.ultimaRichiesta;
     fai.then((r) => { if (this.ultimaRichiesta !== io) return; this.attesaIA = false; if (r.errore) { this.erroreIA = r.errore; this.tentativi++; this.storia.pop(); } else { this.tentativi = 0; this.rispostaIA = r; } })
       .catch(() => { this.attesaIA = false; this.erroreIA = 'il master non risponde'; this.tentativi++; this.storia.pop(); });
@@ -539,7 +540,7 @@ class Draghi {
     const cb = this.combattimento;
     const mio = this.pg[p] || null;
     return {
-      gioco: this.id, n: this.n, fase: this.fase, host: this.host, bot: this.bot.map(Boolean), ambientazione: this.ambientazione, difficolta: this.difficolta, livelloIniziale: this.livelloIniziale,
+      gioco: this.id, n: this.n, fase: this.fase, host: this.host, bot: this.bot.map(Boolean), ambientazione: this.ambientazione, pazza: this.pazza, difficolta: this.difficolta, livelloIniziale: this.livelloIniziale,
       iaAttiva: !!(this.chiave && this.fetch), attesaIA: this.attesaIA, attesaLibera: !!this.attesaLibera, erroreIA: this.erroreIA, idea: this.idea,
       suggerite: this.suggerite[p], tirati: this.tirati[p] ? this.tirati[p].valori : null, tiriFatti: this.tirati[p] ? this.tirati[p].volte : 0,
       pg: this.pg, mioPg: mio ? mio.uid : null,
@@ -612,6 +613,7 @@ module.exports = {
     alias: ['draghi e segrete', 'gioco di ruolo', 'gdr', 'dungeons', 'dungeon', 'dragons', 'd&d', 'dnd', 'master', 'avventura', 'fantasy', 'rpg'],
     opzioni: [
       { id: 'ambientazione', nome: 'Ambientazione', valori: ['classica', 'oscura', 'pirati', 'citta', 'selvaggia', 'caso'], etichette: ['Fantasy classico', 'Oscura e horror', 'Mari e pirati', 'Intrighi in città', 'Terre selvagge', 'A sorpresa'], predefinito: 'classica' },
+      { id: 'pazza', nome: '🤪 Modalità pazza (il master fa ridere)', valori: [false, true], etichette: ['No', 'Sì'], predefinito: false, casella: true },
       { id: 'livello', nome: 'Livello iniziale', valori: [1, 3, 5], etichette: ['1° livello (dall\'inizio)', '3° livello', '5° livello'], predefinito: 1 },
       { id: 'difficolta', nome: 'Difficoltà', valori: ['normale', 'storia', 'mortale'], etichette: ['Normale', 'Storia (combattimenti facili)', 'Mortale'], predefinito: 'normale' },
       { id: 'lunghezza', nome: 'Racconti del master', valori: ['normali', 'brevi', 'lunghe'], etichette: ['Normali', 'Brevi', 'Lunghi e dettagliati'], predefinito: 'normali' },

@@ -1295,3 +1295,5 @@ body.spettatore #tavolo canvas { pointer-events: none; }
 .bc-quote { width: 100%; border-collapse: collapse; margin: .5rem 0; font-size: .85rem; }
 .bc-quote th, .bc-quote td { padding: .25rem .35rem; border-bottom: 1px solid rgba(0, 0, 0, .12); text-align: left; }
 .cs-tab-scheda .piccolo { color: #55554f; opacity: 1; }
+.imp-casella input[type="checkbox"] { justify-self: start; width: 1.35rem; height: 1.35rem; accent-color: var(--oro); cursor: pointer; }
+@media (max-width: 620px) { .imp-casella { grid-template-columns: 1fr auto; } }

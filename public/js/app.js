@@ -250,7 +250,10 @@
     disegnaImpostazioni();
   }
 
+  // il valore di un'opzione: le caselle (opzioni sì/no con "casella") danno "true" o "false"
+  const valoreOpz = (el) => (el.type === 'checkbox' ? String(el.checked) : el.value);
   function selectOpzione(o, valore, attr) {
+    if (o.casella) return `<label class="imp-riga imp-casella"><span>${esc(o.nome)}</span><input type="checkbox" ${attr} data-opz="${o.id}" ${String(valore) === 'true' ? 'checked' : ''}></label>`;
     return `<label class="imp-riga"><span>${esc(o.nome)}</span>
       <select ${attr} data-opz="${o.id}">${o.valori.map((v, i) => `<option value="${v}" ${String(v) === String(valore) ? 'selected' : ''}>${esc(o.etichette ? o.etichette[i] : v)}</option>`).join('')}</select></label>${anteprime(o, valore)}`;
   }
@@ -335,7 +338,7 @@
     mem.set('posti', scelto.posti);
     disegnaImpostazioni();
   });
-  $('#imp-opzioni').addEventListener('change', (e) => { if (e.target.dataset.opz) scelto.opzioni[e.target.dataset.opz] = e.target.value; });
+  $('#imp-opzioni').addEventListener('change', (e) => { if (e.target.dataset.opz) scelto.opzioni[e.target.dataset.opz] = valoreOpz(e.target); });
   $('#scelta-livello').addEventListener('click', (e) => {
     const b = e.target.closest('[data-livello]');
     if (!b) return;
@@ -756,7 +759,7 @@
   $('#sala-select').addEventListener('change', (e) => socket.emit('impostaGioco', { gioco: e.target.value, opzioni: {} }));
   $('#sala-opzioni').addEventListener('change', () => {
     const opzioni = {};
-    for (const s of $$('#sala-opzioni select')) opzioni[s.dataset.opz] = s.value;
+    for (const s of $$('#sala-opzioni [data-opz]')) opzioni[s.dataset.opz] = valoreOpz(s);
     socket.emit('impostaGioco', { gioco: stato.gioco, opzioni });
   });
   $('#inizia').addEventListener('click', () => socket.emit('inizia'));
@@ -1084,7 +1087,7 @@
   $('#fine').addEventListener('change', (e) => {
     const t = e.target;
     if (t.dataset.dopo === 'gioco') { dopo = { gioco: t.value, opzioni: {} }; disegnaGioco(); }
-    else if (t.dataset.dopo === 'opzione') dopo.opzioni[t.dataset.opz] = t.value;
+    else if (t.dataset.dopo === 'opzione') dopo.opzioni[t.dataset.opz] = valoreOpz(t);
   });
   $('#fine-barra').addEventListener('click', (e) => {
     if (e.target.closest('[data-vedi-fine]')) { ui._fineSubito = true; disegnaGioco(); }

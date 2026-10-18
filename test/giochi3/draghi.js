@@ -265,6 +265,14 @@ const { R, B, CLASSI, INCANTESIMI, MOSTRI, MAP, Combattimento, MASTER } = G._tes
       assert.ok(g.racconto.some((x) => x.tipo === 'master' && x.testo.includes('braci')));
     }
   }
+  // ---------- modalità pazza: casella che si aggiunge a qualsiasi ambientazione ----------
+  {
+    const g = G.crea({ n: 1, bot: [null], opzioni: { ambientazione: 'pirati', pazza: 'true' } });
+    assert.ok(g.pazza && g.ambientazione === 'pirati' && g.vista(0).pazza);
+    assert.ok(g.sistema().includes('AVVENTURA PAZZA') && g.sistema().includes('pirati'));
+    assert.ok(!G.crea({ n: 1, bot: [null], opzioni: {} }).sistema().includes('AVVENTURA PAZZA'), 'di solito il master è serio');
+    assert.ok(MASTER.masterRiserva({ pazza: true }).narrazione.length > 20);
+  }
   // ---------- senza IA: il master di riserva ----------
   {
     const g = G.crea({ n: 1, bot: [null], opzioni: {} });

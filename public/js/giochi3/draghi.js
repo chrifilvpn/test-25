@@ -49,7 +49,7 @@
   function gruppo(ctx) {
     const p = ctx.partita;
     return `<div class="dr-gruppo"><h3 class="dr-titoletto">La compagnia</h3>${p.pg.map((pg, i) => (pg ? cartaPg(ctx, pg, i) : '')).join('')}
-      <div class="dr-info-tav"><span>${esc(AMBIENTI[p.ambientazione] || '')}</span><span>${{ normale: 'Normale', storia: 'Storia', mortale: 'Mortale' }[p.difficolta]}</span>${p.iaAttiva ? '<span title="Il master è un\'intelligenza artificiale">🧠 master IA</span>' : '<span title="Manca la chiave dell\'IA: racconta il master di riserva">📕 master di riserva</span>'}</div>
+      <div class="dr-info-tav"><span>${esc(AMBIENTI[p.ambientazione] || '')}</span>${p.pazza ? '<span title="Il master fa ridere">🤪 pazza</span>' : ''}<span>${{ normale: 'Normale', storia: 'Storia', mortale: 'Mortale' }[p.difficolta]}</span>${p.iaAttiva ? '<span title="Il master è un\'intelligenza artificiale">🧠 master IA</span>' : '<span title="Manca la chiave dell\'IA: racconta il master di riserva">📕 master di riserva</span>'}</div>
       ${sonoHost(ctx) && !p.finita ? '<button type="button" class="dr-link dr-chiudi-camp" data-az="dr-termina">Chiudi la campagna</button>' : ''}</div>`;
   }
 
@@ -251,7 +251,7 @@
       let centro;
       if (cb) {
         const ultima = p.racconto.slice().reverse().find((v) => v.tipo === 'master');
-        const narr = ultima && ultima.combattimento ? `<div class="dr-cb-narr" title="Il master racconta">${formatta(ultima.testo, p)}</div>` : '';
+        const narr = ultima && ultima.combattimento ? `<div class="dr-cb-narr ${trascorso(ui, `dr-v${ultima.id}`) < 1500 ? 'nuova' : ''}" title="Il master racconta">${formatta(ultima.testo, p)}</div>` : '';
         centro = `<section class="dr-centro dr-centro-cb">${CB().filaIniziativa(ctx)}<div id="dr-campo-posto" class="dr-campo-posto"></div>${narr}</section>`;
       } else centro = `<section class="dr-centro">${testaStoria(ctx)}${racconto(ctx)}${composer(ctx)}</section>`;
       const schede = cb ? (tel ? [['turno', '🎲', 'Turno'], ['racconto', '💬', 'Racconto'], ['mappa', '🗺️', 'Mappa'], ['missioni', '📜', 'Missioni'], ['diario', '📖', 'Diario']] : [['turno', '🎲', 'Turno'], ['racconto', '💬', 'Racconto'], ['mappa', '🗺️', 'Mappa'], ['missioni', '📜', 'Missioni']])
