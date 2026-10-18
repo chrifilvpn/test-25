@@ -2,8 +2,8 @@
 // valide, schemi salvati con una sola soluzione, mosse, riempimento d'acqua, aiuto, sfide tra computer.
 const assert = require('assert');
 process.env.TEST_VELOCE = process.env.TEST_VELOCE || '1';
-const M = require('../../giochi2/navale');
-const NL = require('../../giochi2/navale-logica');
+const M = require('../../giochi3/navale');
+const NL = require('../../giochi3/navale-logica');
 const { dati, ACQUA, NAVE } = M._test;
 
 // la griglia sol contiene esattamente la flotta, con navi dritte che non si toccano?

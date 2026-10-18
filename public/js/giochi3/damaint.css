@@ -1,0 +1,23 @@
+/* DAMA INTERNAZIONALE: damiera di legno chiaro e noce, pedine tornite, corona d'oro per le dame */
+.di { display: grid; justify-items: center; gap: .6rem; width: 100%; padding: .3rem 0 .6rem; }
+.di-cornice { padding: 8px 8px 4px; border-radius: 12px; background: linear-gradient(160deg, #6d4622, #4a2e15); box-shadow: 0 12px 26px rgba(0, 0, 0, .45); }
+.di-tavola { --lato: min(92vw, 33rem, calc(100vh - 20rem)); width: max(16rem, var(--lato)); aspect-ratio: 1; display: grid; grid-template-columns: repeat(10, 1fr); }
+.di-lettere { display: grid; grid-template-columns: repeat(10, 1fr); color: #e9d2ad; font-size: .62rem; text-align: center; padding-top: 2px; }
+.di-c { position: relative; display: grid; place-items: center; }
+.di-c.chiara { background: #ead2a8; }
+.di-c.scura { background: #8a5a33; }
+.di-c.via { background: #9c6d3f; box-shadow: inset 0 0 0 2px rgba(124, 196, 255, .55); }
+.di-c.presa::after { content: "✕"; position: absolute; color: rgba(255, 120, 100, .8); font-size: 1rem; font-weight: 700; }
+.di-c.sel { background: #b07a42; }
+.di-c.dest { cursor: pointer; }
+.di-punto { width: 34%; height: 34%; border-radius: 50%; background: rgba(255, 209, 102, .85); box-shadow: 0 0 8px rgba(255, 209, 102, .8); }
+.di-c[data-az] { cursor: pointer; }
+.di-pz { width: 80%; height: 80%; border-radius: 50%; display: grid; place-items: center; font-size: calc(var(--lato) / 10 * .44); line-height: 1; box-shadow: 0 2px 3px rgba(0, 0, 0, .45), inset 0 -3px 0 rgba(0, 0, 0, .18); }
+.di-pz.bianca { background: radial-gradient(circle at 35% 30%, #fff, #efe7d6 55%, #cbbfa5); color: #b88a1b; }
+.di-pz.nera { background: radial-gradient(circle at 35% 30%, #5a4a40, #2a1f19 55%, #120c08); color: #f2c14e; }
+.di-pz.puo { box-shadow: 0 0 0 2px rgba(255, 209, 102, .75), 0 2px 3px rgba(0, 0, 0, .45); }
+.di-c.sel .di-pz { transform: translateY(-2px) scale(1.06); box-shadow: 0 0 0 3px #ffd166, 0 6px 10px rgba(0, 0, 0, .5); }
+.di-scelta { display: grid; gap: .35rem; justify-items: center; padding: .6rem .8rem; border-radius: 12px; background: rgba(0, 0, 0, .3); }
+.di-scelta p { margin: 0; }
+.di-mini { display: inline-block; width: .9rem; height: .9rem; border-radius: 50%; }
+.di-mini.bianca { background: #f4ecdc; } .di-mini.nera { background: #241a14; box-shadow: 0 0 0 1px rgba(255, 255, 255, .3); }

@@ -3,7 +3,7 @@
 // mare sia tutto collegato e che non ci siano quadrati 2×2 di mare. Gli schemi (nurikabe-dati.js) sono stati creati
 // al computer e il risolutore di nurikabe-logica.js ha controllato che ognuno abbia UNA sola soluzione; durante la
 // partita si gira o si specchia lo schema a caso. Da soli per il tempo; in sfida (2-8) tutti hanno lo stesso schema.
-const { SfidaRompicapo, FATTORE_LIVELLO, passoBot, caso, mescola } = require('./rompicapo-sfida');
+const { SfidaRompicapo, FATTORE_LIVELLO, passoBot, caso, mescola } = require('../giochi2/rompicapo-sfida');
 const { trasforma } = require('./nurikabe-logica');
 
 const GRANDEZZE = { piccola: [7, 7], media: [10, 10], grande: [12, 12] };

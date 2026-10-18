@@ -4,7 +4,7 @@
 // sugli scarti; finito il tallone si può rigirare (quante volte dipende dall'opzione). Si vince svuotando la piramide.
 // Le distribuzioni sono controllate da un risolutore: ognuna si può vincere, e la sua soluzione guida aiuto e computer.
 // Da soli per il tempo; in sfida (2-8) tutti hanno la stessa distribuzione.
-const { SfidaRompicapo, FATTORE_LIVELLO, passoBot, mescola } = require('./rompicapo-sfida');
+const { SfidaRompicapo, FATTORE_LIVELLO, passoBot, mescola } = require('../giochi2/rompicapo-sfida');
 
 const SEMI = ['c', 'q', 'f', 'p'];
 const GIRI = { tre: 3, uno: 1, cinque: 5 };

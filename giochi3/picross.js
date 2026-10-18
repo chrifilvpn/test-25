@@ -3,7 +3,7 @@
 // vuota in mezzo, due blocchi di colori diversi possono toccarsi. Colorando le caselle giuste esce un disegno (fatto a
 // mano, vedi picross-dati.js). Ogni disegno si risolve con la sola logica delle file: dove non basterebbe, alcune
 // caselle sono scoperte fin dall'inizio. Da soli per il tempo; in sfida (2-8) tutti hanno lo stesso disegno.
-const { SfidaRompicapo, FATTORE_LIVELLO, passoBot, caso, mescola } = require('./rompicapo-sfida');
+const { SfidaRompicapo, FATTORE_LIVELLO, passoBot, caso, mescola } = require('../giochi2/rompicapo-sfida');
 const PL = require('./picross-logica');
 const DISEGNI = require('./picross-dati');
 

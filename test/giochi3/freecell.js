@@ -2,7 +2,7 @@
 // basi, risolutore (le soluzioni si giocano con le regole della partita, anche da metà strada), aiuto, sfide.
 const assert = require('assert');
 process.env.TEST_VELOCE = process.env.TEST_VELOCE || '1';
-const M = require('../../giochi2/freecell');
+const M = require('../../giochi3/freecell');
 const { risolvi, applica, automatiche, capienza, inizioPila, sicura, copia, sulleBasi } = M._test;
 
 const vuoto = () => ({ col: Array.from({ length: 8 }, () => []), celle: [null, null, null, null], basi: { c: 0, q: 0, f: 0, p: 0 } });

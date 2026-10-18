@@ -76,16 +76,18 @@ const ponte = require('./ponte');
 
 const GIOCHI = { briscola, scopa, scopone, rubamazzo, scala40, tris, forza4, battaglia, dama, scacchi, impiccato, morra, numero, blackjack, baccarat, higherlower, texas, poker5, uno, campo, impostore, coccodrillo, blockblast, peppa, fastwest, wordle, angolo, sudoku, snake, tetris, airhockey, pallone, interruttori, casellebombe, tesoro, coperti, dubito, nascondino, mappa, tasti, mensola, mind, flip7, cirulla, solitario, chirurgo, benchmark, disegna, putt, palloncini, gattotopi, colori, bumper, differenze, fuga, monete, arcobaleno, pioggia, paintball, piattaforme, massi, stella, fune, dalgona, buio, alieno, shutbox, sblocca, wanted, duello, strada, bersaglio, mangiatutto, tigerball, roulette, bandiere, ponte };
 
-// GIOCHI NUOVI (cartella giochi2): ogni file che esporta meta e crea si registra da solo, senza toccare questo
-// elenco (i file di dati senza meta, es. tressette-dati.js, si ignorano)
+// GIOCHI NUOVI (cartelle giochi2, giochi3): ogni file che esporta meta e crea si registra da solo, senza toccare
+// questo elenco (i file di dati senza meta, es. tressette-dati.js, si ignorano). Una cartella nuova ogni 100 file.
 {
   const fs = require('fs');
   const path = require('path');
-  const cartella = path.join(__dirname, '..', 'giochi2');
-  const files = fs.existsSync(cartella) ? fs.readdirSync(cartella).filter((f) => f.endsWith('.js')).sort() : [];
-  for (const f of files) {
-    const m = require(path.join(cartella, f));
-    if (m && m.meta && typeof m.crea === 'function' && !GIOCHI[m.meta.id]) GIOCHI[m.meta.id] = m;
+  for (const nome of ['giochi2', 'giochi3']) {
+    const cartella = path.join(__dirname, '..', nome);
+    const files = fs.existsSync(cartella) ? fs.readdirSync(cartella).filter((f) => f.endsWith('.js')).sort() : [];
+    for (const f of files) {
+      const m = require(path.join(cartella, f));
+      if (m && m.meta && typeof m.crea === 'function' && !GIOCHI[m.meta.id]) GIOCHI[m.meta.id] = m;
+    }
   }
 }
 
@@ -93,7 +95,7 @@ const GIOCHI = { briscola, scopa, scopone, rubamazzo, scala40, tris, forza4, bat
 const CATEGORIE = {
   carte: ['briscola', 'scopa', 'scopone', 'rubamazzo', 'scala40', 'peppa', 'fastwest', 'dubito', 'flip7', 'cirulla', 'solitario', 'uno', 'tressette', 'cucu', 'burraco', 'memory', 'machiavelli', 'assopiglia', 'uomonero', 'chiamata', 'piramide', 'freecell'],
   casino: ['blackjack', 'baccarat', 'higherlower', 'texas', 'poker5', 'roulette', 'settemezzo', 'videopoker', 'omaha'],
-  strategia: ['tris', 'forza4', 'battaglia', 'dama', 'scacchi', 'campo', 'casellebombe', 'tesoro', 'coperti', 'interruttori', 'mappa', 'nascondino', 'shutbox', 'sblocca', 'sudoku', 'blockblast', 'otello', 'mastermind', 'nonogram', 'duemila', 'ludo', 'oca', 'backgammon', 'yahtzee', 'mulino', 'quoridor', 'go', 'damacinese', 'affari', 'kakuro', 'kenken', 'hanoi', 'sokoban', 'mahjong', 'luci', 'nurikabe', 'navale', 'picross'],
+  strategia: ['tris', 'forza4', 'forza3d', 'battaglia', 'dama', 'damaint', 'scacchi', 'xiangqi', 'campo', 'casellebombe', 'tesoro', 'coperti', 'interruttori', 'mappa', 'nascondino', 'shutbox', 'sblocca', 'sudoku', 'blockblast', 'otello', 'mastermind', 'nonogram', 'duemila', 'ludo', 'oca', 'backgammon', 'yahtzee', 'bugiardi', 'mulino', 'quoridor', 'go', 'damacinese', 'affari', 'hex', 'kakuro', 'kenken', 'hanoi', 'sokoban', 'mahjong', 'luci', 'nurikabe', 'navale', 'picross'],
   parole: ['impiccato', 'wordle', 'bandiere', 'capitali', 'sagome', 'monumenti', 'differenze', 'angolo', 'numero', 'impostore', 'coccodrillo', 'disegna', 'mensola', 'connessioni', 'codenames', 'morra', 'paroliere', 'nomicose', 'quiz', 'anagrammi', 'anno'],
   azione: ['snake', 'tetris', 'airhockey', 'pallone', 'tasti', 'chirurgo', 'benchmark', 'putt', 'palloncini', 'gattotopi', 'colori', 'bumper', 'fuga', 'monete', 'arcobaleno', 'pioggia', 'paintball', 'piattaforme', 'massi', 'wanted', 'duello', 'strada', 'bersaglio', 'mangiatutto', 'tigerball', 'mind', 'bomberman', 'slither', 'corsa', 'calcetto', 'patata', 'tron', 'carri', 'asteroidi', 'pong4', 'battitura'],
   squid: ['stella', 'fune', 'dalgona', 'buio', 'alieno', 'ponte', 'calamaro', 'biglie'],

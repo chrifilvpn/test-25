@@ -58,14 +58,14 @@ app.get('/js/navale-regole.js', (_q, r) => r.sendFile(path.join(__dirname, 'gioc
 app.get('/js/putt-buche.js', (_q, r) => r.sendFile(path.join(__dirname, 'giochi', 'putt-buche.js')));
 app.get('/js/strada-mondo.js', (_q, r) => r.sendFile(path.join(__dirname, 'giochi', 'strada-mondo.js')));
 app.get('/js/tigerball-livelli.js', (_q, r) => r.sendFile(path.join(__dirname, 'giochi', 'tigerball-livelli.js')));
-// giochi nuovi: tutti i file di public/js/giochi2 (e i loro stili) in un colpo solo, così aggiungere un gioco
-// non richiede di toccare index.html
+// giochi nuovi: tutti i file di public/js/giochi2 e giochi3 (e i loro stili) in un colpo solo, così aggiungere un
+// gioco non richiede di toccare index.html
 function unisciCartella(cartella, est) {
   const dir = path.join(__dirname, 'public', 'js', cartella);
   if (!fs.existsSync(dir)) return '';
   return fs.readdirSync(dir).filter((f) => f.endsWith(est)).sort().map((f) => `/* ${f} */\n${fs.readFileSync(path.join(dir, f), 'utf8')}`).join(est === '.js' ? '\n;\n' : '\n');
 }
-const GIOCHI2_JS = unisciCartella('giochi2', '.js'), GIOCHI2_CSS = unisciCartella('giochi2', '.css');
+const GIOCHI2_JS = ['giochi2', 'giochi3'].map((c) => unisciCartella(c, '.js')).join('\n;\n'), GIOCHI2_CSS = ['giochi2', 'giochi3'].map((c) => unisciCartella(c, '.css')).join('\n');
 app.get('/js/giochi2.js', (_q, r) => r.type('application/javascript').send(GIOCHI2_JS));
 app.get('/giochi2.css', (_q, r) => r.type('text/css').send(GIOCHI2_CSS));
 app.get('/salute', (_q, r) => r.send('ok'));

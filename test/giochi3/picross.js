@@ -2,8 +2,8 @@
 // si risolve con la logica (con le caselle scoperte), mosse, aiuto e sfide tra computer.
 const assert = require('assert');
 process.env.TEST_VELOCE = process.env.TEST_VELOCE || '1';
-const M = require('../../giochi2/picross');
-const PL = require('../../giochi2/picross-logica');
+const M = require('../../giochi3/picross');
+const PL = require('../../giochi3/picross-logica');
 const { prepara, DISEGNI, CROCE } = M._test;
 
 // ---- indizi ----

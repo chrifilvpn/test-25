@@ -1,0 +1,17 @@
+/* HEX: esagoni color sabbia su legno scuro, gemme rosse e blu, bordi colorati dei lati da collegare */
+.hx { display: grid; justify-items: center; gap: .6rem; width: 100%; padding: .3rem 0 .6rem; }
+.hx-tavola { width: min(96vw, 46rem, calc((100vh - 15rem) * 1.6)); padding: .5rem; border-radius: 16px; background: radial-gradient(ellipse at 50% 40%, #4a3524, #2c1f15); box-shadow: 0 12px 26px rgba(0, 0, 0, .45); box-sizing: border-box; }
+.hx-svg { display: block; width: 100%; height: auto; }
+.hx-cella { fill: #e9d8b4; stroke: #8a6a45; stroke-width: .7; }
+.hx-cella.puo { cursor: pointer; }
+.hx-cella.puo:hover { fill: #fff3d6; }
+.hx-ped { stroke: rgba(0, 0, 0, .35); stroke-width: .6; }
+.hx-ped.ros { fill: #d7263d; filter: drop-shadow(0 .6px .6px rgba(0, 0, 0, .45)); }
+.hx-ped.blu { fill: #1f6fd1; filter: drop-shadow(0 .6px .6px rgba(0, 0, 0, .45)); }
+.hx-ped.vince { stroke: #ffd166; stroke-width: 1.6; }
+.hx-ultima { fill: rgba(255, 255, 255, .85); pointer-events: none; }
+.hx-bordo { fill: none; stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+.hx-bordo.ros { stroke: #d7263d; }
+.hx-bordo.blu { stroke: #1f6fd1; }
+.hx-ped-mini { display: inline-block; width: .9rem; height: .9rem; border-radius: 50%; }
+.hx-ped-mini.ros { background: #d7263d; } .hx-ped-mini.blu { background: #1f6fd1; }

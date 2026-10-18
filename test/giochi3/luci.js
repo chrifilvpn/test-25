@@ -2,7 +2,7 @@
 // schemi sempre risolvibili, annulla, aiuto, medaglia, sfide tra computer.
 const assert = require('assert');
 process.env.TEST_VELOCE = process.env.TEST_VELOCE || '1';
-const M = require('../../giochi2/luci');
+const M = require('../../giochi3/luci');
 const { risolvi, tocca, nuovoSchema, peso, fascia, LATI, TOCCHI } = M._test;
 
 // ---- il tocco ----

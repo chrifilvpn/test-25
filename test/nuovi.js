@@ -1141,7 +1141,9 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
   Object.assign(e1, { x: (nv.x0 + nv.x1) / 2, y: nv.y - 20, vy: 0, terra: true, su: nv.k }); nu.inp[0].x = 0; nu.inp[0].y = 0;
   const x0 = e1.x, c0 = nv.x0; for (let k = 0; k < 30; k++) { nu.tempoRound += 0.03; nu.passo(0.03); }
   assert.ok(Math.abs((e1.x - x0) - (nv.x0 - c0)) < 6 && Math.abs(nv.x0 - c0) > 5, 'la nuvola porta con sé chi ci sta sopra');
-  // computer in tutte le mappe: le partite finiscono, il difficile cade poco da solo e vince di più
+  // computer in tutte le mappe: le partite finiscono, il difficile cade poco da solo e vince di più (caso ripetibile:
+  // le cadute variano molto da una serie all'altra e il test non deve fallire a caso)
+  const casoVero = Math.random; { let sd = 424242; Math.random = () => { sd = (sd * 16807) % 2147483647; return (sd - 1) / 2147483646; }; }
   const vd = { facile: 0, medio: 0, difficile: 0 }, cadute = { medio: 0, difficile: 0 };
   const D = M._test.Duello, pc0 = D.prototype.perdiCuore; let livC = null;
   D.prototype.perdiCuore = function (p, perche) { if (livC && this.e[p].stordito <= 0 && this.tempoRound < 60 && cadute[livC[p]] !== undefined) cadute[livC[p]]++; return pc0.call(this, p, perche); };
@@ -1152,6 +1154,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
     if (x.risultato.vincitori.length) vd[livC[x.risultato.vincitori[0]]]++;
   }
   D.prototype.perdiCuore = pc0;
+  Math.random = casoVero;
   assert.ok(vd.difficile > vd.medio && vd.medio > vd.facile, `nelle 4 mappe il difficile vince di più ${JSON.stringify(vd)}`);
   assert.ok(cadute.difficile <= cadute.medio * 1.5 + 10, `il difficile non cade da solo molto più del medio ${JSON.stringify(cadute)}`);
   console.log(`✓ Duello sulle piattaforme: 3 cuori, oggetti da raccogliere, bomba, scudo, palla di neve che spinge, caduta nel vuoto, eliminazione, isole che crollano nel finale, 4 mappe raggiungibili con oggetti esclusivi (molla, gancio, ali, pietra lavica con pozza), lava che sale, nuvole che portano con sé, meno cuori, computer in tutte le mappe (vittorie ${JSON.stringify(vd)}, cadute da soli ${JSON.stringify(cadute)})`);

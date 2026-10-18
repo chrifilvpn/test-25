@@ -2,7 +2,7 @@
 // davvero con le regole della partita), aiuto, annulla e sfide tra computer.
 const assert = require('assert');
 process.env.TEST_VELOCE = process.env.TEST_VELOCE || '1';
-const M = require('../../giochi2/piramide');
+const M = require('../../giochi3/piramide');
 const { risolvi, distribuzione, libera, SOPRA } = M._test;
 
 // ---- struttura: ogni carta (tranne l'ultima fila) ha due carte sopra ----

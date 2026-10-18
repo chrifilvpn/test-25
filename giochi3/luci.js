@@ -3,7 +3,7 @@
 // spenta → rossa → verde → spenta. Ogni schema nasce da tocchi a caso partendo dal buio, quindi ha sempre una
 // soluzione; il minimo di tocchi si calcola con l'algebra (eliminazione di Gauss modulo 2 o modulo 3).
 // Da soli si gioca per il tempo e per il minimo di tocchi; in sfida (2-8) tutti hanno lo stesso schema.
-const { SfidaRompicapo, FATTORE_LIVELLO, passoBot, caso } = require('./rompicapo-sfida');
+const { SfidaRompicapo, FATTORE_LIVELLO, passoBot, caso } = require('../giochi2/rompicapo-sfida');
 
 const LATI = [5, 6, 7];
 const MODI = ['due', 'tre'];

@@ -1,0 +1,31 @@
+/* FORZA 4 IN 3D: base di legno in prospettiva, pioli d'acciaio, palline rosse e gialle lucide */
+.f3 { display: grid; justify-items: center; gap: .6rem; width: 100%; padding: .3rem 0 .6rem; }
+.f3-svg { width: min(94vw, 30rem, calc((100vh - 22rem) * 1.25)); min-width: 15rem; height: auto; }
+.f3-base { fill: #b98250; stroke: #7a5230; stroke-width: 1.5; }
+.f3-lato { fill: #7a5230; }
+.f3-buco { fill: #5a3a1e; }
+.f3-piolo { fill: #c9ced6; stroke: #8d939c; stroke-width: .6; }
+.f3-pall { stroke: rgba(0, 0, 0, .35); stroke-width: .8; }
+.f3-pall.ros { fill: #d62828; }
+.f3-pall.gia { fill: #f2b705; }
+.f3-pall.vince { stroke: #fff; stroke-width: 3; }
+.f3-pall.ultima { stroke: #7cc4ff; stroke-width: 2.4; }
+.f3-luce { fill: rgba(255, 255, 255, .55); pointer-events: none; }
+.f3-anteprima { opacity: 0; transition: opacity .12s; }
+.f3-anteprima.ros { fill: #d62828; } .f3-anteprima.gia { fill: #f2b705; }
+.f3-g.puo { cursor: pointer; }
+.f3-g.puo:hover .f3-anteprima { opacity: .45; }
+.f3-g.puo:hover .f3-piolo { fill: #fff; }
+.f3-presa { fill: transparent; }
+.f3-piani { display: flex; gap: .8rem; flex-wrap: wrap; justify-content: center; }
+.f3-piano { display: grid; justify-items: center; gap: .2rem; }
+.f3-piano small { color: var(--tenue); font-size: .72rem; }
+.f3-griglia { display: grid; grid-template-columns: repeat(4, 1.05rem); gap: 3px; padding: 5px; border-radius: 8px; background: rgba(0, 0, 0, .25); }
+.f3-griglia span { width: 1.05rem; height: 1.05rem; border-radius: 50%; background: rgba(255, 255, 255, .1); }
+.f3-griglia span.ros { background: #d62828; } .f3-griglia span.gia { background: #f2b705; }
+.f3-griglia span.puo { cursor: pointer; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, .45); }
+.f3-griglia span.vince { box-shadow: 0 0 0 2px #fff; }
+.f3-griglia span.ultima { box-shadow: 0 0 0 2px #7cc4ff; }
+.f3-mini { display: inline-block; width: .9rem; height: .9rem; border-radius: 50%; }
+.f3-mini.ros { background: #d62828; } .f3-mini.gia { background: #f2b705; }
+@media (max-width: 600px) { .f3-piani { gap: .4rem; } .f3-griglia { grid-template-columns: repeat(4, .8rem); gap: 2px; padding: 4px; } .f3-griglia span { width: .8rem; height: .8rem; } .f3-piano small { font-size: .62rem; } }

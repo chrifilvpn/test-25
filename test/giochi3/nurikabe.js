@@ -2,8 +2,8 @@
 // soluzione, regole rispettate), le trasformazioni, le mosse, l'aiuto e le sfide tra computer.
 const assert = require('assert');
 process.env.TEST_VELOCE = process.env.TEST_VELOCE || '1';
-const M = require('../../giochi2/nurikabe');
-const { risolvi, trasforma } = require('../../giochi2/nurikabe-logica');
+const M = require('../../giochi3/nurikabe');
+const { risolvi, trasforma } = require('../../giochi3/nurikabe-logica');
 const { GRANDEZZE, dati, MARE, PUNTO } = M._test;
 
 // una griglia (1 = isola, 0 = mare) rispetta le regole con questi numeri?

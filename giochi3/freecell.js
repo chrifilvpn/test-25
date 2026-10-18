@@ -4,7 +4,7 @@
 // una per una). Le carte che servono solo sulle basi ci vanno da sole. Ogni distribuzione è controllata da un
 // risolutore (ricerca "best-first"): si può sempre vincere, e la soluzione guida aiuto e computer.
 // Da soli per il tempo; in sfida (2-8) tutti hanno la stessa distribuzione.
-const { SfidaRompicapo, FATTORE_LIVELLO, passoBot, mescola } = require('./rompicapo-sfida');
+const { SfidaRompicapo, FATTORE_LIVELLO, passoBot, mescola } = require('../giochi2/rompicapo-sfida');
 
 const SEMI = ['c', 'q', 'f', 'p'];
 const ROSSO = { c: true, q: true };

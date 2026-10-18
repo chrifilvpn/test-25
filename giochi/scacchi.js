@@ -387,7 +387,9 @@ function negamax(s, prof, alfa, beta, ctx, dist) {
   if (nessuna) return inScacco(s, s.lato) ? -(MATTO - dist) : 0;
   return best;
 }
-function classifica(g, profMax, ms) {
+// pieno: ogni mossa con la finestra piena, così anche le mosse dopo la prima hanno il loro valore vero (serve quando
+// si sceglie un'alternativa alla migliore); altrimenti le peggiori hanno solo un limite e possono sembrare buone
+function classifica(g, profMax, ms, pieno = false) {
   if (process.env.TEST_VELOCE) ms = Math.min(ms, 25);
   const s = g.s;
   const ctx = { nodi: 0, fino: Date.now() + ms, stop: false };
@@ -399,7 +401,7 @@ function classifica(g, profMax, ms) {
       const n = applica(s, m);
       // evita le ripetizioni se sta vincendo
       const rip = (g.storia.get(chiave(n)) || 0) >= 2;
-      const v = rip ? 0 : -negamax(n, prof - 1, -Infinity, -alfa + 1, ctx, 1);
+      const v = rip ? 0 : -negamax(n, prof - 1, -Infinity, pieno ? Infinity : -alfa + 1, ctx, 1);
       if (ctx.stop) break;
       giro.push({ m, v: v + Math.random() * 3 });
       if (v > alfa) alfa = v;
@@ -421,11 +423,11 @@ function bot(g, p, livello) {
   }
   if (livello === 'facile') {
     if (Math.random() < 0.35) return muovi(g.legaliOra[Math.floor(Math.random() * g.legaliOra.length)]);
-    const l = classifica(g, 1, 150);
+    const l = classifica(g, 1, 150, true);
     return muovi(l[Math.floor(Math.random() * Math.min(3, l.length))].m);
   }
   if (livello === 'medio') {
-    const l = classifica(g, 3, 350);
+    const l = classifica(g, 3, 350, true);
     if (l.length > 1 && Math.random() < 0.2 && l[1].v > l[0].v - 80) return muovi(l[1].m);
     return muovi(l[0].m);
   }

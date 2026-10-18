@@ -1,0 +1,27 @@
+/* SCACCHI CINESI: legno chiaro con linee scure, pezzi come dischi d'avorio con la scritta rossa o nera */
+.xq { display: grid; justify-items: center; gap: .6rem; width: 100%; padding: .3rem 0 .6rem; }
+.xq-svg { width: min(94vw, 27rem, calc((100vh - 15rem) * .9)); min-width: 15rem; height: auto; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, .4)); }
+.xq-legno { fill: #e8c88f; stroke: #8a5a2b; stroke-width: 4; }
+.xq-linee line { stroke: #6b4420; stroke-width: 1.2; }
+.xq-fiume { fill: rgba(70, 90, 140, .55); font: italic 700 15px var(--serif); text-anchor: middle; }
+.xq-pz circle:first-of-type { fill: #f6e7c8; stroke: #6b4420; stroke-width: 1.4; filter: drop-shadow(0 1.5px 1.5px rgba(0, 0, 0, .4)); }
+.xq-pz .anello { fill: none; stroke-width: 1.2; }
+.xq-pz text { font: 800 10.5px var(--sans); text-anchor: middle; pointer-events: none; }
+.xq-pz text.cin { font: 700 17px serif; }
+.xq-pz.rosso .anello { stroke: #c0392b; } .xq-pz.rosso text { fill: #c0392b; }
+.xq-pz.nero .anello { stroke: #222; } .xq-pz.nero text { fill: #1d1d1d; }
+.xq-pz.puo { cursor: pointer; }
+.xq-pz.puo circle:first-of-type { stroke: #d19a2a; stroke-width: 2; }
+.xq-pz.sel circle:first-of-type { stroke: #ffd166; stroke-width: 3.5; }
+.xq-pz.preda { cursor: pointer; }
+.xq-pz.preda circle:first-of-type { stroke: #e74c3c; stroke-width: 3.5; }
+.xq-pz.scacco circle:first-of-type { fill: #ffd4cc; stroke: #e74c3c; stroke-width: 3; }
+.xq-dest { cursor: pointer; }
+.xq-dest circle { fill: rgba(46, 160, 90, .85); }
+.xq-dest circle.presa { fill: transparent; }
+.xq-orma { fill: rgba(124, 196, 255, .6); }
+.xq-arrivo { fill: none; stroke: rgba(124, 196, 255, .85); stroke-width: 3; }
+.xq-allarme { color: #ff8a7a; }
+.xq-mini { display: inline-block; width: .9rem; height: .9rem; border-radius: 50%; border: 2px solid; background: #f6e7c8; }
+.xq-mini.rosso { border-color: #c0392b; } .xq-mini.nero { border-color: #222; }
+.xq-pz text.lungo { font-size: 9px; letter-spacing: -.02em; }

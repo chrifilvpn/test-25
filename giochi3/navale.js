@@ -3,7 +3,7 @@
 // diagonale. Bisogna trovare tutte le navi. Gli schemi (navale-dati.js) sono stati creati al computer e il risolutore
 // di navale-logica.js ha controllato che abbiano UNA sola soluzione; in partita si girano e si specchiano a caso.
 // Da soli per il tempo; in sfida (2-8) tutti hanno lo stesso schema.
-const { SfidaRompicapo, FATTORE_LIVELLO, passoBot, caso, mescola } = require('./rompicapo-sfida');
+const { SfidaRompicapo, FATTORE_LIVELLO, passoBot, caso, mescola } = require('../giochi2/rompicapo-sfida');
 const { FLOTTE, LATI, forma, conteggi, trasforma } = require('./navale-logica');
 
 const AIUTO_MS = 20000;
