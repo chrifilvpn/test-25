@@ -128,3 +128,44 @@ for (const [id, p] of Object.entries(PISTE)) {
   assert.ok(V_MAX > 500);
   console.log(`✓ Corsa di macchinine: ${Object.keys(PISTE).length} piste chiuse senza incroci, semaforo, gas/freno/retromarcia/sterzo, erba, guard-rail, urti, giri con 8 checkpoint (niente scorciatoie), classifica e punti, ${gare} gare tra computer con 2-6 macchine (${finite}/${macchine} arrivate; vittorie f/m/d ${vinte.facile}/${vinte.medio}/${vinte.difficile}) in ${Date.now() - t0} ms`);
 }
+// ---- pista disegnata ----
+{
+  const { controllaPista, dalDisegno, pistaACaso, MONDO_W, MONDO_H } = M._test;
+  // un cerchio disegnato va bene; un otto (si incrocia) no; un ghirigoro con curve strettissime no; un giro aperto no
+  const cerchio = Array.from({ length: 120 }, (_, i) => [0.5 + 0.4 * Math.cos((i / 120) * 2 * Math.PI), 0.5 + 0.4 * Math.sin((i / 120) * 2 * Math.PI)]);
+  const r = dalDisegno(cerchio);
+  assert.ok(r.punti && r.punti.length >= 8, JSON.stringify(r));
+  for (const q of r.punti) assert.ok(q[0] >= 0 && q[0] <= MONDO_W && q[1] >= 0 && q[1] <= MONDO_H, 'dentro la mappa');
+  const otto = Array.from({ length: 200 }, (_, i) => { const t = (i / 200) * 2 * Math.PI; return [0.5 + 0.4 * Math.sin(t), 0.5 + 0.3 * Math.sin(2 * t)]; });
+  assert.ok(/incrocia|vicini/.test(dalDisegno(otto).errore || ''), 'l\'otto si incrocia');
+  const zig = Array.from({ length: 200 }, (_, i) => { const t = (i / 200) * 2 * Math.PI; return [0.5 + 0.4 * Math.cos(t) + 0.04 * Math.cos(t * 25), 0.5 + 0.4 * Math.sin(t) + 0.04 * Math.sin(t * 25)]; });
+  assert.ok(dalDisegno(zig).errore, 'troppe curve strette');
+  assert.ok(/Chiudi/.test(dalDisegno(cerchio.slice(0, 60)).errore || ''), 'mezzo giro non vale');
+  assert.ok(dalDisegno('ciao').errore && dalDisegno([[1, 'a']]).errore, 'disegni non validi');
+  for (let k = 0; k < 20; k++) assert.ok(controllaPista(pistaACaso()).ok, 'le piste a caso vanno bene');
+  // il disegno a tavolo: solo chi disegna, poi via
+  const g = M.crea({ n: 2, opzioni: { pista: 'disegnata', giri: 1 }, bot: [null, 'medio'] });
+  assert.strictEqual(g.fase, 'disegno');
+  assert.ok(g.vista(1).extra.disegno && g.vistaTick(0).fase === 'disegno');
+  assert.ok(g.azione(1, { tipo: 'caso' }).errore, 'disegna solo il primo');
+  assert.ok(g.azione(0, { tipo: 'via' }).errore, 'prima si disegna');
+  assert.ok(g.azione(0, { tipo: 'traccia', punti: otto }).errore);
+  assert.ok(g.azione(0, { tipo: 'traccia', punti: cerchio }).ok && g.bozza);
+  assert.ok(!g.tick(Date.now()), 'durante il disegno non si corre');
+  assert.ok(g.azione(0, { tipo: 'via' }).ok && g.fase === 'via' && g.pista.nome === 'Pista disegnata');
+  assert.ok(g.azione(0, { tipo: 'caso' }).errore, 'a gara cominciata non si disegna più');
+  // tempo scaduto: si parte con una pista a caso
+  const h = M.crea({ n: 2, opzioni: { pista: 'disegnata' }, bot: [null, null] });
+  h.fineDisegno = Date.now() - 1; assert.ok(h.tick(Date.now()) && h.fase === 'via');
+  // tutti computer: pista inventata subito, e le gare finiscono
+  let finite = 0, macchine = 0;
+  for (let k = 0; k < 12; k++) {
+    const c = M.crea({ n: 3, opzioni: { pista: 'disegnata', giri: 1 }, bot: ['facile', 'medio', 'difficile'] });
+    assert.strictEqual(c.pista.nome, 'Pista inventata');
+    let ora = Date.now(), passi = 0;
+    while (!c.finita) { ora += 33; if (c.fase !== 'gioco') c.fineFase = Math.min(c.fineFase, ora); c.tick(ora); assert.ok(++passi < 40000); }
+    for (const a of c.auto) { macchine++; if (a.fine !== null) finite++; }
+  }
+  assert.ok(finite > macchine * 0.85, `i computer finiscono le piste inventate (${finite}/${macchine})`);
+  console.log(`✓ Corsa con la pista disegnata: disegno lisciato e ingrandito, giri che si incrociano o con curve troppo strette rifiutati, pista a caso, tempo per disegnare, ${finite}/${macchine} macchine arrivate su piste inventate`);
+}

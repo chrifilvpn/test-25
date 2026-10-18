@@ -1,0 +1,57 @@
+/* CRUCIVERBA: schema su carta color avorio, caselle nere piene, la parola scelta in giallo chiaro e la casella in oro */
+.cv { --lato: min(calc((100vh - 15rem) / var(--r)), calc(min(46rem, 100vw - 2rem) / var(--c)), 3.1rem); width: min(78rem, 100%); margin: 0 auto; display: grid; gap: .6rem; padding-bottom: 1rem; }
+.cv-corpo { display: grid; grid-template-columns: auto minmax(16rem, 24rem); gap: 1.2rem; justify-content: center; align-items: start; }
+.cv-sinistra { display: grid; justify-items: center; gap: .6rem; }
+.cv-def { display: flex; align-items: center; gap: .4rem; width: calc(var(--lato) * var(--c) + 1.2rem); min-width: min(24rem, 92vw); max-width: 92vw; padding: .45rem .5rem; border-radius: 12px; background: #fff7df; color: #2a2414; box-shadow: 0 4px 14px rgba(0, 0, 0, .25); }
+.cv-def p { flex: 1; margin: 0; font: 400 1.02rem/1.3 var(--sans); }
+.cv-def b { color: #8a5a00; margin-right: .2rem; }
+.cv-def small { color: #7a705a; }
+.cv-freccia { flex: none; width: 2rem; height: 2rem; border-radius: 50%; border: 0; background: #efe2bd; color: #4a3b10; font: 700 1.3rem/1 var(--sans); cursor: pointer; }
+.cv-freccia:hover { background: #e6d29b; }
+.cv-carta { padding: .6rem; border-radius: 10px; background: #fbf6e8; box-shadow: 0 10px 30px rgba(0, 0, 0, .35), inset 0 0 0 1px rgba(0, 0, 0, .08); }
+.cv-griglia { display: grid; grid-template-columns: repeat(var(--c), var(--lato)); grid-auto-rows: var(--lato); border: 2px solid #1c1a14; background: #1c1a14; gap: 1px; }
+.cv-n { background: #1c1a14; }
+.cv-c { position: relative; display: grid; place-items: center; padding: 0; border: 0; background: #fffdf6; color: #1c1a14; font: 600 calc(var(--lato) * .58) / 1 var(--serif); cursor: pointer; text-transform: uppercase; }
+.cv-c small { position: absolute; top: 1px; left: 2px; font: 600 calc(var(--lato) * .26) / 1 var(--sans); color: #3b3526; }
+.cv-c.parola { background: #fff0b3; }
+.cv-c.sel { background: #ffc94d; box-shadow: inset 0 0 0 2px #b77b00; }
+.cv-c.fissa span { color: #2f5fb3; }
+.cv-c.errata span { color: #d0312d; text-decoration: line-through; text-decoration-thickness: 2px; }
+.cv-c.errata { background: #ffe1dc; }
+.cv-c.sel.errata { background: #ffb6a8; }
+.cv-c.mancava span { color: #2e8b57; }
+.cv-c.sbagliata span { color: #d0312d; }
+.cv.finito .cv-c { cursor: default; }
+.cv-elenchi { display: grid; gap: .8rem; max-height: calc(100vh - 12rem); }
+.cv-elenchi section { display: grid; grid-template-rows: auto 1fr; min-height: 0; background: rgba(0, 0, 0, .2); border-radius: 12px; padding: .5rem .3rem .5rem .6rem; }
+.cv-elenchi h3 { margin: 0 0 .3rem; font: 600 .85rem var(--sans); letter-spacing: .08em; text-transform: uppercase; color: var(--oro); }
+.cv-elenchi ol { list-style: none; margin: 0; padding: 0 .3rem 0 0; overflow-y: auto; max-height: calc((100vh - 17rem) / 2); display: grid; gap: .1rem; align-content: start; }
+.cv-elenchi li { padding: .25rem .4rem; border-radius: 7px; cursor: pointer; font-size: .9rem; line-height: 1.25; }
+.cv-elenchi li:hover { background: rgba(255, 255, 255, .07); }
+.cv-elenchi li b { display: inline-block; min-width: 1.4rem; color: var(--oro); }
+.cv-elenchi li small { color: var(--tenue); }
+.cv-elenchi li.attiva { background: rgba(255, 201, 77, .22); box-shadow: inset 3px 0 0 #ffc94d; }
+.cv-elenchi li.incrocio { background: rgba(255, 255, 255, .06); }
+.cv-elenchi li em { font-style: normal; font-weight: 700; color: #9fe0b0; letter-spacing: .05em; margin-left: .3rem; }
+.cv-comandi { display: flex; flex-wrap: wrap; gap: .4rem; justify-content: center; }
+/* tastiera sullo schermo: solo dove non c'è la tastiera vera */
+.cv-tasti { display: none; gap: .3rem; width: min(30rem, 96vw); }
+.cv-tasti > div { display: flex; gap: .25rem; justify-content: center; }
+.cv-tasti button { flex: 1; max-width: 2.6rem; height: 2.7rem; border: 0; border-radius: 7px; background: #f3ecd6; color: #2a2414; font: 600 1.05rem var(--sans); box-shadow: 0 2px 0 #b9ab86; touch-action: manipulation; }
+.cv-tasti button:active { transform: translateY(2px); box-shadow: none; }
+.cv-tasti button.largo { max-width: 3.6rem; flex: 1.5; background: #e2d4ad; }
+/* sul telefono la tastiera resta in fondo allo schermo, la definizione in alto, e lo schema scorre in mezzo */
+@media (pointer: coarse) {
+  .cv-tasti { display: grid; position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; width: auto; padding: .45rem .3rem calc(.45rem + env(safe-area-inset-bottom)); background: rgba(14, 30, 24, .97); box-shadow: 0 -6px 18px rgba(0, 0, 0, .35); }
+  .cv { padding-bottom: 11.5rem; }
+  .cv-def { position: sticky; top: .2rem; z-index: 5; }
+  .cv-c { scroll-margin: 5.5rem 0 11.5rem; }
+}
+@media (max-width: 900px) {
+  .cv { --lato: min(calc((100vw - 3rem) / var(--c)), 2.6rem); }
+  .cv-corpo { grid-template-columns: 1fr; }
+  .cv-elenchi { max-height: none; grid-template-columns: 1fr 1fr; gap: .5rem; }
+  .cv-elenchi ol { max-height: 16rem; }
+  .cv-elenchi li { font-size: .8rem; }
+}
+@media (max-width: 520px) { .cv-elenchi { grid-template-columns: 1fr; } }

@@ -2,6 +2,10 @@
 // semplice: acceleratore, freno (e retromarcia), sterzo, derapata quando si gira forte (o col freno a mano), l'erba
 // fa rallentare, le macchine si urtano. Partenza col semaforo, giri a scelta, checkpoint lungo la pista (niente
 // scorciatoie: un giro vale solo se si passa da tutti), classifica dal vivo. Il computer segue la linea ideale.
+// PISTA DISEGNATA: prima della gara chi ha aperto il tavolo disegna un giro col mouse o col dito; il server lo liscia
+// (punti a distanza costante, curva morbida), lo ingrandisce a tutta la mappa e controlla che l'asfalto non si
+// sovrapponga e che le curve non siano troppo strette. Se tutti i posti sono del computer (o il tempo finisce) la
+// pista la inventa il gioco.
 const { Arena } = require('../giochi/arena');
 
 // ---------- le piste: punti di controllo di una curva chiusa (Catmull-Rom), larghezza ----------
@@ -41,6 +45,72 @@ function lineaDi(punti) {
   }
   return out;
 }
+// ---------- piste disegnate ----------
+const MONDO_W = 3300, MONDO_H = 2150, BORDO = 330, LARGA_DIS = 160, SPAZIO_DIS = 230, TEMPO_DISEGNO = 150000;
+// la pista va bene? L'asfalto non si tocca con un altro pezzo di pista e le curve non sono più strette della pista
+function controllaPista(punti, larga = LARGA_DIS) {
+  const C = lineaDi(punti), N = C.length;
+  if (N * PASSO_C < 4200) return { errore: 'La pista è troppo corta: disegna un giro più lungo' };
+  const salto = Math.ceil((larga * Math.PI) / PASSO_C); // più lontani di mezzo giro di curva stretta
+  for (let i = 0; i < N; i++) {
+    for (let j = i + salto; j < N; j++) {
+      if (N - (j - i) < salto) break;
+      if ((C[i].x - C[j].x) ** 2 + (C[i].y - C[j].y) ** 2 < (larga * 1.3) ** 2) return { errore: 'La pista si incrocia o due tratti sono troppo vicini: disegna un giro che non si tocca' };
+    }
+  }
+  for (let i = 0; i < N; i++) {
+    const a = C[(i - 3 + N) % N], b = C[(i + 3) % N];
+    const k = Math.abs(angolo(Math.atan2(b.ty, b.tx) - Math.atan2(a.ty, a.tx))) / (6 * PASSO_C);
+    if (k > 1 / (larga * 0.5)) return { errore: 'C\'è una curva troppo stretta: disegna curve più larghe' };
+  }
+  return { ok: true };
+}
+// dal tratto disegnato (punti tra 0 e 1 nel riquadro del disegno) ai punti di controllo della pista
+function dalDisegno(tratto) {
+  if (!Array.isArray(tratto) || tratto.length < 10 || tratto.length > 2000) return { errore: 'Disegna un giro intero, tenendo premuto' };
+  const pt = [];
+  for (const q of tratto) {
+    if (!Array.isArray(q) || !Number.isFinite(q[0]) || !Number.isFinite(q[1])) return { errore: 'Disegno non valido' };
+    pt.push([Math.max(-0.2, Math.min(1.2, q[0])) * MONDO_W, Math.max(-0.2, Math.min(1.2, q[1])) * MONDO_H]);
+  }
+  // ingrandito (o rimpicciolito) per riempire la mappa, al centro
+  const xs = pt.map((q) => q[0]), ys = pt.map((q) => q[1]);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  if (Math.max(x1 - x0, y1 - y0) < 60) return { errore: 'Disegno troppo piccolo' };
+  const s = Math.min((MONDO_W - 2 * BORDO) / Math.max(1, x1 - x0), (MONDO_H - 2 * BORDO) / Math.max(1, y1 - y0), 6);
+  const ox = (MONDO_W - (x1 - x0) * s) / 2, oy = (MONDO_H - (y1 - y0) * s) / 2;
+  const mondo = pt.map((q) => [ox + (q[0] - x0) * s, oy + (q[1] - y0) * s]);
+  // il giro si chiude da solo; il tratto si ricampiona a distanza costante (così la curva viene morbida)
+  if (Math.hypot(mondo[0][0] - mondo[mondo.length - 1][0], mondo[0][1] - mondo[mondo.length - 1][1]) > (MONDO_W + MONDO_H) * 0.22) return { errore: 'Chiudi il giro: finisci vicino a dove hai cominciato' };
+  mondo.push(mondo[0]);
+  let tot = 0; const lun = [0];
+  for (let i = 1; i < mondo.length; i++) { tot += Math.hypot(mondo[i][0] - mondo[i - 1][0], mondo[i][1] - mondo[i - 1][1]); lun.push(tot); }
+  const K = Math.max(8, Math.min(48, Math.round(tot / SPAZIO_DIS)));
+  const punti = [];
+  let j = 0;
+  for (let k = 0; k < K; k++) {
+    const d = (k / K) * tot;
+    while (lun[j + 1] < d) j++;
+    const a = mondo[j], b = mondo[j + 1], u = (d - lun[j]) / Math.max(1e-9, lun[j + 1] - lun[j]);
+    punti.push([Math.round(a[0] + (b[0] - a[0]) * u), Math.round(a[1] + (b[1] - a[1]) * u)]);
+  }
+  const c = controllaPista(punti);
+  return c.errore ? c : { punti };
+}
+// una pista inventata: un giro "a stella" con raggi a caso intorno al centro, finché non va bene
+function pistaACaso() {
+  for (let t = 0; t < 400; t++) {
+    const K = 9 + Math.floor(Math.random() * 6), rx = (MONDO_W - 2 * BORDO) / 2, ry = (MONDO_H - 2 * BORDO) / 2;
+    const punti = [];
+    for (let k = 0; k < K; k++) {
+      const a = ((k + (Math.random() - 0.5) * 0.5) / K) * Math.PI * 2, r = 0.5 + Math.random() * 0.5;
+      punti.push([Math.round(MONDO_W / 2 + Math.cos(a) * rx * r), Math.round(MONDO_H / 2 + Math.sin(a) * ry * r)]);
+    }
+    if (Math.random() < 0.5) punti.reverse();
+    if (controllaPista(punti).ok) return punti;
+  }
+  return PISTE.parco.punti;
+}
 const angolo = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
 
 const ACC = 560, FRENO = 1300, RETRO = 190, V_MAX = 640, V_ERBA = 250, STERZO = 2.7, R_AUTO = 19;
@@ -58,17 +128,64 @@ class Corsa extends Arena {
     this.nRound = 1;
     this.W = 1000; this.H = 640;
     const op = o.opzioni || {};
-    this.idPista = PISTE[op.pista] ? op.pista : 'parco';
+    this.idPista = PISTE[op.pista] || op.pista === 'disegnata' ? op.pista : 'parco';
     this.nGiri = [3, 5, 1].includes(Number(op.giri)) ? Number(op.giri) : 3;
     this.collisioni = op.urti !== 'no';
-    this.pista = PISTE[this.idPista];
-    this.C = lineaDi(this.pista.punti);
+    this.etichettaPunti = 'punti';
+    if (this.idPista === 'disegnata') {
+      // prima si disegna: la pista la disegna la prima persona al tavolo (con soli computer la inventa il gioco)
+      this.disegnatore = this.bot.findIndex((b) => !b);
+      if (this.disegnatore < 0) { this.usaPista(pistaACaso(), 'Pista inventata'); this.avvia(); return; }
+      this.fase = 'disegno'; this.bozza = null; this.fineDisegno = Date.now() + TEMPO_DISEGNO;
+      return;
+    }
+    this.usaPista(PISTE[this.idPista].punti, PISTE[this.idPista].nome, PISTE[this.idPista].larga);
+    this.avvia();
+  }
+  usaPista(punti, nome, larga = LARGA_DIS) {
+    this.pista = { nome, larga, punti };
+    this.C = lineaDi(punti);
     this.N = this.C.length;
-    this.mezza = this.pista.larga / 2;
+    this.mezza = larga / 2;
     this.porte = Array.from({ length: N_CP }, (_, k) => Math.floor((k * this.N) / N_CP));
     this.preparaLinea();
-    this.etichettaPunti = 'punti';
+  }
+  // ---- il disegno della pista (solo con la pista disegnata, prima della gara) ----
+  azione(p, a) {
+    if (this.fase !== 'disegno') return { errore: 'La gara è già cominciata' };
+    if (p !== this.disegnatore) return { errore: 'La pista la disegna chi ha aperto il tavolo' };
+    if (!a || typeof a.tipo !== 'string') return { errore: 'Mossa non valida' };
+    if (a.tipo === 'traccia') { const r = dalDisegno(a.punti); if (r.errore) return r; this.bozza = r.punti; return { ok: true }; }
+    if (a.tipo === 'caso') { this.bozza = pistaACaso(); return { ok: true }; }
+    if (a.tipo === 'cancella') { this.bozza = null; return { ok: true }; }
+    if (a.tipo === 'via') {
+      if (!this.bozza) return { errore: 'Prima disegna la pista' };
+      this.partiDisegnata();
+      return { ok: true };
+    }
+    return { errore: 'Mossa non valida' };
+  }
+  partiDisegnata() {
+    this.usaPista(this.bozza || pistaACaso(), this.bozza ? 'Pista disegnata' : 'Pista inventata');
+    this.annuncia(this.disegnatore, 'ha disegnato la pista: si parte! ✏️🏁', 'la tua pista è pronta: si parte! ✏️🏁', true);
     this.avvia();
+  }
+  tick(ora) {
+    if (this.fase === 'disegno') {
+      if (this.finita || this.inPausa) return false;
+      // tempo finito, o chi disegnava è uscito (al suo posto c'è il computer): si parte con la bozza o una pista a caso
+      if (ora >= this.fineDisegno || this.bot[this.disegnatore]) { this.partiDisegnata(); return true; }
+      return false;
+    }
+    return super.tick(ora);
+  }
+  impostaPausa(si) {
+    if (this.fase === 'disegno') { if (si !== this.inPausa && !si && this.pausaDal) this.fineDisegno += Date.now() - this.pausaDal; this.pausaDal = si ? Date.now() : null; this.inPausa = si; return; }
+    super.impostaPausa(si);
+  }
+  vistaTick(posto) {
+    if (this.fase === 'disegno') return { ts: Date.now(), fase: 'disegno', round: 0, pausa: this.inPausa, via: 0, t: 0, s: null };
+    return super.vistaTick(posto);
   }
   // la linea ideale: verso l'interno delle curve (curvatura media dei punti vicini), e la curvatura che serve
   // al computer per sapere quanto frenare
@@ -245,7 +362,9 @@ class Corsa extends Arena {
     return m.ingresso;
   }
 
-  vistaExtra() { return { pista: this.idPista, nome: this.pista.nome, punti: this.pista.punti, larga: this.pista.larga, porte: this.porte, giri: this.nGiri, semaforo: SEMAFORO, verde: VERDE, fuori: FUORI }; }
+  vistaExtra() {
+    if (this.fase === 'disegno') return { disegno: true, disegnatore: this.disegnatore, bozza: this.bozza, larga: LARGA_DIS, mondo: [MONDO_W, MONDO_H], resta: Math.max(0, this.fineDisegno - (this.inPausa ? this.pausaDal : Date.now())), giri: this.nGiri };
+    return { pista: this.idPista, nome: this.pista.nome, punti: this.pista.punti, larga: this.pista.larga, porte: this.porte, giri: this.nGiri, semaforo: SEMAFORO, verde: VERDE, fuori: FUORI }; }
   statoTick() {
     const r1 = (v) => Math.round(v * 10) / 10;
     const urti = this.urti; this.urti = [];
@@ -272,7 +391,7 @@ module.exports = {
     descrizione: 'Macchinine viste dall\'alto su quattro piste: semaforo, derapate, sorpassi e spintoni. Vince chi finisce i giri per primo.',
     alias: ['macchine', 'macchinine', 'auto', 'gara', 'formula', 'racing', 'micro machines', 'kart'],
     opzioni: [
-      { id: 'pista', nome: 'Pista', valori: ['parco', 'citta', 'collina', 'porto'], etichette: ['Anello del parco (facile)', 'Giro della città (curve a gomito)', 'Collina tortuosa (difficile)', 'Molo del porto (tornante)'], predefinito: 'parco' },
+      { id: 'pista', nome: 'Pista', valori: ['parco', 'citta', 'collina', 'porto', 'disegnata'], etichette: ['Anello del parco (facile)', 'Giro della città (curve a gomito)', 'Collina tortuosa (difficile)', 'Molo del porto (tornante)', 'La disegni tu ✏️'], predefinito: 'parco' },
       { id: 'giri', nome: 'Giri', valori: [3, 5, 1], etichette: ['3 giri', '5 giri', '1 giro'], predefinito: 3 },
       { id: 'urti', nome: 'Urti tra le macchine', valori: ['si', 'no'], etichette: ['Le macchine si urtano', 'Le macchine si passano attraverso'], predefinito: 'si' },
     ],
@@ -280,6 +399,7 @@ module.exports = {
       'Da 2 a 6 macchinine su una pista chiusa vista dall\'alto (i posti vuoti li fa il computer). Si sceglie la pista (4) e i giri (1, 3 o 5).',
       'Si parte col semaforo: si accendono le luci rosse e quando diventa verde si va. Prima del verde la macchina resta ferma.',
       'Comandi sul computer: freccia su (o W) accelera, freccia giù (o S) frena e poi va in retromarcia, frecce destra e sinistra (o A e D) sterzano, spazio è il freno a mano (si gira più stretto, derapando).',
+      'PISTA DISEGNATA: prima della gara chi ha aperto il tavolo disegna un giro col mouse o col dito (gli altri lo vedono comparire). Il gioco lo rende morbido e lo allarga a tutta la mappa; non vale se la pista si incrocia, se due tratti sono troppo vicini o se c\'è una curva troppo stretta. Si parte nel verso in cui è stata disegnata. C\'è anche il pulsante per una pista a caso; dopo due minuti e mezzo si parte comunque.',
       'Sul telefono ci sono due modi (si cambia col pulsante 🕹️): i pulsanti ◀ ▶ per sterzare con ⏫ gas e 🛑 freno, oppure "dito" dove l\'acceleratore è sempre premuto e si sterza trascinando il dito a destra o a sinistra sul campo (🛑 frena).',
       'Se si gira forte ad alta velocità la macchina derapa (scivola di lato) e perde velocità. Fuori dall\'asfalto, sull\'erba, si va molto più piano; più in là c\'è il guard-rail. Le macchine si urtano e si spingono (si può togliere con un\'opzione).',
       'Lungo la pista ci sono 8 checkpoint invisibili: un giro conta solo se si passa da tutti, in ordine. Tagliare per l\'erba non serve, e andare contromano nemmeno (compare la scritta).',
@@ -291,5 +411,5 @@ module.exports = {
   },
   crea: (o) => new Corsa(o),
   bot: () => ({}),
-  _test: { Corsa, PISTE, lineaDi, SEMAFORO, N_CP, V_MAX, PASSO_C },
+  _test: { Corsa, PISTE, lineaDi, SEMAFORO, N_CP, V_MAX, PASSO_C, controllaPista, dalDisegno, pistaACaso, MONDO_W, MONDO_H },
 };

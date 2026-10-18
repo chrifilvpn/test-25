@@ -6,6 +6,8 @@
   const { suono } = window.Nuovi;
   const V_BASE = 3.3, V_PIU = 0.55;
   const NOMI_COL = ['rosso', 'blu', 'verde', 'giallo'];
+  const SQ_COL = ['#ff5a4e', '#4ea3ff'], SQ_NOME = ['rossa', 'blu'];
+  const sq = (p, i) => (p.extra && p.extra.aSquadre ? i % 2 : null);
   const ANGOLI = ['in alto a sinistra', 'in basso a destra', 'in alto a destra', 'in basso a sinistra'];
   let fumi = [], scoppi = [], vistiVivi = null, ultimoPreso = null;
 
@@ -122,10 +124,12 @@
     for (const [w, h] of forme) disegna(w * (w > h ? 1 : 0.3), h * (h > w ? 1 : 0.3), '#fff3b0');
     g.restore();
   }
-  function omino(g, x, y, T, col, dir, mov, t, io, nome) {
+  function omino(g, x, y, T, col, dir, mov, t, io, nome, squadra = null) {
     const passo = mov ? Math.sin(t * 16) : 0;
     const r = T * 0.32;
     g.save(); g.translate(x, y);
+    // a squadre: un anello del colore della squadra sotto i piedi
+    if (squadra !== null) { g.strokeStyle = SQ_COL[squadra]; g.lineWidth = 3; g.beginPath(); g.ellipse(0, r + 6, r * 1.15, 7, 0, 0, Math.PI * 2); g.stroke(); }
     g.fillStyle = 'rgba(0,0,0,.28)'; g.beginPath(); g.ellipse(0, r + 7, r * 0.9, 5, 0, 0, Math.PI * 2); g.fill();
     // piedi
     g.fillStyle = '#2b2b33'; g.beginPath(); g.ellipse(-r * 0.45, r + 3 + passo * 2, 6, 4, 0, 0, Math.PI * 2); g.ellipse(r * 0.45, r + 3 - passo * 2, 6, 4, 0, 0, Math.PI * 2); g.fill();
@@ -154,8 +158,8 @@
     nomeAzione: '💣',
     obiettivo: 'punti',
     istruzioni: () => (window.Arena.touch() ? 'Joystick per muoverti, 💣 per piazzare una bomba.' : 'WASD o frecce per muoverti, spazio per piazzare una bomba.') + ' Rompi i mattoni, prendi i potenziamenti e resta l\'ultimo in piedi!',
-    ruolo: (p, s, ctx) => `sei il ${NOMI_COL[ctx.mio] || ''}, ${ANGOLI[ctx.mio] || ''}`,
-    sottotitolo: (p, ctx) => `sei il ${NOMI_COL[ctx.mio] || ''}`,
+    ruolo: (p, s, ctx) => (sq(p, ctx.mio) !== null ? `squadra ${SQ_NOME[sq(p, ctx.mio)]} con ${ctx.nome(ctx.mio ^ 2)}, ${ANGOLI[ctx.mio] || ''}` : `sei il ${NOMI_COL[ctx.mio] || ''}, ${ANGOLI[ctx.mio] || ''}`),
+    sottotitolo: (p, ctx) => (sq(p, ctx.mio) !== null ? `squadra ${SQ_NOME[sq(p, ctx.mio)]}` : `sei il ${NOMI_COL[ctx.mio] || ''}`),
     statoGioco: (ctx, s) => { const e = s.s.e[ctx.mio]; if (!e) return ''; if (!e.v) return 'Sei saltato in aria: guarda gli altri'; return s.s.tr > 0 ? 'Piazza le bombe!' : 'La mappa si restringe!'; },
     hud: (ctx, s) => {
       const io = s.s.io, vivi = s.s.e.filter((e) => e.v).length;
@@ -164,6 +168,11 @@
     },
     fineRound: (p, s, ctx) => {
       const vivi = s.s.e.filter((e) => e.v);
+      if (sq(p, ctx.mio) !== null) {
+        const sqv = [...new Set(vivi.map((e) => e.id % 2))];
+        const tot = (t) => p.punti.reduce((a, x, q) => a + (q % 2 === t ? x : 0), 0), mia = ctx.mio % 2;
+        return `${sqv.length === 1 ? (sqv[0] === mia ? 'La tua squadra vince il round!' : `Vince la squadra ${SQ_NOME[sqv[0]]}`) : 'Round pari'} · squadre ${tot(mia)} a ${tot(1 - mia)}`;
+      }
       const chi = vivi.length === 1 ? (vivi[0].id === ctx.mio ? 'Hai vinto il round!' : `Vince ${ctx.nome(vivi[0].id)}`) : 'Round pari';
       return `${chi} · tuoi punti: ${p.punti[ctx.mio]}`;
     },
@@ -215,7 +224,7 @@
         const a = ep.get(e.id);
         const x = a && a.v && e.id !== ctx.mio && Math.abs(a.x - e.x) < 2 && Math.abs(a.y - e.y) < 2 ? a.x + (e.x - a.x) * u : e.x;
         const y = a && a.v && e.id !== ctx.mio && Math.abs(a.x - e.x) < 2 && Math.abs(a.y - e.y) < 2 ? a.y + (e.y - a.y) * u : e.y;
-        omino(g, x * T + T / 2, y * T + T / 2, T, COLORI[e.id % COLORI.length], e.d, e.m, t, e.id === ctx.mio, e.id === ctx.mio ? 'Tu' : ctx.nome(e.id).slice(0, 9));
+        omino(g, x * T + T / 2, y * T + T / 2, T, COLORI[e.id % COLORI.length], e.d, e.m, t, e.id === ctx.mio, e.id === ctx.mio ? 'Tu' : ctx.nome(e.id).slice(0, 9), sq(p, e.id));
       }
       // blocchi che cadono dall'alto
       for (const [i, tc] of st.k) {

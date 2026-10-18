@@ -178,6 +178,8 @@ giochi3/bugiardi.js
 giochi3/catena.js
 giochi3/chiamata.js
 giochi3/conquista.js
+giochi3/cruciverba-dati.js
+giochi3/cruciverba.js
 giochi3/damaint.js
 giochi3/forza3d.js
 giochi3/freecell.js
@@ -376,6 +378,8 @@ public/js/giochi3/chiamata.css
 public/js/giochi3/chiamata.js
 public/js/giochi3/conquista.css
 public/js/giochi3/conquista.js
+public/js/giochi3/cruciverba.css
+public/js/giochi3/cruciverba.js
 public/js/giochi3/damaint.css
 public/js/giochi3/damaint.js
 public/js/giochi3/forza3d.css
@@ -457,6 +461,7 @@ test/giochi3/bugiardi.js
 test/giochi3/catena.js
 test/giochi3/chiamata.js
 test/giochi3/conquista.js
+test/giochi3/cruciverba.js
 test/giochi3/damaint.js
 test/giochi3/forza3d.js
 test/giochi3/freecell.js

@@ -2,6 +2,9 @@
 // parole possibile collegando lettere vicine (anche in diagonale), senza usare due volte lo stesso dado. Tutti insieme,
 // ognuno per conto suo: degli altri durante il round si vede solo quante parole hanno trovato. Alla fine si vedono le
 // parole di tutti: quelle trovate da più giocatori (con l'opzione classica) non valgono. Punti per lunghezza.
+// A SQUADRE (4, 6 o 8 giocatori, due squadre a posti alterni): i compagni cercano insieme sulla stessa griglia e
+// vedono subito le parole degli altri della squadra (una parola vale una volta per squadra); con l'opzione classica
+// si annullano le parole trovate da tutte e due le squadre.
 // Le parole devono essere nel dizionario italiano del gioco (paroliere-dati.js: più di 330.000 parole, comprese tutte
 // le forme flesse). I computer hanno un orologio loro (scadenza): trovano le parole un po' alla volta durante il round.
 const D = require('./paroliere-dati');
@@ -91,6 +94,8 @@ class Paroliere {
     this.doppieAnnullate = opzioni.doppie !== 'valgono';
     this.nRound = [1, 2, 3].includes(Number(opzioni.round)) ? Number(opzioni.round) : 1;
     this.bot = Array.from({ length: n }, (_, i) => bot[i] || null);
+    this.aSquadre = opzioni.squadre === 'si' && n >= 4 && n % 2 === 0;
+    this.squadra = Array.from({ length: n }, (_, i) => (this.aSquadre ? i % 2 : i));
     this.punti = new Array(n).fill(0);
     this.storico = []; // i round finiti: { griglia, parole: [[...]], punti: [...] }
     this.round = 0;
@@ -163,7 +168,16 @@ class Paroliere {
     return cambiato;
   }
 
+  // le parole della squadra di p (da soli o senza squadre: le sue), con chi le ha trovate, in ordine di scoperta
+  diSquadra(p) {
+    if (!this.aSquadre) return this.parole[p].map((x) => ({ ...x, chi: p }));
+    const out = [];
+    for (let q = 0; q < this.n; q++) if (this.squadra[q] === this.squadra[p]) for (const x of this.parole[q]) out.push({ ...x, chi: q });
+    return out.sort((a, b) => a.ms - b.ms);
+  }
   aggiungi(p, w) {
+    // a squadre un computer non riporta una parola già trovata da un compagno
+    if (this.aSquadre && this.diSquadra(p).some((x) => x.w === w)) return;
     this.parole[p].push({ w, ms: Date.now() - this.inizio });
     if (w.length >= 8 && this.n > 1) this.annuncia(p, `trova una parola da ${w.length} lettere! 🔥`, `parola da ${w.length} lettere! 🔥`);
   }
@@ -189,7 +203,8 @@ class Paroliere {
     const w = D.normalizza(a.parola);
     if (w.length < this.minimo) return { errore: `Servono almeno ${this.minimo} lettere` };
     if (w.length > 25) return { errore: 'Parola troppo lunga' };
-    if (this.parole[p].some((x) => x.w === w)) return { errore: `${w.toUpperCase()}: l'hai già trovata` };
+    const gia = this.diSquadra(p).find((x) => x.w === w);
+    if (gia) return { errore: gia.chi === p ? `${w.toUpperCase()}: l'hai già trovata` : `${w.toUpperCase()}: l'ha già trovata un compagno` };
     if (!percorso(this.griglia, this.lato, w)) return { errore: `${w.toUpperCase()} non si può comporre sulla griglia (lettere vicine, ogni dado una volta)` };
     if (!D.esiste(w)) return { errore: `${w.toUpperCase()} non è nel dizionario italiano del gioco` };
     this.aggiungi(p, w);
@@ -210,16 +225,18 @@ class Paroliere {
       const pi = this.piano[p];
       while (pi && pi.length) this.aggiungi(p, pi.shift().w);
     }
-    const quanti = {};
-    for (const el of this.parole) for (const x of el) quanti[x.w] = (quanti[x.w] || 0) + 1;
+    // quante squadre (o giocatori, senza squadre) hanno trovato ogni parola
+    const quanti = {}, chi = {};
+    this.parole.forEach((el, q) => { for (const x of el) { (chi[x.w] = chi[x.w] || new Set()).add(this.squadra[q]); quanti[x.w] = chi[x.w].size; } });
     const conta = this.doppieAnnullate && this.n > 1;
     const puntiRound = this.parole.map((el) => el.reduce((s, x) => s + (conta && quanti[x.w] > 1 ? 0 : puntiDi(x.w)), 0));
     puntiRound.forEach((x, p) => { this.punti[p] += x; });
+    const puntiSquadre = this.aSquadre ? [0, 1].map((t) => puntiRound.reduce((s, x, q) => s + (this.squadra[q] === t ? x : 0), 0)) : null;
     const trovate = new Set(Object.keys(quanti));
     this.esitoRound = {
       prima,
       parole: this.parole.map((el) => el.map((x) => ({ w: x.w, punti: puntiDi(x.w), doppia: quanti[x.w] > 1 })).sort((a, b) => b.w.length - a.w.length || (a.w < b.w ? -1 : 1))),
-      punti: puntiRound,
+      punti: puntiRound, puntiSquadre,
       totale: this.tutte.length,
       mancate: this.tutte.filter((w) => !trovate.has(w)).slice(0, 40).map((w) => ({ w, punti: puntiDi(w) })),
     };
@@ -229,7 +246,11 @@ class Paroliere {
     this.fineRisultati = Date.now() + PAUSA_RISULTATI;
     const migliore = Math.max(...puntiRound);
     const primi = puntiRound.map((x, i) => (x === migliore ? i : -1)).filter((i) => i >= 0);
-    if (this.n > 1 && primi.length === 1) this.annuncia(primi[0], `vince il round con ${migliore} punti`, `round vinto con ${migliore} punti! 🎉`, true);
+    if (puntiSquadre) {
+      const t = puntiSquadre[0] === puntiSquadre[1] ? null : puntiSquadre[0] > puntiSquadre[1] ? 0 : 1;
+      if (t == null) this.annuncia(null, `Round pari: ${puntiSquadre[0]} a ${puntiSquadre[1]}`, '', true);
+      else this.annuncia(t, `la sua squadra vince il round ${Math.max(...puntiSquadre)} a ${Math.min(...puntiSquadre)}`, `la tua squadra vince il round ${Math.max(...puntiSquadre)} a ${Math.min(...puntiSquadre)}! 🎉`, true);
+    } else if (this.n > 1 && primi.length === 1) this.annuncia(primi[0], `vince il round con ${migliore} punti`, `round vinto con ${migliore} punti! 🎉`, true);
     else this.annuncia(null, prima ? 'Round finito' : '⏰ Tempo scaduto!', '', true);
   }
 
@@ -241,6 +262,12 @@ class Paroliere {
 
   chiudi() {
     this.finita = true;
+    if (this.aSquadre) {
+      const fazioni = [0, 1].map((t) => { const posti = this.squadra.map((s, q) => (s === t ? q : -1)).filter((q) => q >= 0); return { posti, punti: posti.reduce((s, q) => s + this.punti[q], 0) }; });
+      const pari = fazioni[0].punti === fazioni[1].punti;
+      this.risultato = { fazioni, etichetta: 'punti', pareggio: pari, vincitori: pari ? [] : fazioni[fazioni[0].punti > fazioni[1].punti ? 0 : 1].posti };
+      return;
+    }
     const max = Math.max(...this.punti);
     const v = this.punti.map((x, i) => (x === max ? i : -1)).filter((i) => i >= 0);
     this.risultato = {
@@ -258,7 +285,8 @@ class Paroliere {
       minimo: this.minimo, doppieAnnullate: this.doppieAnnullate, durata: this.durata,
       resta: gioco ? Math.max(0, this.fine - Date.now()) : 0,
       restaRisultati: !gioco && !this.finita ? Math.max(0, this.fineRisultati - Date.now()) : 0,
-      mie: this.parole[q].map((x) => x.w),
+      mie: this.diSquadra(q).map((x) => x.w), mieChi: this.diSquadra(q).map((x) => x.chi),
+      aSquadre: this.aSquadre, squadra: this.squadra,
       mioFinito: this.finito[q], mioPronto: this.pronto[q],
       // degli altri durante il round si vede solo quante parole hanno (e se hanno finito)
       altri: this.parole.map((el, i) => ({ quante: el.length, finito: this.finito[i], pronto: this.pronto[i] })),
@@ -318,6 +346,7 @@ module.exports = {
       { id: 'griglia', nome: 'Griglia', valori: [4, 5], etichette: ['4×4 (16 dadi)', '5×5 (25 dadi)'], predefinito: 4 },
       { id: 'doppie', nome: 'Parole uguali', valori: ['annullate', 'valgono'], etichette: ['Trovate da più giocatori: non valgono (classico)', 'Valgono per tutti'], predefinito: 'annullate' },
       { id: 'minimo', nome: 'Lettere minime', valori: [3, 4], etichette: ['Almeno 3 lettere', 'Almeno 4 lettere'], predefinito: 3 },
+      { id: 'squadre', nome: 'Squadre', valori: ['no', 'si'], etichette: ['Ognuno per sé', 'Due squadre (con 4, 6 o 8 giocatori)'], predefinito: 'no' },
       { id: 'round', nome: 'Round', valori: [1, 2, 3], etichette: ['1 round', '2 round', '3 round'], predefinito: 1 },
     ],
     regole: [
@@ -328,6 +357,7 @@ module.exports = {
       'Il gioco controlla subito la parola: se è nel dizionario ed è sulla griglia entra nel tuo elenco, altrimenti ti dice perché no. Degli altri vedi solo quante parole hanno trovato.',
       'Punti per lunghezza: 3 o 4 lettere 1 punto, 5 lettere 2, 6 lettere 3, 7 lettere 5, 8 o più lettere 11 punti.',
       'Alla fine del round si vedono le parole di tutti. Con l\'opzione classica le parole trovate da più di un giocatore si cancellano e non valgono per nessuno: conviene cercare quelle che gli altri non vedono. Si vedono anche le parole migliori che nessuno ha trovato (passa sopra una parola per vederla sulla griglia).',
+      'A SQUADRE (con 4, 6 o 8 giocatori): due squadre a posti alterni. I compagni cercano insieme: ognuno vede subito le parole trovate dagli altri della squadra, e una parola vale una volta sola per squadra. Con l\'opzione classica si annullano le parole trovate da tutte e due le squadre. Vince la squadra con più punti.',
       'Si possono giocare 1, 2 o 3 round: vince chi ha più punti in totale. "Ho finito" chiude il tuo round prima del tempo (se finiscono tutti, il round finisce subito).',
       'Il computer trova le parole un po\' alla volta durante il round. Il facile ne trova poche e quasi solo corte e comuni; il medio ne trova un buon numero; il difficile ne trova tante, anche lunghe e rare.',
     ],

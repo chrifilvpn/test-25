@@ -12,3 +12,18 @@
 .cor-giu { transform: scale(.92); background: rgba(255, 255, 255, .35); }
 .cor-dito { position: absolute; left: 0; right: 6rem; bottom: 2.6rem; height: 42%; display: flex; align-items: flex-end; justify-content: center; padding-bottom: .4rem; color: rgba(255, 255, 255, .7); font: 600 .8rem system-ui, sans-serif; background: linear-gradient(transparent, rgba(0, 0, 0, .18)); border-radius: 0 0 14px 14px; }
 .cor-hud { padding: .1rem .55rem; font-size: .85rem; background: rgba(255, 255, 255, .12); border-radius: 999px; cursor: pointer; }
+/* pista disegnata: il foglio d'erba dove si traccia il giro */
+.cor-dis { display: grid; justify-items: center; gap: .6rem; width: min(70rem, 100%); margin: 0 auto; padding-bottom: 1rem; }
+.cor-d-testa { margin: 0; text-align: center; max-width: 48rem; }
+.cor-d-resta { margin-left: .5rem; color: var(--tenue); white-space: nowrap; }
+.cor-d-foglio { width: min(100%, calc((100vh - 15rem) * 1.535)); border-radius: 14px; overflow: hidden; box-shadow: 0 10px 30px rgba(0, 0, 0, .35); border: 3px solid #2f6b2a; }
+.cor-d-foglio svg { display: block; width: 100%; height: auto; touch-action: none; user-select: none; }
+.cor-d-foglio.mio svg { cursor: crosshair; }
+.cor-d-bordo { fill: none; stroke: #e9e2cf; stroke-linejoin: round; }
+.cor-d-asf { fill: none; stroke: #4a4d55; stroke-linejoin: round; }
+.cor-d-mezzo { fill: none; stroke: rgba(255, 255, 255, .7); stroke-width: 8; stroke-dasharray: 50 50; }
+.cor-d-via { stroke: #fff; stroke-width: 26; stroke-dasharray: 26 26; }
+.cor-d-freccia { fill: #ffd166; stroke: #6b4a00; stroke-width: 6; }
+.cor-d-tratto { fill: none; stroke: #ffd166; stroke-width: 34; stroke-linecap: round; stroke-linejoin: round; opacity: .9; }
+.cor-d-vuoto { fill: rgba(255, 255, 255, .8); font: 600 120px system-ui, sans-serif; text-anchor: middle; dominant-baseline: middle; pointer-events: none; }
+.cor-d-comandi { display: flex; flex-wrap: wrap; gap: .4rem; justify-content: center; }

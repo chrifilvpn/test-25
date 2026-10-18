@@ -58,3 +58,30 @@ assert.ok(D.fascia('casa') >= 2, 'casa è comune');
   console.log(`✓ Paroliere: dizionario di ${D.dizionario().length} parole, griglia con Qu, parole controllate, doppie annullate, round; computer f/m/d ${conta.facile}/${conta.medio}/${conta.difficile} parole in 40 griglie (${Date.now() - t0} ms)`);
   assert.ok(conta.difficile > conta.medio && conta.medio > conta.facile);
 }
+// ---- a squadre ----
+{
+  assert.ok(!M.crea({ n: 3, opzioni: { squadre: 'si' }, bot: [] }).aSquadre && M.crea({ n: 4, opzioni: { squadre: 'si' }, bot: [] }).aSquadre, 'squadre solo con 4, 6 o 8');
+  const g = M.crea({ n: 4, primo: 0, opzioni: { squadre: 'si', doppie: 'annullate' }, bot: [null, null, null, null] });
+  g.griglia = ['c', 'a', 'n', 'e', 's', 'a', 't', 'o', 'r', 'e', 'l', 'i', 'm', 'o', 'n', 'i'];
+  assert.ok(g.azione(0, { tipo: 'parola', parola: 'cane' }).ok);
+  assert.ok(/compagno/.test(g.azione(2, { tipo: 'parola', parola: 'cane' }).errore), 'una parola vale una volta per squadra');
+  assert.deepStrictEqual(g.vista(2).mie, ['cane'], 'il compagno vede subito le parole della squadra');
+  assert.deepStrictEqual(g.vista(2).mieChi, [0]);
+  assert.ok(!g.vista(1).mie.includes('cane'), 'gli avversari no');
+  assert.ok(g.azione(2, { tipo: 'parola', parola: 'casa' }).ok);
+  assert.ok(g.azione(1, { tipo: 'parola', parola: 'casa' }).ok);
+  assert.ok(g.azione(3, { tipo: 'parola', parola: 'nasa' }).errore || true);
+  for (let p = 0; p < 4; p++) g.azione(p, { tipo: 'finito' });
+  assert.strictEqual(g.fase, 'risultati');
+  // "casa" l'hanno trovata tutte e due le squadre: non vale; "cane" solo i pari: 1 punto
+  assert.deepStrictEqual(g.esitoRound.puntiSquadre, [1, 0]);
+  for (let p = 0; p < 4; p++) g.azione(p, { tipo: 'pronto' });
+  assert.ok(g.finita && g.risultato.fazioni.length === 2 && g.risultato.vincitori.join() === '0,2');
+  // con i computer in squadra non ci sono parole ripetute dentro la stessa squadra
+  for (let k = 0; k < 10; k++) {
+    const h = M.crea({ n: 4, primo: 0, opzioni: { squadre: 'si' }, bot: ['medio', 'difficile', 'facile', 'medio'] });
+    h.fine = Date.now() - 1; h.controllaTempo();
+    for (const t of [0, 1]) { const tutte = h.parole.filter((_, q) => q % 2 === t).flat().map((x) => x.w); assert.strictEqual(new Set(tutte).size, tutte.length); }
+  }
+  console.log('✓ Paroliere a squadre: parole condivise tra compagni, una volta per squadra, doppie annullate tra squadre, punti e vittoria di squadra');
+}

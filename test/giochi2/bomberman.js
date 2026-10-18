@@ -174,3 +174,33 @@ assert.ok(M.meta.regole.length >= 8 && M.meta.regole.some((r) => /facile/.test(r
   }
   console.log(`✓ Bombe e mattoni: labirinto con pilastri e mattoni, bomba dopo 2,5 s con fiamme a croce, catene, eliminazione, potenziamenti (bomba, fiamma, velocità, calcio), blocchi a spirale, posizione prevista dal browser, ${partite} partite tra computer in 2-4 (${pari} pari; vittorie f/m/d ${stat.facile.v}/${stat.medio.v}/${stat.difficile.v}, avversari colpiti ${stat.facile.k}/${stat.medio.k}/${stat.difficile.k}) in ${Date.now() - t0} ms`);
 }
+// ---- a squadre (due contro due) ----
+{
+  const g = M.crea({ n: 4, opzioni: { squadre: 'si' }, bot: [null, null, null, null] }); parti(g); svuota(g);
+  assert.ok(g.aSquadre && g.squadra(0) === g.squadra(2) && g.squadra(1) === g.squadra(3) && g.squadra(0) !== g.squadra(1));
+  assert.ok(!M.crea({ n: 3, opzioni: { squadre: 'si' }, bot: [null, null, null] }).aSquadre, 'squadre solo in 4');
+  // il compagno (posto 2) accanto alla bomba di 0 non salta; l'avversario (posto 1) sì
+  g.e[0].x = 1; g.e[0].y = 1; g.e[2].x = 2; g.e[2].y = 1; g.e[1].x = 1; g.e[1].y = 2; g.e[3].x = C - 2; g.e[3].y = R - 2;
+  g.bombe.push({ id: 99, p: 0, x: 3, y: 3, t: 0.01, f: 3 });
+  g.fiamme.set(idx(2, 1), { fino: g.tempoRound + 0.5, o: 1, da: 0 });
+  g.fiamme.set(idx(1, 2), { fino: g.tempoRound + 0.5, o: 2, da: 0 });
+  g.passo(0.02);
+  assert.ok(g.e[2].vivo && !g.e[1].vivo, 'le fiamme del compagno non fanno male');
+  assert.strictEqual(g.punti[0], 1, 'un punto per l\'avversario colpito');
+  // la squadra che resta vince il round: +3 a tutti e due
+  g.e[3].vivo = false;
+  g.fineRound();
+  assert.ok(g.punti[0] === 4 && g.punti[2] === 3 && g.vittorieRound[2] === 1);
+  // partite intere tra computer
+  let vinte = 0;
+  for (let k = 0; k < 20; k++) {
+    const h = M.crea({ n: 4, opzioni: { squadre: 'si', round: 3 }, bot: ['medio', 'difficile', 'facile', 'medio'] });
+    h.nRound = 1;
+    let ora = Date.now(), passi = 0;
+    while (!h.finita) { ora += 33; if (h.fase !== 'gioco') h.fineFase = Math.min(h.fineFase, ora); h.tick(ora); assert.ok(++passi < 60000); }
+    assert.strictEqual(h.risultato.fazioni.length, 2);
+    if (h.risultato.vincitori.length) { vinte++; assert.ok([[0, 2], [1, 3]].some((v) => v.join() === h.risultato.vincitori.join())); }
+  }
+  assert.ok(vinte >= 14, `quasi sempre vince una squadra (${vinte}/20)`);
+  console.log(`✓ Bombe e mattoni a squadre: due contro due, fiamme del compagno innocue, round alla squadra che resta, ${vinte}/20 partite vinte da una squadra`);
+}

@@ -64,6 +64,7 @@
     const p = ctx.partita, ui = ctx.ui;
     const { w, via } = scelta(ctx);
     const giaTrovata = w && p.mie.includes(w);
+    const chiDi = (x) => { const k = p.mie.indexOf(x), q = p.mieChi ? p.mieChi[k] : ctx.mio; return q === ctx.mio || q == null ? '' : `<small class="prl-chi">${esc(ctx.nome(q))}</small>`; };
     const stato = !w ? '' : via === null ? 'prl-no' : giaTrovata ? 'prl-gia' : w.length >= p.minimo ? 'prl-si' : '';
     const mie = [...p.mie].reverse();
     const tot = p.mie.reduce((s, x) => s + puntiDi(x), 0);
@@ -79,8 +80,8 @@
         </div>
       </div>
       <div class="prl-dx">
-        <div class="prl-conta"><b>${p.mie.length}</b> ${p.mie.length === 1 ? 'parola' : 'parole'} · <b>${tot}</b> punti${p.nRound > 1 && p.round > 1 ? ` <small>(totale ${p.punti[ctx.mio] + tot})</small>` : ''}</div>
-        <ul class="prl-mie">${mie.map((x) => `<li class="${x === nuova ? 'nuova' : ''}"><span>${esc(x.toUpperCase())}</span><b>${puntiDi(x)}</b></li>`).join('') || '<li class="prl-vuoto">Ancora nessuna parola</li>'}</ul>
+        <div class="prl-conta">${p.aSquadre ? 'Squadra: ' : ''}<b>${p.mie.length}</b> ${p.mie.length === 1 ? 'parola' : 'parole'} · <b>${tot}</b> punti${p.nRound > 1 && p.round > 1 && !p.aSquadre ? ` <small>(totale ${p.punti[ctx.mio] + tot})</small>` : ''}</div>
+        <ul class="prl-mie">${mie.map((x) => `<li class="${x === nuova ? 'nuova' : ''}"><span>${esc(x.toUpperCase())}</span>${p.aSquadre ? chiDi(x) : ''}<b>${puntiDi(x)}</b></li>`).join('') || '<li class="prl-vuoto">Ancora nessuna parola</li>'}</ul>
         <p class="prl-aiuto"><kbd>Invio</kbd> invia · <kbd>Esc</kbd> cancella · trascina col mouse</p>
         ${attivo(ctx) ? `<button type="button" class="prl-link" data-az="prl-finito">${ui.confermaFine ? 'Sicuro? Clicca ancora per finire' : 'Ho finito'}</button>` : ''}
       </div>
@@ -89,8 +90,10 @@
 
   function pannoRisultati(ctx) {
     const p = ctx.partita, e = p.esito;
-    const ordine = Array.from({ length: p.n }, (_, i) => i).sort((a, b) => (a === ctx.mio ? -1 : b === ctx.mio ? 1 : e.punti[b] - e.punti[a]));
-    const colonne = ordine.map((i) => `<section class="prl-col ${i === ctx.mio ? 'prl-io' : ''}">
+    // a squadre: prima la mia squadra, poi l'altra
+    const sq = (i) => (p.aSquadre ? (p.squadra[i] === p.squadra[ctx.mio] ? 0 : 1) : 0);
+    const ordine = Array.from({ length: p.n }, (_, i) => i).sort((a, b) => sq(a) - sq(b) || (a === ctx.mio ? -1 : b === ctx.mio ? 1 : e.punti[b] - e.punti[a]));
+    const colonne = ordine.map((i) => `<section class="prl-col ${i === ctx.mio ? 'prl-io' : ''} ${p.aSquadre ? (sq(i) ? 'prl-loro' : 'prl-noi') : ''}">
       <h3><span>${esc(ctx.nome(i))}</span><b>${e.punti[i]}</b></h3>
       <ul>${e.parole[i].map((x) => `<li class="${x.doppia && p.doppieAnnullate && p.n > 1 ? 'doppia' : ''}" data-w="${esc(x.w)}"><span>${esc(x.w)}</span><b>${x.doppia && p.doppieAnnullate && p.n > 1 ? 0 : x.punti}</b></li>`).join('') || '<li class="prl-vuoto">nessuna parola</li>'}</ul>
     </section>`).join('');
@@ -99,7 +102,8 @@
     const ultimo = p.round >= p.nRound;
     const bottone = p.finita ? '' : p.mioPronto ? `<p class="prl-attesa">Aspetta gli altri… (${Math.ceil(p.restaRisultati / 1000)} s)</p>`
       : `<button type="button" class="bottone primario-bt" data-az="prl-pronto">${ultimo ? 'Classifica finale' : `Round ${p.round + 1} ▸`}</button>`;
-    const totali = p.nRound > 1 ? `<p class="prl-totali">Totale: ${ordine.map((i) => `${esc(ctx.nome(i))} <b>${p.punti[i]}</b>`).join(' · ')}</p>` : '';
+    const totSq = (t) => p.squadra.reduce((s, x, q) => s + (x === t ? p.punti[q] : 0), 0), mia = p.aSquadre ? p.squadra[ctx.mio] : 0;
+    const totali = p.aSquadre ? `<p class="prl-totali prl-sq">La tua squadra <b>+${e.puntiSquadre[mia]}</b> · l'altra <b>+${e.puntiSquadre[1 - mia]}</b>${p.nRound > 1 ? ` <small>(totale ${totSq(mia)} a ${totSq(1 - mia)})</small>` : ''}</p>` : p.nRound > 1 ? `<p class="prl-totali">Totale: ${ordine.map((i) => `${esc(ctx.nome(i))} <b>${p.punti[i]}</b>`).join(' · ')}</p>` : '';
     return `<div class="prl prl-fine" style="--lato:${p.lato}">
       <div class="prl-sx">${p.nRound > 1 ? `<span class="prl-round">Round ${p.round} di ${p.nRound}</span>` : ''}${griglia(ctx, [], true)}
         <p class="prl-aiuto">Passa sopra una parola per vederla sulla griglia.${p.doppieAnnullate && p.n > 1 ? '<br>Le parole <s>barrate</s> le ha trovate più di un giocatore: non valgono.' : ''}</p>
@@ -117,7 +121,7 @@
     if (!w) return ctx.ridisegna();
     if (w.length < p.minimo) { ctx.avviso(`Servono almeno ${p.minimo} lettere`, 1300); return ctx.ridisegna(); }
     if (!via) { ctx.avviso(`${w.toUpperCase()} non è sulla griglia`, 1300); return ctx.ridisegna(); }
-    if (p.mie.includes(w)) { ctx.avviso(`${w.toUpperCase()}: l'hai già trovata`, 1300); return ctx.ridisegna(); }
+    if (p.mie.includes(w)) { ctx.avviso(`${w.toUpperCase()}: ${p.aSquadre ? 'già trovata dalla squadra' : 'l\'hai già trovata'}`, 1300); return ctx.ridisegna(); }
     ctx.invia({ tipo: 'parola', parola: w });
     ctx.ridisegna();
   }
@@ -255,6 +259,10 @@
     punteggio(ctx) {
       const p = ctx.partita;
       if (p.n === 1) return `<span>Punti <b>${p.fase === 'gioco' ? p.punti[0] + p.mie.reduce((s, x) => s + puntiDi(x), 0) : p.punti[0]}</b></span>`;
+      if (p.aSquadre) {
+        const mia = p.squadra[ctx.mio], tot = (t) => p.squadra.reduce((s, x, q) => s + (x === t ? p.punti[q] : 0), 0);
+        return `<span>La tua squadra <b>${tot(mia)}</b></span><span>Avversari <b>${tot(1 - mia)}</b></span><span class="obiettivo">punti</span>`;
+      }
       return p.punti.map((x, i) => `<span>${esc(i === ctx.mio ? 'Tu' : ctx.nome(i))} <b>${x}</b></span>`).join('') + '<span class="obiettivo">punti</span>';
     },
     infoPosto(ctx, posto) {

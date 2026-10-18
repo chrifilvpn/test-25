@@ -16,10 +16,10 @@ function radici(testo) {
 }
 const fogli = {};
 for (const f of ['style.css', 'nuovi.css', 'boss.css']) if (fs.existsSync(path.join(dir, f))) fogli[f] = radici(fs.readFileSync(path.join(dir, f), 'utf8'));
-for (const f of fs.readdirSync(path.join(dir, 'js/giochi2')).filter((x) => x.endsWith('.css'))) fogli[`giochi2/${f}`] = radici(fs.readFileSync(path.join(dir, 'js/giochi2', f), 'utf8'));
+for (const cart of ['giochi2', 'giochi3']) for (const f of fs.readdirSync(path.join(dir, 'js', cart)).filter((x) => x.endsWith('.css'))) fogli[`${cart}/${f}`] = radici(fs.readFileSync(path.join(dir, 'js', cart, f), 'utf8'));
 const nomi = Object.keys(fogli), doppi = [];
 for (let i = 0; i < nomi.length; i++) {
-  if (!nomi[i].startsWith('giochi2/')) continue; // si controllano i fogli dei giochi nuovi contro tutti gli altri
+  if (!/^giochi[23]\//.test(nomi[i])) continue; // si controllano i fogli dei giochi nuovi contro tutti gli altri
   for (let j = 0; j < nomi.length; j++) if (j !== i) for (const c of fogli[nomi[i]]) if (fogli[nomi[j]].has(c)) doppi.push(`.${c} in ${nomi[i]} e ${nomi[j]}`);
 }
 assert.deepStrictEqual([...new Set(doppi)], [], 'classi con lo stesso nome in fogli diversi');

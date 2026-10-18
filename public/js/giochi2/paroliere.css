@@ -103,3 +103,7 @@
   .prl-col ul { max-height: 10rem; }
 }
 @media (prefers-reduced-motion: reduce) { .prl-mie li.nuova, .prl-tempo.poco b { animation: none; } }
+.prl-chi { margin-left: auto; margin-right: .4rem; font-size: .7rem; color: var(--tenue); max-width: 6rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.prl-col.prl-noi { box-shadow: inset 0 3px 0 #ffd166; }
+.prl-col.prl-loro { opacity: .92; box-shadow: inset 0 3px 0 rgba(255, 255, 255, .25); }
+.prl-totali.prl-sq b { color: #ffd166; }

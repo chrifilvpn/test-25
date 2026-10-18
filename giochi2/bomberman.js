@@ -3,6 +3,8 @@
 // esplodono con fiamme a croce. I mattoni rotti a volte lasciano un potenziamento (bomba in più, fiamma più lunga,
 // velocità, calcio della bomba). Chi tocca una fiamma è fuori; l'ultimo rimasto vince il round. Dopo un minuto dai
 // bordi cadono blocchi di pietra (a spirale) e la mappa si restringe, così il round finisce sempre.
+// A SQUADRE (in 4): due contro due, i compagni partono dagli angoli dello stesso lato (sopra contro sotto). Le fiamme
+// del compagno non fanno male (le proprie sì); il round lo vince la squadra che ha ancora qualcuno in piedi.
 const { Arena } = require('../giochi/arena');
 
 const C = 15, R = 13, T = 48; // caselle da 48 px
@@ -37,6 +39,7 @@ class Bombe extends Arena {
     this.nRound = [3, 5].includes(Number(o.opzioni && o.opzioni.round)) ? Number(o.opzioni.round) : 3;
     const m = o.opzioni && o.opzioni.mattoni;
     this.densita = { pochi: 0.5, normali: 0.72, tanti: 0.88 }[m] || 0.72;
+    this.aSquadre = this.n === 4 && o.opzioni && o.opzioni.squadre === 'si';
     this.W = C * T; this.H = R * T;
     this.vittorieRound = new Array(this.n).fill(0);
     this.pausaRoundMs = 3500;
@@ -75,6 +78,10 @@ class Bombe extends Arena {
     return 'b';
   }
   spostaTempi() {}
+  // squadra di un posto: a squadre 0 = sopra (angoli 0 e 2), 1 = sotto (angoli 1 e 3); senza squadre ognuno la sua
+  squadra(p) { return this.aSquadre ? p % 2 : p; }
+  // le squadre (o i giocatori) che hanno ancora qualcuno in piedi
+  squadreVive() { return [...new Set(this.e.filter((e) => e.vivo).map((e) => this.squadra(e.id)))]; }
 
   // ---------- movimento sulla griglia ----------
   bombaIn(i) { return this.bombe.find((b) => idx(Math.round(b.x), Math.round(b.y)) === i); }
@@ -229,10 +236,11 @@ class Bombe extends Arena {
       const e = this.e[p];
       if (!e.vivo) continue;
       const f = this.fiamme.get(idx(Math.round(e.x), Math.round(e.y)));
-      if (f) this.elimina(p, f.da);
+      // le fiamme di un compagno non fanno male
+      if (f && !(f.da != null && f.da !== p && this.squadra(f.da) === this.squadra(p))) this.elimina(p, f.da);
     }
     // la mappa si restringe: blocchi che cadono a spirale dal bordo
-    if (t >= RESTRINGE && this.e.filter((e) => e.vivo).length > 1) {
+    if (t >= RESTRINGE && this.squadreVive().length > 1) {
       if (!this.avvisoRestringe) { this.avvisoRestringe = true; this.annuncia(null, 'cadono i blocchi: la mappa si restringe! 🧱', 'cadono i blocchi: la mappa si restringe! 🧱', true); }
       this.prossimoBlocco -= dt;
       while (this.prossimoBlocco <= 0 && this.kSpirale < SPIRALE.length) {
@@ -243,7 +251,7 @@ class Bombe extends Arena {
       }
     }
     // quando ne resta uno solo i blocchi smettono di cadere (anche quelli già in aria): ha vinto lui
-    if (this.e.filter((e) => e.vivo).length <= 1) this.cadute = this.cadute.filter((k) => k.fatto);
+    if (this.squadreVive().length <= 1) this.cadute = this.cadute.filter((k) => k.fatto);
     for (const k of this.cadute) {
       k.t += dt;
       if (k.t < CADUTA || k.fatto) continue;
@@ -253,13 +261,22 @@ class Bombe extends Arena {
       for (let p = 0; p < this.n; p++) { const e = this.e[p]; if (e.vivo && idx(Math.round(e.x), Math.round(e.y)) === k.i) this.elimina(p, null); }
     }
     this.cadute = this.cadute.filter((k) => !k.fatto || k.t < CADUTA + 0.3);
-    const vivi = this.e.filter((e) => e.vivo).length;
+    const vivi = this.squadreVive().length;
     if (vivi <= 1) { this.fineDopo = this.fineDopo ?? t + 0.7; } // un attimo per vedere l'ultima esplosione
     return this.fineDopo !== undefined && this.fineDopo !== null && t >= this.fineDopo;
   }
   nuovoRound(ora) { this.fineDopo = null; this.avvisoRestringe = false; super.nuovoRound(ora); }
   fineRound() {
     const vivi = this.e.filter((e) => e.vivo).map((e) => e.id);
+    if (this.aSquadre) {
+      const sq = this.squadreVive();
+      if (sq.length === 1) {
+        const membri = [0, 1, 2, 3].filter((q) => this.squadra(q) === sq[0]);
+        for (const q of membri) { this.punti[q] += 3; this.vittorieRound[q]++; }
+        this.annuncia(membri[0], `e il compagno vincono il round! 🏆 (+3)`, 'la tua squadra vince il round! 🏆 (+3)', true);
+      } else this.annuncia(null, 'nessun sopravvissuto: round pari 💥', 'nessun sopravvissuto: round pari 💥', true);
+      return;
+    }
     if (vivi.length === 1) {
       const v = vivi[0];
       this.punti[v] += 3; this.vittorieRound[v]++;
@@ -430,7 +447,7 @@ class Bombe extends Arena {
     }
     // 2) piazzare una bomba? Solo se poi c'è una via di fuga
     const mie = this.bombe.filter((b) => b.p === p).length;
-    const nemici = this.e.filter((x) => x.vivo && x.id !== p);
+    const nemici = this.e.filter((x) => x.vivo && x.id !== p && this.squadra(x.id) !== this.squadra(p));
     let voglia = 0;
     if (mie < e.bombe && !this.bombaIn(qui)) {
       for (const [dc, dr] of DIR) for (let k = 1; k <= e.fiamma; k++) {
@@ -506,7 +523,14 @@ class Bombe extends Arena {
     m.piano = this.cammino(vis, m.meta);
   }
 
-  vistaExtra() { return { C, R, T }; }
+  vistaExtra() { return { C, R, T, aSquadre: !!this.aSquadre }; }
+  chiudi() {
+    if (!this.aSquadre) return super.chiudi();
+    this.finita = true; this.fase = 'fine';
+    const fazioni = [0, 1].map((t) => { const posti = [0, 1, 2, 3].filter((q) => this.squadra(q) === t); return { posti, punti: posti.reduce((s, q) => s + Math.round(this.punti[q]), 0) }; });
+    const pari = fazioni[0].punti === fazioni[1].punti;
+    this.risultato = { fazioni, etichetta: 'punti', pareggio: pari, vincitori: pari ? [] : fazioni[fazioni[0].punti > fazioni[1].punti ? 0 : 1].posti };
+  }
   statoTick(posto) {
     const r2 = (v) => Math.round(v * 100) / 100;
     const io = this.e[posto];
@@ -537,6 +561,7 @@ module.exports = {
     alias: ['bombe', 'bomba', 'bomber', 'mattoni', 'esplosioni', 'labirinto', 'dynablaster'],
     opzioni: [
       { id: 'round', nome: 'Round', valori: [3, 5], etichette: ['3 round', '5 round'], predefinito: 3 },
+      { id: 'squadre', nome: 'Squadre', valori: ['no', 'si'], etichette: ['Tutti contro tutti', 'Due contro due (in 4)'], predefinito: 'no' },
       { id: 'mattoni', nome: 'Mattoni', valori: ['normali', 'pochi', 'tanti'], etichette: ['Mattoni normali', 'Pochi mattoni', 'Tanti mattoni'], predefinito: 'normali' },
     ],
     regole: [
@@ -548,6 +573,7 @@ module.exports = {
       'Chi viene toccato da una fiamma (anche la sua!) è fuori fino alla fine del round. L\'ultimo che resta vince il round; se esplodono tutti insieme il round è pari.',
       'Dopo un minuto dal bordo cominciano a cadere blocchi di pietra, a spirale verso il centro: la mappa si restringe e chi resta sotto un blocco è fuori. Così il round finisce sempre.',
       'Punti: 3 per ogni round vinto e 1 per ogni avversario fatto saltare in aria con le tue bombe. Si giocano 3 round (o 5): vince chi ha più punti.',
+      'A SQUADRE (in 4): due contro due, i compagni partono dagli angoli dello stesso lato (squadra rossa sopra, squadra blu sotto). Le fiamme del compagno non ti fanno male (le tue sì!). Vince il round la squadra che ha ancora qualcuno in piedi: +3 a tutti e due. Alla fine vince la squadra con più punti sommati.',
       'Il gioco è in tempo reale: si ferma per tutti quando qualcuno apre le dispense.',
       'Il computer facile pensa piano, rompe i mattoni e si accorge tardi delle reazioni a catena (a volte resta chiuso dalle sue bombe); il medio calcola le caselle pericolose, raccoglie i potenziamenti e attacca chi gli passa vicino; il difficile prevede anche le catene di bombe, insegue gli avversari e prova a chiuderli in un angolo dove non hanno scampo.',
     ],

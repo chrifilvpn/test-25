@@ -1,7 +1,9 @@
 // CORSA DI MACCHININE: pista d'asfalto con i cordoli bianchi e rossi, erba con gli alberi, linea del traguardo a
 // scacchi, semaforo alla partenza, macchinine colorate che lasciano i segni delle gomme in derapata. La telecamera
 // segue la propria macchina (o mostra tutta la pista: pulsante 🎥). Sul telefono comandi sopra il campo: pulsanti
-// oppure "dito" (gas sempre premuto, si sterza trascinando il dito).
+// oppure "dito" (gas sempre premuto, si sterza trascinando il dito). Con la pista disegnata, prima della gara c'è il
+// foglio dove chi ha aperto il tavolo traccia il giro: il server lo liscia e lo rimanda come pista vera (asfalto,
+// linea del traguardo e freccia del verso), che tutti vedono.
 (() => {
   const { COLORI } = window.Arena;
   const { esc, suono } = window.Nuovi;
@@ -277,5 +279,91 @@
   const reset0 = tavolo.reset, tick0 = tavolo.tick;
   tavolo.reset = (ctx) => { adatta(ctx); if (!corre(ctx) || modo !== 'dito') attivaGasDito(false); if (ctx.partita.stato && ctx.partita.stato.fase === 'via') { cam = null; segni = []; ultimoSem = -1; } reset0.call(tavolo, ctx); };
   tavolo.tick = function (ctx, d) { adatta(ctx); return tick0.call(this, ctx, d); };
+
+  // ---------- la pista disegnata ----------
+  const inDisegno = (p) => !!(p && p.extra && p.extra.disegno);
+  const ricevuto = new WeakMap();
+  let tratto = null;
+  const restaDisegno = (p) => Math.max(0, p.extra.resta - (Date.now() - (ricevuto.get(p) || Date.now())));
+  setInterval(() => {
+    const p = ctxC && ctxC.partita, el = document.querySelector('.cor-d-tempo');
+    if (el && inDisegno(p)) { const s = Math.ceil(restaDisegno(p) / 1000); el.textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`; }
+  }, 500);
+  function pannoDisegno(ctx) {
+    ctxC = ctx;
+    const p = ctx.partita, ex = p.extra, [MW, MH] = ex.mondo;
+    if (!ricevuto.has(p)) ricevuto.set(p, Date.now());
+    const mio = ctx.mio === ex.disegnatore && !ctx.stato.spettatore;
+    let pista = '';
+    if (ex.bozza) {
+      const C = lineaDi(ex.bozza), m = ex.larga / 2;
+      const d = `M${C.map((q) => `${Math.round(q.x)},${Math.round(q.y)}`).join('L')}Z`;
+      const a = C[0], f = C[Math.min(C.length - 1, 14)];
+      const freccia = [[f.x + f.tx * 60, f.y + f.ty * 60], [f.x - f.tx * 30 + f.nx * 40, f.y - f.ty * 30 + f.ny * 40], [f.x - f.tx * 30 - f.nx * 40, f.y - f.ty * 30 - f.ny * 40]].map((q) => q.map(Math.round).join(',')).join(' ');
+      pista = `<path d="${d}" class="cor-d-bordo" stroke-width="${ex.larga + 44}"/><path d="${d}" class="cor-d-asf" stroke-width="${ex.larga}"/><path d="${d}" class="cor-d-mezzo"/>
+        <line class="cor-d-via" x1="${Math.round(a.x + a.nx * m)}" y1="${Math.round(a.y + a.ny * m)}" x2="${Math.round(a.x - a.nx * m)}" y2="${Math.round(a.y - a.ny * m)}"/><polygon class="cor-d-freccia" points="${freccia}"/>`;
+    }
+    const nome = esc(ctx.nome(ex.disegnatore));
+    const testa = mio
+      ? `<b>✏️ Disegna la pista!</b> Tieni premuto e traccia un giro chiuso (si corre nel verso in cui disegni). Curve larghe, e la pista non deve toccarsi.`
+      : `<b>✏️ ${nome} sta disegnando la pista…</b> ${ex.bozza ? 'Ecco la bozza.' : ''}`;
+    const comandi = mio ? `<div class="cor-d-comandi">
+        <button type="button" class="bottone" data-az="cor-d-caso">🎲 Pista a caso</button>
+        <button type="button" class="bottone" data-az="cor-d-cancella" ${ex.bozza ? '' : 'disabled'}>🗑 Cancella</button>
+        <button type="button" class="bottone primario-bt" data-az="cor-d-via" ${ex.bozza ? '' : 'disabled'}>🏁 Via! (${ex.giri} ${ex.giri === 1 ? 'giro' : 'giri'})</button></div>` : '';
+    return `<div class="cor-dis">
+      <p class="cor-d-testa">${testa} <span class="cor-d-resta">⏱ <b class="cor-d-tempo">${Math.ceil(restaDisegno(p) / 1000)}</b></span></p>
+      <div class="cor-d-foglio ${mio ? 'mio' : ''}"><svg id="cor-d-svg" viewBox="0 0 ${MW} ${MH}" preserveAspectRatio="xMidYMid meet" aria-label="Il foglio della pista">
+        <defs><pattern id="cor-d-prato" width="160" height="160" patternUnits="userSpaceOnUse"><rect width="160" height="160" fill="#4f9a45"/><rect width="80" height="80" fill="#55a14a"/><rect x="80" y="80" width="80" height="80" fill="#55a14a"/></pattern></defs>
+        <rect width="${MW}" height="${MH}" fill="url(#cor-d-prato)"/>${pista}
+        <polyline id="cor-d-tratto" class="cor-d-tratto" points=""/>
+        ${!ex.bozza ? `<text x="${MW / 2}" y="${MH / 2}" class="cor-d-vuoto">${mio ? 'Disegna qui il giro ✏️' : 'Aspetta la pista…'}</text>` : ''}
+      </svg></div>${comandi}</div>`;
+  }
+  function dopoDisegno(ctx) {
+    const svg = document.getElementById('cor-d-svg');
+    if (!svg || svg.dataset.pronto || ctx.mio !== ctx.partita.extra.disegnatore) return;
+    svg.dataset.pronto = '1';
+    const linea = svg.querySelector('#cor-d-tratto');
+    const [MW, MH] = ctx.partita.extra.mondo;
+    // coordinate del dito nel foglio (0..1), tenendo conto delle bande se il foglio non ha la stessa forma
+    const punto = (e) => {
+      const r = svg.getBoundingClientRect(), s = Math.min(r.width / MW, r.height / MH);
+      const ox = (r.width - MW * s) / 2, oy = (r.height - MH * s) / 2;
+      return [(e.clientX - r.left - ox) / (MW * s), (e.clientY - r.top - oy) / (MH * s)];
+    };
+    const mostra = () => { linea.setAttribute('points', (tratto || []).map((q) => `${Math.round(q[0] * MW)},${Math.round(q[1] * MH)}`).join(' ')); };
+    svg.addEventListener('pointerdown', (e) => { e.preventDefault(); try { svg.setPointerCapture(e.pointerId); } catch { /* niente */ } tratto = [punto(e)]; mostra(); });
+    svg.addEventListener('pointermove', (e) => {
+      if (!tratto) return;
+      const q = punto(e), u = tratto[tratto.length - 1];
+      if (Math.hypot((q[0] - u[0]) * MW, (q[1] - u[1]) * MH) < 25) return;
+      tratto.push(q); mostra();
+    });
+    const fine = () => {
+      if (!tratto) return;
+      const t = tratto; tratto = null;
+      if (t.length < 10) { mostra(); return; }
+      // al massimo 400 punti
+      const passo = Math.ceil(t.length / 400);
+      ctxC.invia({ tipo: 'traccia', punti: t.filter((_, i) => i % passo === 0).map((q) => [Math.round(q[0] * 1000) / 1000, Math.round(q[1] * 1000) / 1000]) });
+      suono([[520, 0.05], [700, 0.08]], { volume: 0.04 });
+    };
+    svg.addEventListener('pointerup', fine);
+    svg.addEventListener('pointercancel', () => { tratto = null; mostra(); });
+  }
+  const panno0 = tavolo.panno, dopo0 = tavolo.dopo, stato0 = tavolo.stato, tick1 = tavolo.tick, clic0 = tavolo.clic, punteggio0 = tavolo.punteggio;
+  tavolo.panno = (ctx) => (inDisegno(ctx.partita) ? pannoDisegno(ctx) : panno0.call(tavolo, ctx));
+  tavolo.dopo = (ctx) => (inDisegno(ctx.partita) ? dopoDisegno(ctx) : dopo0.call(tavolo, ctx));
+  tavolo.stato = (ctx) => (inDisegno(ctx.partita) ? (ctx.mio === ctx.partita.extra.disegnatore ? 'Disegna la pista' : 'Si disegna la pista…') : stato0.call(tavolo, ctx));
+  tavolo.punteggio = (ctx) => (inDisegno(ctx.partita) ? '<span class="obiettivo">pista da disegnare</span>' : punteggio0.call(tavolo, ctx));
+  tavolo.tick = function (ctx, d) { if (d && d.fase === 'disegno') return undefined; return tick1.call(this, ctx, d); };
+  tavolo.clic = (ctx, el) => {
+    const az = el.dataset.az;
+    if (az === 'cor-d-caso') return ctx.invia({ tipo: 'caso' });
+    if (az === 'cor-d-cancella') return ctx.invia({ tipo: 'cancella' });
+    if (az === 'cor-d-via') return ctx.invia({ tipo: 'via' });
+    return clic0.call(tavolo, ctx, el);
+  };
   Object.assign(window.Tavoli, { corsa: tavolo });
 })();
