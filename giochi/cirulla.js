@@ -2,6 +2,7 @@
 // (vale scopa), 7 di cuori matta per gli accusi, quindici o trenta in tavola all'inizio, bàrsega e decino,
 // Grande e Piccola di quadri, capotto. Si vince a 51.
 const { mazzo40, mescola, valore40, SEMI } = require('./carte');
+const T = require('./trucco');
 
 const PRIMIERA = { 7: 21, 6: 18, 1: 16, 5: 15, 4: 14, 3: 13, 2: 12, 11: 10, 12: 10, 13: 10 };
 const OBIETTIVI = [51, 31, 101];
@@ -81,6 +82,25 @@ function conta(prese, scope) {
     };
   });
 }
+// il trucco segreto (!win): porta nella mano la prima carta che va bene, presa da una delle fonti (mazzo o mani degli
+// altri), dando in cambio la carta peggiore tra quelle non da tenere: niente doppioni, il numero di carte non cambia
+function prendiCarta(mano, fonti, vuoi, tieni, peggiore) {
+  const gia = mano.find((c) => vuoi(c) && !tieni.has(c));
+  if (gia) { tieni.add(gia); return gia; }
+  const via = peggiore(mano.filter((c) => !tieni.has(c)));
+  if (!via) return null;
+  for (const f of fonti) {
+    const i = f.findIndex(vuoi);
+    if (i < 0) continue;
+    const c = f[i];
+    f[i] = via;
+    mano[mano.indexOf(via)] = c;
+    tieni.add(c);
+    return c;
+  }
+  return null;
+}
+
 function unico(valori) {
   const m = Math.max(...valori);
   if (m <= 0) return -1;
@@ -148,6 +168,30 @@ class Cirulla {
     for (let g = 0; g < 3; g++) for (let i = 0; i < this.n; i++) this.mani[(da + i) % this.n].push(this.mazzo.pop());
     this.scoperte.fill(false);
     this.valutata.fill(false);
+    for (let p = 0; p < this.n; p++) if (T.consuma(this, p)) this.truccaMano(p);
+  }
+
+  // il trucco segreto (!win): la mano appena data diventa un DECINO (tre carte uguali: +10 scope quando tocca a lui),
+  // con le carte prese dal mazzo o dalle mani appena date agli avversari; se non si può, asso (piglia tutto) e settebello
+  truccaMano(p) {
+    const mano = this.mani[p];
+    const altri = this.mani.filter((m, q) => m !== mano && this.fazione(q) !== this.fazione(p));
+    const fonti = [this.mazzo, ...altri];
+    const tutte = [mano, ...fonti].flat();
+    const quante = (v) => tutte.filter((c) => valore40(c) === v && c.id !== MATTA).length;
+    // il valore da triplicare: uno che c'è già in mano, se ne restano abbastanza in giro (meglio i 7 per la primiera)
+    const valori = [7, 6, 1, 5, 4, 3, 2, 8, 9, 10].filter((v) => quante(v) >= 3);
+    const inMano = (v) => mano.filter((c) => valore40(c) === v && c.id !== MATTA).length;
+    valori.sort((a, b) => inMano(b) - inMano(a));
+    const tieni = new Set();
+    const peggiore = (cs) => T.migliore(cs, (c) => -pregio(c));
+    if (valori.length) {
+      const v = valori[0];
+      for (let k = 0; k < 3; k++) prendiCarta(mano, fonti, (c) => valore40(c) === v && c.id !== MATTA, tieni, peggiore);
+      return;
+    }
+    prendiCarta(mano, fonti, (c) => c.rango === 1, tieni, peggiore);
+    prendiCarta(mano, fonti, (c) => c.id === '7q', tieni, peggiore);
   }
 
   // all'inizio del proprio turno, con tre carte in mano, l'accuso si fa da solo (si "bussa")

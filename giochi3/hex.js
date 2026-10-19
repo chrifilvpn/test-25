@@ -77,6 +77,14 @@ class Hex {
     this.risultato = { fazioni: [0, 1].map((x) => ({ posti: [x], punti: x === v ? 1 : 0 })), etichetta: 'vittorie', pareggio: false, vincitori: [v] };
     return { ok: true };
   }
+  // trucco segreto (!win): la mossa del computer difficile (righe contate dall'alto, caselle della riga da sinistra)
+  suggerimentoWin(p) {
+    if (this.finita || this.turno !== p) return null;
+    const a = bot(this, p, 'difficile');
+    if (a.tipo === 'scambia') return '💡 Scambia: prenditi la prima pedina (regola della torta)';
+    return `💡 Metti la pedina in riga ${Math.floor(a.cella / this.N) + 1} (dall'alto), casella ${(a.cella % this.N) + 1} (da sinistra)`;
+  }
+
   vista(p) {
     return {
       gioco: this.id, n: this.n, N: this.N, celle: this.celle, ruolo: this.ruolo, rosso: this.rosso, ultima: this.ultima, nMosse: this.nMosse,

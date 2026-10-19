@@ -239,6 +239,25 @@ class Nonogram {
     return { ok: true };
   }
 
+  // !win banana: il disegno e la riga con più caselle da sistemare (quali colorare); prima uno sbaglio, se c'è
+  suggerimentoWin() {
+    const L = this.lato;
+    const dove = (i) => `riga ${Math.floor(i / L) + 1}, colonna ${(i % L) + 1}`;
+    const sbaglio = this.celle.findIndex((v, i) => v === PIENA && !this.soluzione[i]);
+    const nome = this.nomeDisegno ? `È: ${this.nomeDisegno} · ` : '';
+    if (sbaglio >= 0) return `💡 ${nome}${dove(sbaglio)} va lasciata vuota`;
+    let y = -1, peggio = 0;
+    for (let r = 0; r < L; r++) { let k = 0; for (let x = 0; x < L; x++) if (this.soluzione[r * L + x] && this.celle[r * L + x] !== PIENA) k++; if (k > peggio) { peggio = k; y = r; } }
+    if (y < 0) return null;
+    const blocchi = [];
+    for (let x = 0; x < L; x++) {
+      if (!this.soluzione[y * L + x]) continue;
+      const u = blocchi[blocchi.length - 1];
+      if (u && u.b === x - 1) u.b = x; else blocchi.push({ a: x, b: x });
+    }
+    return `💡 ${nome}Riga ${y + 1}: colora ${blocchi.length === 1 && blocchi[0].b === blocchi[0].a ? 'la colonna' : 'le colonne'} ${blocchi.map((q) => `${q.a + 1}${q.b > q.a ? `-${q.b + 1}` : ''}`).join(', ')}`;
+  }
+
   chiudi() {
     this.tempo = this.cronometro(); this.dal = null;
     this.finita = true;

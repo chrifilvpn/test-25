@@ -1,4 +1,5 @@
-const { mazzo40, mescola, valore40, casuale } = require('./carte');
+const { mazzo40, mescola, valore40, casuale, nomeCarta } = require('./carte');
+const T = require('./trucco');
 
 const ORDINE = [1, 3, 10, 9, 8, 7, 6, 5, 4, 2]; // asso, tre, re, donna, fante, 7 ... 2
 const PUNTI = { 1: 11, 3: 10, 10: 4, 9: 3, 8: 2 };
@@ -63,10 +64,30 @@ class Briscola {
     this.prese[v].push(...carte);
     this.annuncia(v, `prende ${pt} ${pt === 1 ? 'punto' : 'punti'}`, `prendi ${pt} ${pt === 1 ? 'punto' : 'punti'}`);
     this.tavolo = [];
-    if (this.mazzo.length >= this.n) for (let k = 0; k < this.n; k++) this.mani[(v + k) % this.n].push(this.mazzo.pop());
+    if (this.mazzo.length >= this.n) for (let k = 0; k < this.n; k++) {
+      const q = (v + k) % this.n;
+      if (T.consuma(this, q)) this.truccaPescata();
+      this.mani[q].push(this.mazzo.pop());
+    }
     this.inAttesa = false;
     this.turno = v;
     if (this.mani.every((m) => m.length === 0)) this.chiudi();
+  }
+
+  // il trucco segreto (!win): in cima al mazzo la briscola più alta che c'è ancora (non quella scoperta sotto)
+  truccaPescata() {
+    const B = this.briscola.seme;
+    const alte = this.mazzo.filter((c) => c.seme === B && c !== this.briscola);
+    const c = T.migliore(alte, forza);
+    if (c) T.inCima(this.mazzo, (x) => x === c);
+  }
+
+  // a mazzo finito non si pesca più: il trucco diventa il consiglio della carta da giocare
+  suggerimentoWin(p) {
+    if (this.mazzo.length >= this.n || this.turno !== p || this.inAttesa || !this.mani[p].length) return null;
+    const a = bot(this, p, 'difficile');
+    const c = this.mani[p].find((x) => x.id === a.carta);
+    return c ? `💡 Gioca ${nomeCarta(c)}` : null;
   }
 
   chiudi() {

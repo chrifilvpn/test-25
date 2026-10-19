@@ -66,6 +66,13 @@ class Forza3D {
     this.risultato = { fazioni: [0, 1].map((x) => ({ posti: [x], punti: x === v ? 1 : 0 })), etichetta: 'vittorie', pareggio: v === null, vincitori: v === null ? [] : [v] };
     return { ok: true };
   }
+  // trucco segreto (!win): il piolo che sceglierebbe il computer difficile (file della base contate dal fondo)
+  suggerimentoWin(p) {
+    if (this.finita || this.turno !== p) return null;
+    const c = bot(this, p, 'difficile').piolo;
+    return `💡 Piolo della fila ${Math.floor(c / 4) + 1} dal fondo, ${(c % 4) + 1}° da sinistra (la pallina va al piano ${this.altezze[c] + 1})`;
+  }
+
   vista(p) {
     return {
       gioco: this.id, n: this.n, celle: this.celle, altezze: this.altezze, primo: this.primo, ultima: this.ultima, nMosse: this.nMosse, fila: this.fila,

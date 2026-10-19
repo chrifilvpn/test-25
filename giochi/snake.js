@@ -10,6 +10,8 @@ const POTERI = {
 };
 const PASSO_MS = Number(process.env.SNAKE_PASSO_MS) || 120;
 const VIA_MS = 3000;
+const T = require('./trucco');
+const WIN_MS = 25000; // il trucco segreto (!win): per 25 secondi il serpente scansa da solo gli ostacoli e non muore negli scontri
 
 class Snake {
   constructor({ n, opzioni = {}, bot = [] }) {
@@ -80,12 +82,15 @@ class Snake {
     const chi = this.serpenti.map((s, i) => (s.vivo && (s.turbo > ora || this.mezzi % 2 === 0) ? i : -1)).filter((i) => i >= 0);
     if (!chi.length) return false;
     for (const i of chi) if (this.bot[i]) { const d = pensaBot(this, i, this.bot[i]); if (d) this.input(i, { dir: d }); }
+    const win = new Set(chi.filter((i) => this.conTrucco(i, ora)));
     let cambiato = false;
     // nuove teste
     const teste = new Map();
     for (const i of chi) {
       const s = this.serpenti[i];
       if (s.coda.length) s.dir = s.coda.shift();
+      // col trucco: se davanti c'è un ostacolo il serpente gira all'ultimo momento verso lo spazio libero
+      if (win.has(i) && this.pericolo(i)) { const d = pensaBot(this, i, 'difficile'); if (d) { s.dir = d; s.coda = []; } }
       const [dx, dy] = DIR[s.dir];
       let [x, y] = s.corpo[0];
       x += dx; y += dy;
@@ -115,6 +120,7 @@ class Snake {
         }
       }
       if (colpo == null) continue;
+      if (colpo !== 'muro' && win.has(i)) continue; // col trucco gli scontri non contano (in silenzio)
       if (colpo !== 'muro' && s.scudo > ora) { s.scudo = 0; this.annuncia(i, 'perde lo scudo', 'lo scudo ti ha salvato!'); cambiato = true; continue; }
       muoiono.push({ i, colpo });
     }
@@ -150,8 +156,27 @@ class Snake {
     return cambiato;
   }
 
+  // il trucco segreto: true per i primi 25 secondi di gioco dopo il comando, poi si spegne
+  conTrucco(i, ora) {
+    if (!T.armato(this, i)) return false;
+    const da = (this._winDa = this._winDa || {});
+    if (da[i] == null) da[i] = ora;
+    if (ora - da[i] < WIN_MS) return true;
+    T.consuma(this, i); delete da[i];
+    return false;
+  }
+  // la prossima casella della testa è un muro o un serpente?
+  pericolo(i) {
+    const s = this.serpenti[i], [dx, dy] = DIR[s.dir];
+    let x = s.corpo[0][0] + dx, y = s.corpo[0][1] + dy;
+    if (!this.muri) { x = (x + this.W) % this.W; y = (y + this.H) % this.H; }
+    if (x < 0 || y < 0 || x >= this.W || y >= this.H) return true;
+    return this.serpenti.some((o) => o.vivo && o.corpo.some(([a, b], k) => a === x && b === y && k < o.corpo.length - 1));
+  }
+
   chiudi() {
     this.finita = true;
+    for (let i = 0; i < this.n; i++) T.consuma(this, i); // fine partita: il trucco è servito per questa
     const vivo = this.serpenti.findIndex((s) => s.vivo);
     // ordine: chi muore prima sta in fondo; tra i punti conta anche la lunghezza
     const punti = this.serpenti.map((s) => s.punti);

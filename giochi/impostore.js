@@ -247,6 +247,14 @@ class Impostore {
     return { ok: true };
   }
 
+  // il trucco segreto (!win): all'impostore sussurra la parola, agli altri chi è l'impostore
+  suggerimentoWin(posto) {
+    if (this.finita || this.fase === 'finale' || this.fuori[posto]) return null;
+    if (posto === this.impostore) return `🕵️ La parola è ${this.parola.toUpperCase()}`;
+    const nome = (this.nomiGiocatori && this.nomiGiocatori[this.impostore]) || `il giocatore ${this.impostore + 1}`;
+    return `🕵️ L'impostore è ${nome}`;
+  }
+
   vista(p) {
     const sonoImpostore = p === this.impostore;
     const svelato = this.fase === 'finale' || this.fase === 'fine';

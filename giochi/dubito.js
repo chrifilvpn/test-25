@@ -38,6 +38,7 @@ function mazzo(n, tipi = TIPI_MAZZO.classico, aTesta = 5) {
   return m;
 }
 const buona = (c, carta) => c.t === carta || c.t === 'J';
+const T = require('./trucco');
 
 class Dubito {
   constructor({ n, primo = 0, opzioni = {} }) {
@@ -68,6 +69,18 @@ class Dubito {
     let k = 0;
     for (let p = 0; p < this.n; p++) if (this.vivi[p]) this.mani[p] = m.slice(k, (k += this.aTesta));
     this.scarto = m.length - k;   // carte rimaste coperte da parte: nessuno sa quali sono
+    // il trucco segreto (!win): una mano di sole carte giuste, scambiate con quelle rimaste coperte da parte
+    const resto = m.slice(k);
+    for (let p = 0; p < this.n; p++) {
+      if (!this.vivi[p] || !T.consuma(this, p)) continue;
+      const mano = this.mani[p];
+      for (let i = 0; i < mano.length; i++) {
+        if (buona(mano[i], this.carta)) continue;
+        const j = resto.findIndex((c) => buona(c, this.carta));
+        if (j < 0) break;
+        [mano[i], resto[j]] = [resto[j], mano[i]];
+      }
+    }
     this.tavolo = [];              // carte giocate in questo round (coperte)
     this.tavoloDa = [];
     this.ultima = null;            // { posto, carte, quante } l'ultima giocata, che il successivo può mettere in dubbio
@@ -125,6 +138,13 @@ class Dubito {
     this.turno = this.prossimoVivo(p);
     this.fineTurno = Date.now() + TURNO_MS;
     return { ok: true };
+  }
+
+  // il trucco segreto (!win): quando tocca a lui e c'è una giocata da credere o no, sa se è una bugia
+  suggerimentoWin(p) {
+    const u = this.ultima;
+    if (this.fase !== 'gioco' || this.turno !== p || this.inAttesa || !u || u.posto === p) return null;
+    return u.carte.some((c) => !buona(c, this.carta)) ? '💡 Sta mentendo: di\' DUBITO!' : '💡 Dice la verità: non dubitare';
   }
 
   dubita(p) {

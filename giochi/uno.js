@@ -3,6 +3,7 @@
 // 0 e 7 senza effetti; chi non può giocare pesca finché non trova una carta giocabile e la gioca;
 // si possono calare insieme più carte con lo stesso valore; chi resta con una carta senza aver detto UNO pesca 2.
 const { mescola } = require('./carte');
+const T = require('./trucco');
 
 const COLORI = ['rosso', 'giallo', 'verde', 'blu'];
 function mazzoUno() {
@@ -62,6 +63,24 @@ class Uno {
       this.scarti = [cima];
     }
     return this.mazzo.pop() || null;
+  }
+
+  // il trucco segreto (!win), subito: le carte più scomode della mano (numeri alti che ora non si possono giocare)
+  // tornano nel mazzo e al loro posto arrivano un +4, un jolly e un +2 (se nel mazzo ce ne sono ancora)
+  trucco(p) {
+    const mano = this.mani[p];
+    if (this.finita || !mano || !mano.length || !T.consuma(this, p)) return;
+    const peso = (c) => (this.giocabile(c) ? 0 : 100) + puntiCarta(c);
+    for (const vuoi of ['+4', 'jolly', '+2']) {
+      const scomode = mano.filter((c) => !nera(c) && c.valore !== '+2' && c.id !== this.pescata);
+      const via = T.migliore(scomode, peso);
+      const i = this.mazzo.findIndex((c) => c.valore === vuoi);
+      if (!via || i < 0) continue;
+      const nuova = this.mazzo[i];
+      this.mazzo[i] = via;
+      mano[mano.indexOf(via)] = nuova;
+    }
+    mescola(this.mazzo);
   }
 
   giocabile(c) {

@@ -4,6 +4,17 @@
 // Due modi: a squadre (i giocatori divisi in due squadre, rimescolate a ogni round) e uno contro uno (torneo a
 // eliminazione: una sfida alla volta, chi vince va avanti).
 const { Arena, casuale } = require('./arena');
+const T = require('./trucco');
+// !win banana: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
+function aggiornaWin(g, dt) {
+  const w = g.winOn || (g.winOn = {}), tw = g.winT || (g.winT = {});
+  for (let p = 0; p < g.n; p++) {
+    if (!(w[p] = T.armato(g, p))) { tw[p] = 0; continue; }
+    tw[p] = (tw[p] || 0) + dt;
+    if (tw[p] > 25) { T.consuma(g, p); w[p] = false; tw[p] = 0; }
+  }
+}
+function fineWin(g) { for (let p = 0; p < g.n; p++) { T.consuma(g, p); if (g.winOn) g.winOn[p] = false; } }
 const W = 1000, H = 620, BORDO = 150, K = 12, MAX_RITMO = 15, DURATA = 40, INERZIA = 3;
 const mescola = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
@@ -36,8 +47,10 @@ class Fune extends Arena {
     this.annuncia(null, this.uno ? 'Sfida uno contro uno!' : 'Tirate!', this.uno ? 'Sfida uno contro uno: tira!' : 'Tira!', true);
   }
   squadraDi(p) { return this.squadre[0].includes(p) ? 0 : this.squadre[1].includes(p) ? 1 : -1; }
-  forza(s) { const m = this.squadre[s]; return m.length ? m.reduce((t, p) => t + this.ritmo[p], 0) / m.length : 0; }
+  // con il trucco i colpi di quel giocatore valgono quasi il doppio
+  forza(s) { const m = this.squadre[s]; return m.length ? m.reduce((t, p) => t + this.ritmo[p] * (this.winOn && this.winOn[p] ? 1.9 : 1), 0) / m.length : 0; }
   passo(dt) {
+    aggiornaWin(this, dt);
     if (this.perdente !== null) return this.tempoRound - this.cadutaT > 2.2; // si guarda la caduta
     for (let p = 0; p < this.n; p++) {
       this.budget[p] = Math.min(3, this.budget[p] + MAX_RITMO * dt);
@@ -68,7 +81,7 @@ class Fune extends Arena {
     }
     return false;
   }
-  fineRound() {}
+  fineRound() { fineWin(this); }
   pensa(p, liv) {
     if (this.squadraDi(p) < 0 || this.perdente !== null) return {};
     const m = this.mente[p] || (this.mente[p] = { acc: 0, base: { facile: casuale(4.5, 6), medio: casuale(7, 8.2), difficile: casuale(9.3, 10.5) }[liv] });

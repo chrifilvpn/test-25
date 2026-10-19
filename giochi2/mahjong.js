@@ -101,6 +101,22 @@ function rimescola(V, facce) {
   return riempi(V, c, mescola(cp));
 }
 
+// nome di una faccia e posizione di un posto nella figura, per il suggerimento segreto
+function nomeFaccia(f) {
+  const v = f.slice(1);
+  if (f[0] === 'c' && /\d/.test(v)) return `${v} cerchi`;
+  if (f[0] === 'b') return `${v} bambù`;
+  if (f[0] === 'n') return `${v} caratteri`;
+  return { ve: 'vento Est', vs: 'vento Sud', vo: 'vento Ovest', vn: 'vento Nord', dr: 'drago rosso', dv: 'drago verde', db: 'drago bianco' }[f] || (f[0] === 'f' ? 'fiore' : 'stagione');
+}
+function dove(posti, i) {
+  const [x, y, z] = posti[i];
+  const mx = Math.max(...posti.map((q) => q[0])), my = Math.max(...posti.map((q) => q[1]));
+  const ver = y < my / 3 ? 'in alto' : y > (my * 2) / 3 ? 'in basso' : 'al centro';
+  const oriz = x < mx / 3 ? ' a sinistra' : x > (mx * 2) / 3 ? ' a destra' : '';
+  return `${ver}${oriz}${z ? ` (piano ${z + 1})` : ''}`;
+}
+
 class Mahjong extends SfidaRompicapo {
   constructor(o) {
     super('mahjong', o, 40 * 60000);
@@ -167,6 +183,19 @@ class Mahjong extends SfidaRompicapo {
       return { ok: true };
     }
     return { errore: 'Mossa non valida' };
+  }
+
+  // !win banana: la prossima coppia buona (quella della soluzione, se si può ancora), con il nome e dove sono
+  suggerimentoWin(posto) {
+    const t = this.tavole[posto];
+    if (this.finita || !t || t.fatto != null || t.ritirato) return null;
+    const m = this.mosseLibere(t);
+    if (!m.length) return '💡 Niente coppie libere: annulla l\'ultima mossa o rimescola';
+    const piano = t.piano || this.soluzione;
+    const giusta = piano.find(([x, y]) => t.facce[x] && t.facce[y] && m.some((q) => (q[0] === x && q[1] === y) || (q[0] === y && q[1] === x)));
+    const [a, b] = giusta || m[0];
+    const fa = nomeFaccia(t.facce[a]), fb = nomeFaccia(t.facce[b]);
+    return `💡 Togli la coppia ${fa === fb ? fa : `${fa} + ${fb}`}: una tessera ${dove(this.posti, a)}, l'altra ${dove(this.posti, b)}`;
   }
 
   // ---- computer: toglie le coppie nell'ordine della soluzione; il facile a volte prende una coppia libera a caso

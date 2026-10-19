@@ -99,6 +99,27 @@ class Bugiardi {
     this.annuncia(v, 'resta l\'ultimo con i dadi: vince!', 'sei l\'ultimo con i dadi: hai vinto!', true);
     this.risultato = { fazioni: punti.map((x, i) => ({ posti: [i], punti: x })), etichetta: 'posizione', pareggio: false, vincitori: [v] };
   }
+  // trucco segreto (!win): sotto tutti i bicchieri, solo per chi l'ha chiesto. Dice se dubitare, se calzare, o la
+  // puntata vera più alta (così chi viene dopo, per alzare, deve dire una cosa falsa)
+  suggerimentoWin(p) {
+    if (this.finita || this.inAttesa || this.fase !== 'puntata' || this.turno !== p) return null;
+    const tutti = this.dadi.flat(), P = this.puntata;
+    const detto = (q, f) => `${q} ${q === 1 ? 'dado' : 'dadi'} da ${f}`;
+    if (P) {
+      const c = conta(tutti, P.f);
+      if (c < P.q) return `💡 Dubito! In tutto ce ne sono solo ${c} (${detto(P.q, P.f)} è un bluff)`;
+      if (this.calza && c === P.q && this.nDadi[p] < this.massimo) return `💡 Calza! Sono proprio ${detto(c, P.f)}`;
+    }
+    let meglio = null;
+    for (let f = 1; f <= 6; f++) {
+      const q = conta(tutti, f);
+      if (q >= 1 && piuAlta(q, f, P && P.q, P && P.f) && (!meglio || q > meglio.q || (q === meglio.q && f > meglio.f))) meglio = { q, f };
+    }
+    if (meglio) return `💡 Punta ${detto(meglio.q, meglio.f)}: è vero${meglio.f === 1 ? '' : ' (con gli 1 jolly)'}, e chi viene dopo dovrà bluffare`;
+    const m = minimeSopra(P && P.q, P && P.f, this.totale())[0];
+    return m ? `💡 La puntata è vera: non dubitare. Alza il meno possibile: ${detto(m.q, m.f)}` : null;
+  }
+
   vista(p) {
     const mio = this.turno === p && !this.inAttesa && !this.finita;
     return {

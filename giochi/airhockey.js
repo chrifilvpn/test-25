@@ -3,6 +3,8 @@
 const W = 600, H = 1000, R_DISCO = 28, R_MAZZA = 44, PORTA = 230;
 const V_MAX = 2100, V_MAZZA = 2600, ATTRITO = 0.9975, RIMBALZO = 0.88;
 const PAUSA_GOL = 1300, VIA_MS = 3000;
+const T = require('./trucco');
+const WIN_MS = 25000; // il trucco segreto (!win): per 25 secondi (o fino al suo gol) avversari lenti e tiri che vanno in porta
 
 class AirHockey {
   constructor({ n, opzioni = {}, bot = [] }) {
@@ -58,6 +60,9 @@ class AirHockey {
     const dt = Math.min(0.05, this.ultimo ? (ora - this.ultimo) / 1000 : this.tickMs / 1000);
     this.ultimo = ora;
     this.mazze.forEach((m, p) => { if (this.bot[p]) pensaBot(this, p, this.bot[p]); });
+    // chi ha il trucco segreto in questo momento (al massimo uno conta)
+    this.win = null;
+    for (let p = 0; p < this.n; p++) if (this.conTrucco(p, ora)) this.win = p;
     let cambiato = false;
     const PASSI = 10; // passi piccoli: il disco non può "saltare" oltre una racchetta
     for (let k = 0; k < PASSI && !this.finita; k++) cambiato = this.passo(dt / PASSI, ora) || cambiato;
@@ -69,7 +74,8 @@ class AirHockey {
     // le mazze inseguono il punto indicato, con una velocità massima
     this.mazze.forEach((m, p) => {
       const dx = m.tx - m.x, dy = m.ty - m.y, d = Math.hypot(dx, dy);
-      const max = (this.bot[p] ? velocitaBot(this.bot[p]) : V_MAZZA) * dt;
+      const lento = this.win != null && this.squadra(p) !== this.squadra(this.win) ? 0.55 : 1;
+      const max = (this.bot[p] ? velocitaBot(this.bot[p]) : V_MAZZA) * dt * lento;
       const f = d > max ? max / d : 1;
       const nx = m.x + dx * f, ny = m.y + dy * f;
       m.vx = (nx - m.x) / dt; m.vy = (ny - m.y) / dt;
@@ -95,7 +101,7 @@ class AirHockey {
     if (c.y < -R_DISCO) return this.segna(0, ora);   // entrato in alto: gol della squadra A
     if (c.y > H + R_DISCO) return this.segna(1, ora); // entrato in basso: gol della squadra B
     // urti con le mazze
-    for (const m of this.mazze) {
+    for (const [p, m] of this.mazze.entries()) {
       const dx = c.x - m.x, dy = c.y - m.y, d = Math.hypot(dx, dy);
       if (d >= R_DISCO + R_MAZZA) continue;
       // normale dell'urto: se i centri coincidono si usa il verso del movimento della racchetta
@@ -116,6 +122,12 @@ class AirHockey {
         // una piccola deviazione a ogni colpo, come sul tavolo vero: il disco non resta mai perfettamente dritto
         const ang = (Math.random() - 0.5) * 0.12, co = Math.cos(ang), si = Math.sin(ang);
         [c.vx, c.vy] = [c.vx * co - c.vy * si, c.vx * si + c.vy * co];
+        // col trucco segreto il tiro va dritto verso la porta avversaria, forte
+        if (p === this.win) {
+          const gy = this.squadra(p) === 0 ? -R_DISCO * 2 : H + R_DISCO * 2, gx = W / 2 + (Math.random() - 0.5) * PORTA * 0.4;
+          const dx = gx - c.x, dy = gy - c.y, d = Math.hypot(dx, dy) || 1, v = Math.max(1500, Math.hypot(c.vx, c.vy));
+          c.vx = (dx / d) * v; c.vy = (dy / d) * v;
+        }
         this.colpi++;
       } else if (schiacciato) {
         // il disco scivola via lungo la sponda, piano
@@ -155,8 +167,21 @@ class AirHockey {
     return false;
   }
 
+  // il trucco segreto: true per i primi 25 secondi di gioco dopo il comando, poi si spegne
+  conTrucco(p, ora) {
+    if (!T.armato(this, p) || ora < this.fermoFino) return false;
+    const da = (this._winDa = this._winDa || {});
+    if (da[p] == null) da[p] = ora;
+    if (ora - da[p] < WIN_MS) return true;
+    T.consuma(this, p); delete da[p];
+    return false;
+  }
+
   segna(squadra, ora) {
     this.gol[squadra]++;
+    // il gol della squadra di chi ha il trucco chiude il trucco
+    for (let p = 0; p < this.n; p++) if (this.squadra(p) === squadra && this._winDa && this._winDa[p] != null) { T.consuma(this, p); delete this._winDa[p]; }
+    this.win = null;
     const chi = this.aSquadre ? null : squadra; // in 1 contro 1 il posto coincide con la squadra
     const nomeSq = squadra === 0 ? 'A' : 'B';
     this.annuncia(chi, this.aSquadre ? `Gol della squadra ${nomeSq}! ${this.gol[0]}–${this.gol[1]}` : `segna! ${this.gol[0]}–${this.gol[1]}`, `gol! ${this.gol[0]}–${this.gol[1]}`, true);

@@ -7,6 +7,17 @@
 // sovrapponga e che le curve non siano troppo strette. Se tutti i posti sono del computer (o il tempo finisce) la
 // pista la inventa il gioco.
 const { Arena } = require('../giochi/arena');
+const T = require('../giochi/trucco');
+// !win banana: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
+function aggiornaWin(g, dt) {
+  const w = g.winOn || (g.winOn = {}), tw = g.winT || (g.winT = {});
+  for (let p = 0; p < g.n; p++) {
+    if (!(w[p] = T.armato(g, p))) { tw[p] = 0; continue; }
+    tw[p] = (tw[p] || 0) + dt;
+    if (tw[p] > 25) { T.consuma(g, p); w[p] = false; tw[p] = 0; }
+  }
+}
+function fineWin(g) { for (let p = 0; p < g.n; p++) { T.consuma(g, p); if (g.winOn) g.winOn[p] = false; } }
 
 // ---------- le piste: punti di controllo di una curva chiusa (Catmull-Rom), larghezza ----------
 const PISTE = {
@@ -238,9 +249,10 @@ class Corsa extends Arena {
     const [i, d] = this.vicino(c);
     const erba = d > this.mezza;
     c.erba = erba;
-    const vmax = (erba ? V_ERBA : V_MAX) * (liv ? LIV[liv].vmax : 1);
+    const win = c.id < this.n && this.winOn && this.winOn[c.id]; // !win banana: più veloce, e l'erba non frena
+    const vmax = (erba && !win ? V_ERBA : V_MAX) * (liv ? LIV[liv].vmax : 1) * (win ? 1.18 : 1);
     // motore e freni
-    if (gas > 0.05) { if (vf < vmax) vf = Math.min(vmax, vf + ACC * gas * dt * (vf < 0 ? 2 : 1)); }
+    if (gas > 0.05) { if (vf < vmax) vf = Math.min(vmax, vf + ACC * (win ? 1.3 : 1) * gas * dt * (vf < 0 ? 2 : 1)); }
     if (freno > 0.05) { if (vf > 15) vf = Math.max(0, vf - FRENO * freno * dt); else vf = Math.max(-RETRO, vf - ACC * 0.6 * freno * dt); }
     if (gas <= 0.05 && freno <= 0.05) vf *= Math.exp(-0.45 * dt);
     if (vf > vmax) vf = Math.max(vmax, vf - (erba ? 900 : 400) * dt); // sull'erba si rallenta in fretta
@@ -309,6 +321,7 @@ class Corsa extends Arena {
   }
   passo(dt) {
     const t = this.tempoRound;
+    aggiornaWin(this, t < SEMAFORO ? 0 : dt);
     for (let k = 0; k < 2; k++) {
       for (let p = 0; p < this.n; p++) this.guidaAuto(this.auto[p], this.inp[p], dt / 2, this.bot[p]);
       if (this.collisioni) this.urtiTraAuto();
@@ -324,6 +337,7 @@ class Corsa extends Arena {
     return t > SEMAFORO + this.nGiri * 100 + 30;
   }
   fineRound() {
+    fineWin(this);
     const ordine = this.classifica();
     ordine.forEach((id, pos) => { this.punti[id] = this.n - 1 - pos; });
     this.ordineFinale = ordine;

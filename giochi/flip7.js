@@ -5,6 +5,7 @@
 // Si vince arrivando per primi a 200 punti (a fine round, chi ne ha di più).
 const OBIETTIVI = [200, 100, 300];
 const BONUS_FLIP7 = 15;
+const T = require('./trucco');
 
 function mazzoFlip7() {
   const m = [];
@@ -68,20 +69,28 @@ class Flip7 {
     this.procedi();
   }
 
-  pescaCarta() {
+  pescaCarta(x) {
     if (!this.mazzo.length) {
       if (!this.scarti.length) return null;
       this.mazzo = mescola(this.scarti);
       this.scarti = [];
       this.annuncia(null, '🔀 Mazzo finito: si rimescolano gli scarti', '');
     }
+    // il trucco segreto (!win): per tutto il round si pescano solo numeri nuovi, i più alti che ci sono (verso il Flip 7)
+    if (x) {
+      const nuovi = this.mazzo.filter((c) => c.tipo === 'num' && !x.numeri.some((y) => y.v === c.v));
+      const c = T.migliore(nuovi, (c) => c.v);
+      if (c) T.inCima(this.mazzo, (y) => y === c);
+    }
     return this.mazzo.pop();
   }
 
   // una carta scoperta davanti a p
   pesca(p, inTre) {
-    const c = this.pescaCarta();
+    const truccato = T.armato(this, p);
+    if (truccato) (this.winUsato = this.winUsato || new Set()).add(p);
     const x = this.g[p];
+    const c = this.pescaCarta(truccato ? x : null);
     if (!c) { x.stato = 'fermo'; return; } // niente più carte (non succede quasi mai): si ferma
     x.ultima = { ...c, n: ++this.nCarta };
     if (c.tipo === 'num') {
@@ -227,6 +236,8 @@ class Flip7 {
 
   fineRound() {
     this.turno = null;
+    // il trucco vale un round: finito il round si spegne (per chi ha pescato almeno una carta col trucco)
+    if (this.winUsato) { for (const p of this.winUsato) T.consuma(this, p); this.winUsato = null; }
     this.pendente = null;
     const righe = this.g.map((x, i) => {
       const punti = puntiRound(x);

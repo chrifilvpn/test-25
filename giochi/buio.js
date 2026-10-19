@@ -7,6 +7,17 @@
 // fase finale, quando il cercatore diventa più veloce; qui le nuvole azzurre arrivano ogni 15 s e negli ultimi 30 s
 // ogni 6 s (con il Cercatore più veloce del 15%).
 const { Arena, casuale } = require('./arena');
+const T = require('./trucco');
+// !win banana: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
+function aggiornaWin(g, dt) {
+  const w = g.winOn || (g.winOn = {}), tw = g.winT || (g.winT = {});
+  for (let p = 0; p < g.n; p++) {
+    if (!(w[p] = T.armato(g, p))) { tw[p] = 0; continue; }
+    tw[p] = (tw[p] || 0) + dt;
+    if (tw[p] > 25) { T.consuma(g, p); w[p] = false; tw[p] = 0; }
+  }
+}
+function fineWin(g) { for (let p = 0; p < g.n; p++) { T.consuma(g, p); if (g.winOn) g.winOn[p] = false; } }
 const C = 40, COLS = 25, RIGHE = 15, W = COLS * C, H = RIGHE * C;
 const R = 13, V_NASCOSTO = 200, V_CERCATORE = 185, DURATA = 100, BENDATO = 10, FINALE = 30;
 const VISTA_C = 145, VISTA_N = 130, TOCCO = R * 2 + 4, SCOPRE = 32; // nei nascondigli ti vede solo chi ti arriva addosso
@@ -104,26 +115,27 @@ class Buio extends Arena {
   }
   get finale() { return this.tempoRound >= DURATA - FINALE; }
   passo(dt) {
+    aggiornaWin(this, dt);
     const t = this.tempoRound, cer = this.e[this.cercatore];
     for (let p = 0; p < this.n; p++) {
       const e = this.e[p], i = this.inp[p];
       if (e.preso) continue;
-      const v = p === this.cercatore ? V_CERCATORE * (this.finale ? 1.15 : 1) : V_NASCOSTO;
+      const v = (p === this.cercatore ? V_CERCATORE * (this.finale ? 1.15 : 1) : V_NASCOSTO) * (this.winOn[p] ? 1.25 : 1);
       if (p === this.cercatore && t < BENDATO) continue;
       const d = this.verso(p, e, v, dt); this.muovi(e, d.x, d.y, v, dt);
     }
     // il Cercatore tocca qualcuno: preso
     if (t >= BENDATO) for (let p = 0; p < this.n; p++) {
       const e = this.e[p];
-      if (p === this.cercatore || e.preso || Math.hypot(e.x - cer.x, e.y - cer.y) > TOCCO) continue;
+      if (p === this.cercatore || e.preso || Math.hypot(e.x - cer.x, e.y - cer.y) > TOCCO * (this.winOn[this.cercatore] ? 1.6 : 1)) continue;
       e.preso = true; e.quando = t; this.punti[this.cercatore] += 3; this.cambiato = true;
       this.catture.push([Math.round(e.x), Math.round(e.y)]);
       this.annuncia(this.cercatore, 'ha trovato @! 🔦', 'hai trovato @! 🔦', false, { bersaglio: p, testoTe: 'ti ha trovato! Ora vedi tutta la casa 💡' });
     }
     // le nuvole
-    if (t >= this.prossimaRossa) { this.nuvole.push({ id: ++this.nNuv, c: 'rossa', x: Math.round(cer.x), y: Math.round(cer.y), t }); this.prossimaRossa += OGNI_ROSSA; this.cambiato = true; }
+    if (t >= this.prossimaRossa) { if (!this.winOn[this.cercatore]) this.nuvole.push({ id: ++this.nNuv, c: 'rossa', x: Math.round(cer.x), y: Math.round(cer.y), t }); this.prossimaRossa += OGNI_ROSSA; this.cambiato = true; }
     if (t >= this.prossimaBlu) {
-      for (const e of this.e) if (e.id !== this.cercatore && !e.preso) this.nuvole.push({ id: ++this.nNuv, c: 'blu', x: Math.round(e.x), y: Math.round(e.y), t, di: e.id });
+      for (const e of this.e) if (e.id !== this.cercatore && !e.preso && !this.winOn[e.id]) this.nuvole.push({ id: ++this.nNuv, c: 'blu', x: Math.round(e.x), y: Math.round(e.y), t, di: e.id });
       this.prossimaBlu += this.finale ? OGNI_BLU_FINALE : OGNI_BLU; this.cambiato = true;
     }
     if (this.finale && this.prossimaBlu - t > OGNI_BLU_FINALE) this.prossimaBlu = t + OGNI_BLU_FINALE;
@@ -132,6 +144,7 @@ class Buio extends Arena {
     return liberi === 0 || t >= DURATA;
   }
   fineRound() {
+    fineWin(this);
     const liberi = this.e.filter((e) => e.id !== this.cercatore && !e.preso);
     for (const e of this.e) if (e.id !== this.cercatore) this.punti[e.id] += e.preso ? Math.floor((e.quando - BENDATO) / 20) : 5;
     if (!liberi.length) { this.punti[this.cercatore] += 5; this.annuncia(this.cercatore, 'ha trovato tutti! 🔦', 'hai trovato tutti! 🔦', true); }

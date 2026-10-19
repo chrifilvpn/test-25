@@ -4,6 +4,17 @@
 // il biscotto si incrina, sempre di più quanto più si esce e quanto più si corre; a 100% di crepe si rompe: eliminato
 // (macchia rossa stilizzata, nome grigio). Chi ritaglia tutta la forma entro il tempo passa il round.
 const { Arena, casuale } = require('./arena');
+const T = require('./trucco');
+// !win banana: un vantaggio per il round in corso (al massimo 30 secondi di gioco), poi il trucco si spegne
+function aggiornaWin(g, dt) {
+  const w = g.winOn || (g.winOn = {}), tw = g.winT || (g.winT = {});
+  for (let p = 0; p < g.n; p++) {
+    if (!(w[p] = T.armato(g, p))) { tw[p] = 0; continue; }
+    tw[p] = (tw[p] || 0) + dt;
+    if (tw[p] > 30) { T.consuma(g, p); w[p] = false; tw[p] = 0; }
+  }
+}
+function fineWin(g) { for (let p = 0; p < g.n; p++) { T.consuma(g, p); if (g.winOn) g.winOn[p] = false; } }
 const W = 1000, H = 620, CX = 500, CY = 330, R_BISCOTTO = 245, PASSO = 4, DURATA = 90;
 const COPERTO = 0.97; // quanta parte del solco va ritagliata
 
@@ -132,15 +143,17 @@ class Dalgona extends Arena {
   }
   progresso(b) { let k = 0; for (const x of b.fatto) k += x; return k / b.fatto.length; }
   passo(dt) {
+    aggiornaWin(this, dt);
     for (let p = 0; p < this.n; p++) {
       const b = this.b[p], i = this.inp[p];
+      const sicuro = this.winOn[p], danno0 = b.danno; // con il trucco il biscotto non si incrina
       if (b.stato !== 'gioco') continue;
       b.a = !!i.a && i.mx !== null;
       if (!b.a) { b.prima = null; if (i.mx !== null) { b.x = i.mx; b.y = i.my; } continue; }
       if (!b.prima) b.danno += 3; // ogni volta che riappoggi l'ago il biscotto soffre un po'
       const x = i.mx, y = i.my, pr = b.prima || [x, y];
       b.x = x; b.y = y;
-      const tol = FORME[b.forma].tol, l = Math.hypot(x - pr[0], y - pr[1]), n = Math.max(1, Math.ceil(l / 3));
+      const tol = FORME[b.forma].tol * (sicuro ? 1.8 : 1), l = Math.hypot(x - pr[0], y - pr[1]), n = Math.max(1, Math.ceil(l / 3));
       // correre troppo incrina il biscotto
       const vel = l / Math.max(dt, 0.001);
       if (vel > 420) b.danno += ((vel - 420) / 420) * 2.5;
@@ -157,6 +170,7 @@ class Dalgona extends Arena {
         } else b.danno += Math.min(7, 0.6 + (d - tol) * 0.32) * (FORME[b.forma].fragile || 1) * fermo; // fuori dal solco: il biscotto si incrina (la Torre Eiffel è più fragile)
       }
       b.prima = [x, y];
+      if (sicuro) b.danno = danno0;
       if (b.danno >= 100) { b.danno = 100; this.rompi(p); continue; }
       if (this.progresso(b) >= COPERTO) {
         b.stato = 'fatto'; b.fine = this.tempoRound; this.cambiato = true;
@@ -176,7 +190,7 @@ class Dalgona extends Arena {
     b.stato = 'rotto'; b.el = this.tempoRound; this.cambiato = true;
     this.annuncia(p, tempo ? 'non ha finito in tempo: eliminato' : 'ha rotto il biscotto: eliminato!', tempo ? 'tempo scaduto: eliminato' : 'il biscotto si è rotto: eliminato!');
   }
-  fineRound() {}
+  fineRound() { fineWin(this); }
   // il computer segue il solco con la sua velocità e un po' di tremolio
   pensa(p, liv) {
     const b = this.b[p];

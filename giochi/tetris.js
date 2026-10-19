@@ -15,6 +15,8 @@ const celle = (t, r) => FORME[t][r % FORME[t].length];
 const PUNTI_RIGHE = [0, 100, 300, 500, 800];
 const BLOCCO_MS = 500;
 const VIA_MS = 3000;
+const T = require('./trucco');
+const WIN_MS = 25000; // il trucco segreto (!win): per 25 secondi pezzi comodi e caduta più lenta
 // millisecondi per scendere di una riga, per livello (dal livello 1)
 const gravita = (liv) => Math.max(45, Math.round(1000 * Math.pow(0.8 - (liv - 1) * 0.007, liv - 1)));
 
@@ -31,7 +33,9 @@ class Tabellone {
   }
   libero(t, r, x, y) { return celle(t, r).every(([a, b]) => { const cx = x + a, cy = y + b; return cx >= 0 && cx < W && cy < H && (cy < 0 || !this.g[cy * W + cx]); }); }
   nuovo(t) {
-    this.t = t || this.serie(this.k++);
+    const s = t ? null : this.serie(this.k++);
+    // col trucco segreto arriva il pezzo che sta meglio nel tabellone (la serie va avanti lo stesso)
+    this.t = t || (this.comodo && this.comodo(this)) || s;
     this.r = 0; this.x = 3; this.y = this.t === 'I' ? -1 : 0;
     this.caduta = 0; this.bloccoDa = null; this.mosseBlocco = 0;
     if (!this.libero(this.t, this.r, this.x, this.y)) this.vivo = false;
@@ -73,7 +77,7 @@ class Tetris {
     const rnd = mulberry((Math.random() * 2 ** 32) >>> 0);
     const pezzi = [];
     this.serie = (k) => { while (pezzi.length <= k) { const sac = [...TIPI]; for (let i = 6; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [sac[i], sac[j]] = [sac[j], sac[i]]; } pezzi.push(...sac); } return pezzi[k]; };
-    this.tab = Array.from({ length: n }, () => new Tabellone(this.serie));
+    this.tab = Array.from({ length: n }, (_, p) => { const b = new Tabellone(this.serie); b.comodo = (x) => (this.conTrucco(p, Date.now()) ? pezzoComodo(x) : null); return b; });
     this.bot = bot.slice();
     this.piani = new Array(n).fill(null);
     this.tickMs = 50;
@@ -132,7 +136,7 @@ class Tetris {
       if (this.bot[p]) this.muoviBot(p, dt);
       if (!b.vivo) return;
       b.caduta += dt;
-      const g = gravita(b.livello);
+      const g = gravita(b.livello) * (this.conTrucco(p, ora) ? 2 : 1);
       while (b.caduta >= g) { b.caduta -= g; if (!b.muovi(0, 1)) break; }
       if (!b.libero(b.t, b.r, b.x, b.y + 1)) {
         if (b.bloccoDa == null) b.bloccoDa = 0;
@@ -160,8 +164,19 @@ class Tetris {
     this.esegui(p, 'caduta');
   }
 
+  // il trucco segreto: true per i primi 25 secondi di gioco dopo il comando, poi si spegne
+  conTrucco(p, ora) {
+    if (!T.armato(this, p) || ora < this.via) return false;
+    const da = (this._winDa = this._winDa || {});
+    if (da[p] == null) da[p] = ora;
+    if (ora - da[p] < WIN_MS) return true;
+    T.consuma(this, p); delete da[p];
+    return false;
+  }
+
   chiudi() {
     this.finita = true;
+    for (let p = 0; p < this.n; p++) T.consuma(this, p);
     const punti = this.tab.map((b) => b.punti);
     let vincitori;
     if (this.n === 1) vincitori = [0];
@@ -218,6 +233,17 @@ function pianoBot(b, liv) {
       if (v > vm) { vm = v; meglio = { r, x }; }
     }
   }
+  return { ...meglio, v: vm };
+}
+// il pezzo che si incastra meglio (per il trucco segreto): si prova ogni forma con il computer difficile
+function pezzoComodo(b) {
+  let meglio = null, vm = -Infinity;
+  for (const t of TIPI) {
+    const prova = Object.assign(Object.create(b), { t, r: 0, x: 3, y: t === 'I' ? -1 : 0 });
+    if (!b.libero(t, 0, 3, prova.y)) continue;
+    const { v } = pianoBot(prova, 'difficile');
+    if (v > vm) { vm = v; meglio = t; }
+  }
   return meglio;
 }
 
@@ -244,5 +270,5 @@ module.exports = {
   },
   crea: (o) => new Tetris(o),
   bot: () => ({}),
-  _test: { Tabellone, gravita, W, H },
+  _test: { Tabellone, gravita, pezzoComodo, W, H },
 };

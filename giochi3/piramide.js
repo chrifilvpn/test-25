@@ -5,6 +5,7 @@
 // Le distribuzioni sono controllate da un risolutore: ognuna si può vincere, e la sua soluzione guida aiuto e computer.
 // Da soli per il tempo; in sfida (2-8) tutti hanno la stessa distribuzione.
 const { SfidaRompicapo, FATTORE_LIVELLO, passoBot, mescola } = require('../giochi2/rompicapo-sfida');
+const { nomeCarta } = require('../giochi/carte');
 
 const SEMI = ['c', 'q', 'f', 'p'];
 const GIRI = { tre: 3, uno: 1, cinque: 5 };
@@ -54,6 +55,14 @@ function risolvi(pir, tal, maxGiri, inizio = { tolte: 0, sp: 0, tolteT: 0, giro:
   };
   const ok = rec(inizio.tolte, inizio.sp, inizio.tolteT, inizio.giro);
   return ok ? { mosse, nodi } : { mosse: null, nodi, troppo: nodi > limite };
+}
+
+// il trucco segreto (!win): una mossa della soluzione detta a parole
+function descriviMossa(pir, tal, t, m) {
+  if (m.tipo === 'pesca') return '💡 Gira una carta dal tallone';
+  const fila = (k) => Math.floor((Math.sqrt(8 * k + 1) - 1) / 2) + 1;
+  const nome = (r) => (r.s ? `${nomeCarta(tal[cimaScarti(t.sp, t.tolteT)])} (scarti)` : `${nomeCarta(pir[r.p])} (fila ${fila(r.p)})`);
+  return m.tipo === 'togli' ? `💡 Togli ${nome(m.a)}` : `💡 Togli ${nome(m.a)} + ${nome(m.b)}`;
 }
 
 function mazzo52() { const m = []; for (const s of SEMI) for (let r = 1; r <= 13; r++) m.push({ id: `${r}${s}`, rango: r, seme: s }); return m; }
@@ -135,6 +144,14 @@ class Piramide extends SfidaRompicapo {
     return { errore: 'Mossa non valida' };
   }
 
+  suggerimentoWin(p) {
+    const t = this.tavole[p];
+    if (!t || this.finita || t.fatto != null || t.ritirato) return null;
+    const r = t.mosse === 0 ? { mosse: this.soluzione } : risolvi(this.pir, this.tal, this.maxGiri, t, 40000);
+    if (!r.mosse || !r.mosse.length) return '💡 Da qui non si vince più: annulla qualche mossa';
+    return descriviMossa(this.pir, this.tal, t, r.mosse[0]);
+  }
+
   // ---- computer: segue la soluzione (o la ricalcola); il facile ogni tanto pesca a vuoto ----
   pianoBot(p, livello) {
     if (this.menti[p]) return this.menti[p];
@@ -205,5 +222,5 @@ module.exports = {
   },
   crea: (o) => new Piramide(o),
   bot: (g, p, livello) => g.mossaBot(p, livello),
-  _test: { risolvi, distribuzione, libera, cimaScarti, SOPRA, mazzo52 },
+  _test: { risolvi, distribuzione, libera, cimaScarti, SOPRA, mazzo52, descriviMossa },
 };

@@ -4,6 +4,7 @@
 // purché alla fine del turno ogni gruppo sia valido e si sia calata almeno una carta. Chi non cala pesca una carta.
 // Vince chi resta senza carte. Le carte hanno id "7c" e "7cb" (secondo mazzo).
 const { mescola } = require('../giochi/carte');
+const T = require('../giochi/trucco');
 
 const SEMI = ['c', 'q', 'f', 'p'];
 const NOMI_SEMI = { c: 'cuori', q: 'quadri', f: 'fiori', p: 'picche' };
@@ -258,6 +259,7 @@ class Machiavelli {
     if (!a || typeof a !== 'object') return { errore: 'Mossa non valida' };
     if (a.tipo === 'pesca') {
       if (!this.mazzo.length) return { errore: 'Il mazzo è finito: puoi solo calare o passare' };
+      if (T.consuma(this, p)) this.truccaPescata(p);
       this.mani[p].push(this.mazzo.pop());
       this.ultima = { posto: p, tipo: 'pesca', nuove: [], n: ++this.nMossa };
       return this.passaTurno(p);
@@ -305,6 +307,33 @@ class Machiavelli {
     if (this.mani[p].length === 1) this.annuncia(p, 'ha solo una carta!', 'ti resta una carta sola!');
     return this.passaTurno(p);
   }
+  // il trucco segreto (!win): al suo turno, la mossa che cala più carte (cercata come il computer difficile, anche
+  // rimescolando la tavola); se non c'è niente da calare, la carta pescata è quella che serve di più
+  suggerimentoWin(p) {
+    if (this.turno !== p || this.finita) return null;
+    const m = cercaMossa(this.tavolo, this.mani[p], process.env.TEST_VELOCE ? 30 : 300, true);
+    if (!m || !m.usate) return null;
+    const mie = new Set(this.mani[p].map((c) => c.id));
+    const nuovi = m.gruppi.filter((g) => g.some((id) => mie.has(id)));
+    const tutte = m.usate === this.mani[p].length ? ' e chiudi!' : '';
+    return `💡 Cala ${m.usate} ${m.usate === 1 ? 'carta' : 'carte'}${tutte}: ${nuovi.map((g) => g.map(sigla).join(' ')).join(' · ')}`;
+  }
+
+  truccaPescata(p) {
+    const mano = this.mani[p], tav = this.tavolo;
+    const punteggio = (c) => {
+      let v = 0;
+      for (const x of mano) {
+        if (x.rango === c.rango && x.seme !== c.seme) v += 2;
+        else if (x.seme === c.seme && Math.abs(x.rango - c.rango) <= 2 && x.rango !== c.rango) v += 2;
+      }
+      if (tav.some((g) => valuta([...g, c]))) v += 3; // si attacca subito a una combinazione in tavola
+      return v + Math.random();
+    };
+    const c = T.migliore(this.mazzo, punteggio);
+    if (c) T.inCima(this.mazzo, (x) => x === c);
+  }
+
   passaTurno(p) { this.turno = (p + 1) % this.n; return { ok: true }; }
 
   chiudi(vincitore) {
@@ -337,6 +366,10 @@ class Machiavelli {
     };
   }
 }
+// "7♥": una carta in breve, per i consigli
+const SIMBOLI = { c: '♥', q: '♦', f: '♣', p: '♠' };
+const sigla = (id) => { const c = daId(id); return `${({ 1: 'A', 11: 'J', 12: 'Q', 13: 'K' })[c.rango] || c.rango}${SIMBOLI[c.seme]}`; };
+
 function ordineGruppi(a, b) {
   const sa = a[0].rango === a[1].rango, sb = b[0].rango === b[1].rango;
   if (sa !== sb) return sa ? 1 : -1;

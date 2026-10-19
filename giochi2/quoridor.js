@@ -203,6 +203,27 @@ class MuriPedine {
     return c;
   }
 
+  // trucco segreto (!win): la mossa del computer difficile. La tavola si vede girata con la propria partenza in basso:
+  // le caselle si chiamano come le vede il giocatore (colonne a-i da sinistra, righe 1-9 dal suo lato)
+  suggerimentoWin(p) {
+    if (this.finita || this.turno !== p) return null;
+    const a = bot(this, p, 'difficile');
+    const ang = [0, 90, 180, 270][this.lati[p]];
+    const vede = (i) => { const r = Math.floor(i / L), c = i % L; return ang === 0 ? [r, c] : ang === 180 ? [8 - r, 8 - c] : ang === 90 ? [c, 8 - r] : [8 - c, r]; };
+    const nome = (vr, vc) => `${'abcdefghi'[vc]}${L - vr}`;
+    const coda = ' (colonne a-i da sinistra, righe 1-9 dal tuo lato)';
+    if (a.tipo === 'muovi') {
+      const [r0, c0] = vede(this.pos[p]), [r1, c1] = vede(a.cella);
+      const dir = [r1 < r0 ? 'avanti' : r1 > r0 ? 'indietro' : '', c1 < c0 ? 'a sinistra' : c1 > c0 ? 'a destra' : ''].filter(Boolean).join(' ');
+      return `💡 Pedina ${nome(r0, c0)} → ${nome(r1, c1)} (${dir}${Math.abs(r1 - r0) + Math.abs(c1 - c0) > 1 ? ', salto' : ''})${coda}`;
+    }
+    const o = a.o === 'v' ? 1 : 0;
+    const quattro = [[a.r, a.c], [a.r, a.c + 1], [a.r + 1, a.c], [a.r + 1, a.c + 1]].map(([r, c]) => vede(r * L + c));
+    const vr = Math.min(...quattro.map((x) => x[0])), vc = Math.min(...quattro.map((x) => x[1]));
+    const orizz = (ang === 90 || ang === 270 ? 1 - o : o) === 0;
+    return orizz ? `💡 Muro orizzontale sopra ${nome(vr + 1, vc)} e ${nome(vr + 1, vc + 1)}${coda}` : `💡 Muro verticale a destra di ${nome(vr, vc)} e ${nome(vr + 1, vc)}${coda}`;
+  }
+
   vista(p) {
     const c = this.calcola();
     const muri = [];

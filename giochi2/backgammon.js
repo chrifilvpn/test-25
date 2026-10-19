@@ -9,6 +9,7 @@
 
 const CASA = 6;
 const dado = () => 1 + Math.floor(Math.random() * 6);
+const T = require('../giochi/trucco');
 function iniziale() {
   const m = new Array(26).fill(0);
   m[24] = 2; m[13] = 5; m[8] = 3; m[6] = 5;
@@ -142,6 +143,17 @@ class Backgammon {
       this.inAttesa = true; this.pausaMs = 1500;
     }
   }
+  // il trucco segreto (!win): tra i 21 tiri possibili quello che, giocato al meglio, lascia la posizione migliore
+  // secondo la rete del computer difficile
+  dadiMigliori(p) {
+    let best = null, bv = -Infinity;
+    for (const { a, b } of TIRI) {
+      const fine = posizioniFinali(this.t[p], this.t[1 - p], [a, b]);
+      const v = (fine.length && fine[0].passi.length ? Math.max(...fine.map((x) => (x.mie[0] === 15 ? 2 : rete(x.mie, x.sue)))) : -1) + Math.random() * 1e-3;
+      if (v > bv) { bv = v; best = Math.random() < 0.5 ? [a, b] : [b, a]; }
+    }
+    return best;
+  }
   // passi ancora possibili dopo quelli già fatti
   prossimi() {
     const out = [];
@@ -181,7 +193,7 @@ class Backgammon {
     }
     if (a.tipo === 'tira') {
       if (this.fase !== 'tira') return { errore: 'Hai già tirato' };
-      this.iniziaTurno([dado(), dado()]);
+      this.iniziaTurno(T.consuma(this, p) ? this.dadiMigliori(p) : [dado(), dado()]);
       return { ok: true };
     }
     if (this.fase !== 'muovi') return { errore: 'Prima tira i dadi' };

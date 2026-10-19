@@ -276,6 +276,14 @@ class Go {
     return !this.storia.has(String.fromCharCode(...c.c));
   }
 
+  // trucco segreto (!win): la mossa del computer difficile, con le coordinate scritte sul goban
+  suggerimentoWin(p) {
+    if (this.finita || this.fase !== 'gioco' || this.turno !== p) return null;
+    const a = bot(this, p, 'difficile');
+    if (a.tipo === 'passa') return '💡 Passa: la partita è già tua, conviene contare';
+    return `💡 Metti la pietra in ${this.nomePunto(this.t.pt(a.x, a.y))}`;
+  }
+
   azione(p, a) {
     if (this.finita) return { errore: 'La partita è finita' };
     if (!a || typeof a !== 'object') return { errore: 'Mossa non valida' };

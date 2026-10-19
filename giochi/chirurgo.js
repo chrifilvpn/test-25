@@ -19,6 +19,8 @@ const VIA_MS = 3500, PAUSA_MS = 4500, MAX_MS = 150000, DOPO_PRIMO_MS = 20000;
 const R_PARTENZA = 26; // raggio della zona di partenza e di arrivo
 // computer: velocità (px/s) e probabilità di toccare ogni 100 px (moltiplicata per la difficoltà del percorso)
 const BOT = { facile: { v: 170, p: 0.05 }, medio: { v: 250, p: 0.03 }, difficile: { v: 360, p: 0.017 } };
+const T = require('./trucco');
+const LARGO = 2.2; // il trucco segreto (!win): per tutto il round i bordi per lui sono molto più tolleranti (e il computer non tocca)
 const MOLT = { facile: [1, 0.3], normale: [0.85, 0.6], difficile: [0.7, 1], esperto: [0.55, 1.6], impossibile: [0.42, 2.4], estremo: [0.33, 3.4] };
 
 // larghezza del corridoio nel tempo (solo nell'estremo "respira": si stringe e si allarga)
@@ -232,7 +234,7 @@ class Chirurgo {
     if (d.t !== 'pos' || x.stato !== 'corre') return;
     // si cerca intorno all'ultimo punto (finestra larga: tra un messaggio e l'altro ci si può muovere parecchio)
     const v = vicino(this.percorso, px, py, x.idx || 0, 160);
-    const w = larghezza(this.livello, Date.now());
+    const w = larghezza(this.livello, Date.now()) * (this.largo(p) ? LARGO : 1);
     // fuori dal corridoio (con un po' di tolleranza per il ritardo della rete): si ricomincia
     const inizio = pp[0], fineP = pp[pp.length - 1];
     const salvo = Math.hypot(px - inizio[0], py - inizio[1]) <= R_PARTENZA + 4 || (x.prog > 0.9 && Math.hypot(px - fineP[0], py - fineP[1]) <= R_PARTENZA + 4);
@@ -275,9 +277,10 @@ class Chirurgo {
         if (x.stato === 'pronto') { if (!x.attesa) x.attesa = ora + 350 + Math.random() * 500; if (ora >= x.attesa) { x.stato = 'corre'; x.dal = ora; x.attesa = null; x.ultimo = ora; } return; }
         const dt = (ora - (x.ultimo || ora)) / 1000;
         x.ultimo = ora;
-        const dist = BOT[liv].v * mv * (0.8 + Math.random() * 0.4) * dt;
+        const win = this.largo(p);
+        const dist = BOT[liv].v * mv * (0.8 + Math.random() * 0.4) * dt * (win ? 1.2 : 1);
         // probabilità di toccare il bordo in questo tratto
-        if (Math.random() < 1 - Math.pow(1 - BOT[liv].p * mp, dist / 100)) { this.azzera(p); x.attesa = ora + 500 + Math.random() * 500; this.cambiato = true; return; }
+        if (!win && Math.random() < 1 - Math.pow(1 - BOT[liv].p * mp, dist / 100)) { this.azzera(p); x.attesa = ora + 500 + Math.random() * 500; this.cambiato = true; return; }
         x.prog = Math.min(1, x.prog + dist / tot);
         const i = Math.min(this.percorso.pts.length - 1, this.percorso.lung.findIndex((l) => l >= x.prog * tot));
         const q = this.percorso.pts[i < 0 ? this.percorso.pts.length - 1 : i];
@@ -295,7 +298,15 @@ class Chirurgo {
     return false;
   }
 
+  // il trucco segreto vale per il round in corso (si segna appena lo usa, e si spegne a fine round)
+  largo(p) {
+    const x = this.g[p];
+    if (x && !x.win && (this.fase === 'via' || this.fase === 'corsa') && T.armato(this, p)) x.win = true;
+    return !!(x && x.win);
+  }
+
   fineRound(ora) {
+    this.g.forEach((x, p) => { if (x.win) T.consuma(this, p); });
     // punti: il primo ne prende quanti sono i giocatori, il secondo uno in meno… chi non arriva zero
     this.arrivi.forEach((p, k) => { this.punti[p] += this.n - k; });
     this.g.forEach((x, p) => {
@@ -340,8 +351,10 @@ class Chirurgo {
     };
   }
 
-  vista() {
+  vista(p) {
+    const largo = p != null && this.largo(p);
     return {
+      ...(largo ? { largo: LARGO } : {}), // solo per chi ha il trucco: il suo browser è più tollerante sui bordi
       gioco: this.id, n: this.n, turno: null, inAttesa: false, finita: this.finita, risultato: this.risultato, evento: this.evento,
       livello: this.livello, nomeLivello: NOMI[this.livello], nRound: this.nRound, W, H, R: R_PARTENZA,
       w: PARAM[this.livello].w, pulsa: !!PARAM[this.livello].pulsa,

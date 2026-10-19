@@ -102,7 +102,8 @@ class Sudoku {
 
   // AIUTO: scrive il numero giusto in una casella, scegliendo (se c'è) quella con un solo numero possibile, così si
   // capisce il ragionamento; costa 30 secondi sul cronometro. Prima toglie l'eventuale numero sbagliato di quella casella.
-  aiuto(p) {
+  // la casella da aiutare: quella (non ancora giusta) con meno numeri possibili
+  casellaAiuto() {
     const g = this.griglia.map((x, k) => (x === this.soluzione[k] ? x : 0));
     let meglio = -1, minimo = 10;
     for (let k = 0; k < 81; k++) {
@@ -110,6 +111,10 @@ class Sudoku {
       let n = 0; for (let v = 1; v <= 9; v++) if (puo(g, k, v)) n++;
       if (n < minimo) { minimo = n; meglio = k; }
     }
+    return { meglio, minimo };
+  }
+  aiuto(p) {
+    const { meglio, minimo } = this.casellaAiuto();
     if (meglio < 0) return { errore: 'Non c\'è niente da aiutare' };
     this.griglia[meglio] = this.soluzione[meglio];
     this.chi[meglio] = null;
@@ -120,6 +125,13 @@ class Sudoku {
     this.annuncia(p, `chiede un aiuto: ${this.soluzione[meglio]} in ${dove} (+30 s)`, `aiuto: ${this.soluzione[meglio]} in ${dove}${minimo === 1 ? ', l\'unico numero possibile lì' : ''} (+30 s)`);
     if (this.griglia.every((x, k) => x === this.soluzione[k])) this.chiudi();
     return { ok: true };
+  }
+
+  // !win banana: il numero giusto della casella più facile, solo per chi l'ha chiesto (gratis, niente annunci)
+  suggerimentoWin() {
+    const { meglio } = this.casellaAiuto();
+    if (meglio < 0) return null;
+    return `💡 Riga ${riga(meglio) + 1}, colonna ${col(meglio) + 1}: ${this.soluzione[meglio]}`;
   }
 
   chiudi() {

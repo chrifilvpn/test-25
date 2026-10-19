@@ -2,6 +2,7 @@
 // Da 1 a 8 giocatori, 8 mazzi. Punto paga 1:1, Banco 1:1 meno il 5% di commissione, Pareggio 8:1
 // (col pareggio le puntate su Punto e Banco tornano indietro).
 const { Casino, scarpa, puntataBot } = require('./casino');
+const T = require('./trucco');
 
 const MAZZI = 8;
 const valore = (c) => (c.rango >= 10 ? 0 : c.rango);
@@ -75,11 +76,29 @@ class Baccarat extends Casino {
 
   gioca() {
     this.fase = 'carte';
+    // il trucco segreto (!win): vince la parte su cui il giocatore truccato ha puntato di più
+    const chi = this.puntate.findIndex((q, i) => this.puntato[i] && T.consuma(this, i));
+    if (chi >= 0) this.truccaScarpa(this.preferita(this.puntate[chi]));
     this.mano = distribuisci(() => this.pesca());
     this.scoperte = 0;
     this.pausaMs = 800;
     this.inAttesa = true; // le carte si scoprono una alla volta
     return { ok: true };
+  }
+
+  preferita(q) { return ['punto', 'banco', 'pareggio'].reduce((a, b) => (q[b] > q[a] ? b : a)); }
+  // rimescola le prime carte della scarpa finché la mano non esce come serve (le carte restano le stesse;
+  // la scarpa ha sempre almeno 60 carte, vedi apriPuntate)
+  truccaScarpa(vince) {
+    for (let prova = 0; prova < 3000; prova++) {
+      let k = this.scarpa.length;
+      if (distribuisci(() => this.scarpa[--k]).vince === vince) return true;
+      for (let j = this.scarpa.length - 6; j < this.scarpa.length; j++) {
+        const x = Math.floor(Math.random() * this.scarpa.length);
+        [this.scarpa[j], this.scarpa[x]] = [this.scarpa[x], this.scarpa[j]];
+      }
+    }
+    return false;
   }
 
   avanza() {

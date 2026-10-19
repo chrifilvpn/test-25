@@ -18,6 +18,7 @@ const PAUSA_PESCA = 1700;
 
 const mescola = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const animaleDi = (id) => id.split('-')[0];
+const T = require('./trucco');
 
 class Peppa {
   constructor({ n, primo = 0 }) {
@@ -61,6 +62,24 @@ class Peppa {
     return this.mani.map((m, i) => (i !== p && m.length ? i : -1)).filter((i) => i >= 0);
   }
 
+  // il trucco segreto (!win): la carta che si pesca fa coppia (e non è mai la Peppa). Dal mazzo va in cima una
+  // gemella di una carta in mano; dalla mano di un avversario, la gemella prende il posto della carta scelta
+  truccaPescata(p, da, indice) {
+    const fa = (c) => c !== 'peppa' && this.mani[p].some((x) => x !== 'peppa' && animaleDi(x) === animaleDi(c));
+    if (da === 'mazzo') {
+      if (!T.inCima(this.mazzo, fa) && this.mazzo[this.mazzo.length - 1] === 'peppa') T.inCima(this.mazzo, (c) => c !== 'peppa');
+      return;
+    }
+    const m = this.mani[da];
+    if (!Number.isInteger(indice) || indice < 0 || indice >= m.length || fa(m[indice])) return;
+    let j = m.findIndex(fa);
+    if (j < 0 && m[indice] === 'peppa') j = m.findIndex((c) => c !== 'peppa');
+    if (j < 0) return;
+    [m[indice], m[j]] = [m[j], m[indice]];
+    // chi sapeva dov'era la Peppa la ritrova dove è finita
+    this.memoria = this.memoria.map((x) => (x && x.di === da && (x.indice === indice || x.indice === j) ? { ...x, indice: x.indice === indice ? j : indice } : x));
+  }
+
   scartaCoppie(p) {
     const visti = new Map();
     let coppie = 0;
@@ -94,6 +113,8 @@ class Peppa {
     if (a.tipo !== 'pesca') return { errore: 'Pesca dal mazzo o da un avversario' };
     const da = a.da === 'mazzo' ? 'mazzo' : Number(a.da);
     if (!this.fonti(p).includes(da)) return { errore: da === 'mazzo' ? 'Il mazzo è finito: pesca da un avversario' : this.mazzo.length ? 'Finché c\'è il mazzo si pesca dal mazzo' : 'Da lì non puoi pescare' };
+    const valido = da === 'mazzo' || (Number.isInteger(Number(a.indice)) && Number(a.indice) >= 0 && Number(a.indice) < this.mani[da].length);
+    if (valido && T.consuma(this, p)) this.truccaPescata(p, da, Number(a.indice));
     let carta, i = null;
     if (da === 'mazzo') carta = this.mazzo.pop();
     else {

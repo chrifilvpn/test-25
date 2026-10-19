@@ -1,6 +1,8 @@
 // POKER A 5 CARTE CON CAMBIO (five card draw) no-limit, senza puntate obbligatorie.
 // Giro di puntate, cambio (da 0 a 5 carte), secondo giro di puntate, confronto.
 const { Poker, migliore, nomeMano, equita, forzaMano, decidi, valuta5, v14 } = require('./poker-motore');
+const T = require('./trucco');
+const aCaso = (l) => l[Math.floor(Math.random() * l.length)];
 
 class Poker5 extends Poker {
   constructor(o) { super(o); this.id = 'poker5'; }
@@ -8,12 +10,38 @@ class Poker5 extends Poker {
   distribuisci() {
     this.giro = 1;
     this.cambiate = new Array(this.n).fill(null);
+    this.truccaMano();
     for (let giro = 0; giro < 5; giro++) for (let k = 1; k <= this.n; k++) {
       const i = (this.dealer + k) % this.n;
       if (this.inMano[i]) this.carte[i].push(this.pesca());
     }
   }
   valuta(i) { return migliore(this.carte[i]); }
+
+  // il trucco segreto (!win): il giocatore truccato riceve già servito un colore, un full o (di rado) un poker, e
+  // nessun altro ha una mano migliore. Le carte sono sempre le stesse 52: cambia solo l'ordine del mazzo.
+  truccaMano() {
+    let chi = -1;
+    for (let i = 0; i < this.n && chi < 0; i++) if (this.inMano[i] && T.consuma(this, i)) chi = i;
+    if (chi < 0) return false;
+    const m = this.mazzo;
+    const buona = manoServita(m);
+    const resto = m.filter((c) => !buona.includes(c));
+    // in che ordine si distribuisce: le posizioni (dalla cima) delle carte del truccato
+    const ordine = [];
+    for (let giro = 0; giro < 5; giro++) for (let k = 1; k <= this.n; k++) { const i = (this.dealer + k) % this.n; if (this.inMano[i]) ordine.push(i); }
+    const mio = valuta5(buona).punti;
+    for (let prova = 0; prova < 200; prova++) {
+      for (let i = resto.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [resto[i], resto[j]] = [resto[j], resto[i]]; }
+      const cima = [], altri = resto.slice(), mani = Array.from({ length: this.n }, () => []);
+      let b = 0;
+      for (const i of ordine) { const c = i === chi ? buona[b++] : altri.pop(); cima.push(c); mani[i].push(c); }
+      if (prova < 199 && mani.some((x, i) => i !== chi && x.length && valuta5(x).punti >= mio)) continue;
+      this.mazzo = [...altri, ...cima.reverse()]; // si pesca con pop: la prima carta data è l'ultima
+      return true;
+    }
+    return true;
+  }
 
   fineGiro() {
     if (this.giro === 2) return this.confronto();
@@ -68,6 +96,21 @@ class Poker5 extends Poker {
     v.puoCambiare = this.fase === 'cambio' && this.turno === p;
     return v;
   }
+}
+
+// cinque carte del mazzo che formano un colore, un full o un poker (in ordine sparso)
+function manoServita(m) {
+  const x = Math.random();
+  let cs;
+  if (x < 0.4) { // colore, ma non scala colore
+    const seme = aCaso(['c', 'q', 'f', 'p']);
+    do cs = m.filter((c) => c.seme === seme).sort(() => Math.random() - 0.5).slice(0, 5); while (valuta5(cs).cat !== 5);
+  } else {
+    const ranghi = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].sort(() => Math.random() - 0.5);
+    const di = (r, n) => m.filter((c) => c.rango === r).sort(() => Math.random() - 0.5).slice(0, n);
+    cs = x < 0.9 ? [...di(ranghi[0], 3), ...di(ranghi[1], 2)] : [...di(ranghi[0], 4), ...di(ranghi[1], 1)];
+  }
+  return cs.sort(() => Math.random() - 0.5);
 }
 
 // =================== COMPUTER ===================
@@ -130,5 +173,5 @@ module.exports = {
   },
   crea: (o) => new Poker5(o),
   bot,
-  _test: { daCambiare },
+  _test: { daCambiare, manoServita },
 };

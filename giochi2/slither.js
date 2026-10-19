@@ -4,6 +4,17 @@
 // altro serpente (o contro il bordo) muore e si trasforma in tanto cibo; dopo 3 secondi rinasce piccolo. Si gioca a
 // tempo: alla fine vince chi è più lungo. Oltre ai giocatori ci sono serpenti del computer di riempimento.
 const { Arena } = require('../giochi/arena');
+const T = require('../giochi/trucco');
+// !win banana: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
+function aggiornaWin(g, dt) {
+  const w = g.winOn || (g.winOn = {}), tw = g.winT || (g.winT = {});
+  for (let p = 0; p < g.n; p++) {
+    if (!(w[p] = T.armato(g, p))) { tw[p] = 0; continue; }
+    tw[p] = (tw[p] || 0) + dt;
+    if (tw[p] > 25) { T.consuma(g, p); w[p] = false; tw[p] = 0; }
+  }
+}
+function fineWin(g) { for (let p = 0; p < g.n; p++) { T.consuma(g, p); if (g.winOn) g.winOn[p] = false; } }
 
 const VISTA = 1000; // lo schermo (in unità del browser): il mouse dice la direzione rispetto al centro
 const PASSO = 10; // distanza tra i punti del corpo
@@ -153,7 +164,7 @@ class Serpentoni extends Arena {
     const turbo = s.turbo && s.L > L_MIN_TURBO;
     const v = turbo ? V_TURBO : V;
     s.x += Math.cos(s.ang) * v * dt; s.y += Math.sin(s.ang) * v * dt;
-    if (turbo) {
+    if (turbo && !(s.id < this.n && this.winOn && this.winOn[s.id])) { // con il trucco il turbo è gratis
       s.L -= COSTO_TURBO * dt;
       s.scia += dt;
       if (s.scia > 0.15) { s.scia = 0; const t = s.p[Math.min(s.p.length - 1, Math.ceil(s.L / PASSO))]; if (t) this.metti({ x: t.x, y: t.y }, 2, 8); }
@@ -171,6 +182,7 @@ class Serpentoni extends Arena {
     if (s.p.length > max) s.p.length = max;
   }
   passo(dt) {
+    aggiornaWin(this, dt);
     const t = this.tempoRound;
     // input dei giocatori e computer di riempimento
     for (let p = 0; p < this.n; p++) {
@@ -187,7 +199,7 @@ class Serpentoni extends Arena {
       for (const s of this.s) {
         if (!s.vivo) continue;
         if (Math.hypot(s.x, s.y) > this.R - s.r * 0.6) { morti.push([s, null]); continue; }
-        const o = this.tocca(s.x, s.y, s.r * 0.6, s.id);
+        const o = s.id < this.n && this.winOn[s.id] ? null : this.tocca(s.x, s.y, s.r * 0.6, s.id); // con il trucco si passa attraverso gli altri
         if (o) morti.push([s, o]);
       }
       for (const [s, o] of morti) if (s.vivo) this.muori(s, o);
@@ -211,6 +223,7 @@ class Serpentoni extends Arena {
     return t >= this.durata;
   }
   fineRound() {
+    fineWin(this);
     for (let p = 0; p < this.n; p++) this.punti[p] = this.s[p].vivo ? Math.round(this.s[p].L / 10) : 0;
     const m = Math.max(...this.punti);
     const v = this.punti.map((x, i) => (x === m ? i : -1)).filter((i) => i >= 0);

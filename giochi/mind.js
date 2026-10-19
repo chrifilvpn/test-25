@@ -125,6 +125,14 @@ class Mind {
     return { ok: true };
   }
 
+  // il trucco segreto (!win): appena la sua carta più bassa è la più bassa di tutte, gli si dice di giocarla
+  suggerimentoWin(p) {
+    if (this.finita || this.inPausa || this.fase !== 'gioco' || !this.mani[p] || !this.mani[p].length) return null;
+    const mia = this.mani[p][0];
+    if (this.mani.some((m, i) => i !== p && m.length && m[0] < mia)) return null;
+    return `💡 Gioca adesso il tuo ${mia}: è la carta più bassa di tutte`;
+  }
+
   fineLivello(ora) {
     if (this.livello >= this.maxLivello) return this.chiudi(true);
     this.annuncia(null, `Livello ${this.livello} superato!`, '', true);

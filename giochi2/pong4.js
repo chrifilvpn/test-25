@@ -4,6 +4,17 @@
 // La pallina accelera a ogni colpo e prende l'effetto dal punto della racchetta dove batte (e da come si muove).
 // Negli angoli ci sono dei blocchi su cui la pallina rimbalza.
 const { Arena } = require('../giochi/arena');
+const T = require('../giochi/trucco');
+// !win banana: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
+function aggiornaWin(g, dt) {
+  const w = g.winOn || (g.winOn = {}), tw = g.winT || (g.winT = {});
+  for (let p = 0; p < g.n; p++) {
+    if (!(w[p] = T.armato(g, p))) { tw[p] = 0; continue; }
+    tw[p] = (tw[p] || 0) + dt;
+    if (tw[p] > 25) { T.consuma(g, p); w[p] = false; tw[p] = 0; }
+  }
+}
+function fineWin(g) { for (let p = 0; p < g.n; p++) { T.consuma(g, p); if (g.winOn) g.winOn[p] = false; } }
 
 const L = 600; // lato del campo
 const ANGOLO = 56; // blocchi negli angoli
@@ -61,8 +72,11 @@ class Pong4 extends Arena {
   }
   // il lato è chiuso (muro) se non c'è nessuno o chi c'era è uscito
   chiuso(lato) { const g = this.r.find((x) => x.lato === lato); return !g || g.fuori; }
+  // !win banana: la porta di chi ha il trucco respinge la pallina come un muro (niente vite perse)
+  protetto(lato) { const g = this.r.find((x) => x.lato === lato); return !!(g && this.winOn && this.winOn[g.id]); }
 
   passo(dt) {
+    aggiornaWin(this, dt);
     // racchette: le persone con tasti o mouse, i computer con pensa() (this.mente)
     for (const g of this.r) {
       if (g.fuori) continue;
@@ -145,7 +159,7 @@ class Pong4 extends Arena {
     // i lati: muro se chiuso, gol se aperto
     const fuori = b.y > L - RP ? 0 : b.x < RP ? 1 : b.y < RP ? 2 : b.x > L - RP ? 3 : -1;
     if (fuori < 0) return;
-    if (this.chiuso(fuori)) {
+    if (this.chiuso(fuori) || this.protetto(fuori)) {
       if (fuori === 0 || fuori === 2) { b.vy = -b.vy; b.y = fuori === 0 ? L - RP : RP; } else { b.vx = -b.vx; b.x = fuori === 1 ? RP : L - RP; }
       this.botto([1, Math.round(b.x), Math.round(b.y)]);
       // niente palline che rimbalzano per sempre in orizzontale/verticale tra due muri
@@ -169,6 +183,7 @@ class Pong4 extends Arena {
     this.cambiato = true;
   }
   fineRound() {
+    fineWin(this);
     // punti come in una classifica: chi esce per primo 0, poi 1, … l'ultimo rimasto n − 1 + 1
     this.ordine.forEach((id, k) => { this.punti[id] += k; });
     const vivo = this.r.find((x) => !x.fuori);

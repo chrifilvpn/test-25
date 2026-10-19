@@ -95,6 +95,9 @@ class Angolo {
     return { ok: true };
   }
 
+  // il trucco segreto (!win): finché non ha risposto gli sussurra la misura giusta
+  suggerimentoWin(posto) { return this.fase === 'stima' && !this.inAttesa && this.risposte[posto] == null ? `📐 ${this.angolo}°` : null; }
+
   vista(p) {
     const scoperto = this.fase !== 'stima';
     return {

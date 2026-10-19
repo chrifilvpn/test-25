@@ -102,6 +102,13 @@ class Reversi {
     return { ok: true };
   }
 
+  // trucco segreto (!win): la casella che sceglierebbe il computer difficile (coordinate scritte sulla damiera)
+  suggerimentoWin(p) {
+    if (this.finita || this.turno !== p || !mossePossibili(this.celle, p).length) return null;
+    const i = bot(this, p, 'difficile').cella;
+    return `💡 Metti la pedina in ${nomeCasella(i)} (giri ${girate(this.celle.slice(), i, p).length})`;
+  }
+
   vista(p) {
     return {
       gioco: this.id, n: this.n, celle: this.celle, colori: this.colori,

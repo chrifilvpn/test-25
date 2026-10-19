@@ -78,6 +78,20 @@ class Hanoi extends SfidaRompicapo {
     return { ok: true };
   }
 
+  // !win banana: le prossime mosse giuste (la strategia ottima da dove sei)
+  suggerimentoWin(posto) {
+    const t = this.tavole[posto];
+    if (this.finita || !t || t.fatto != null || t.ritirato) return null;
+    const pos = t.pos.slice(), frasi = [];
+    for (let k = 0; k < 3; k++) {
+      const x = prossima(pos, this.nd, 2);
+      if (!x) break;
+      pos[piccolo(pos, this.nd, x[0])] = x[1];
+      frasi.push(`dal piolo ${x[0] + 1} al ${x[1] + 1}`);
+    }
+    return frasi.length ? `💡 Sposta il disco ${frasi.join(', poi ')}` : null;
+  }
+
   // ---- computer: la strategia ottima, a un ritmo che dipende dal livello; il facile ogni tanto sbaglia ----
   pianoBot(p, livello) {
     if (this.menti[p]) return this.menti[p];

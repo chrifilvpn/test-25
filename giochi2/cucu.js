@@ -2,6 +2,7 @@
 // dopo; chi ha un re lo mostra ("cucù!") e blocca lo scambio. Il mazziere, per ultimo, può cambiarla con quella
 // in cima al mazzo. Poi si scopre tutto: chi ha la carta più bassa perde una vita. Vince l'ultimo che resta.
 const { mazzo40, mescola, casuale } = require('../giochi/carte');
+const T = require('../giochi/trucco');
 
 // valore della carta: asso 1 (la più bassa) … 7, fante 8, cavallo 9, re 10 (la più alta)
 const valore = (c) => (c.rango <= 7 ? c.rango : c.rango - 3);
@@ -41,7 +42,11 @@ class Cucu {
     // l'ordine del giro: da chi è dopo il mazziere fino al mazziere
     this.ordine = [];
     for (let j = this.dopo(this.mazziere); ; j = this.dopo(j)) { this.ordine.push(j); if (j === this.mazziere) break; }
-    for (const j of this.ordine) this.carte[j] = this.originali[j] = this.mazzo.pop();
+    for (const j of this.ordine) {
+      // il trucco segreto (!win): arriva un re (cucù: nessuno può portargliela via), o la carta più alta rimasta
+      if (T.consuma(this, j)) { const alta = T.migliore(this.mazzo, valore); T.inCima(this.mazzo, (c) => c === alta); }
+      this.carte[j] = this.originali[j] = this.mazzo.pop();
+    }
     this.k = 0;
     this.storia = []; // quello che hanno visto tutti: { posto, tipo: tiene|scambia|bloccato|cucu|mazzo, con }
     this.mostrati = []; // chi ha mostrato il re

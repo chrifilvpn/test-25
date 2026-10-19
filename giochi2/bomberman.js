@@ -6,6 +6,17 @@
 // A SQUADRE (in 4): due contro due, i compagni partono dagli angoli dello stesso lato (sopra contro sotto). Le fiamme
 // del compagno non fanno male (le proprie sì); il round lo vince la squadra che ha ancora qualcuno in piedi.
 const { Arena } = require('../giochi/arena');
+const Trucco = require('../giochi/trucco'); // (T qui è il lato delle caselle)
+// !win banana: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
+function aggiornaWin(g, dt) {
+  const w = g.winOn || (g.winOn = {}), tw = g.winT || (g.winT = {});
+  for (let p = 0; p < g.n; p++) {
+    if (!(w[p] = Trucco.armato(g, p))) { tw[p] = 0; continue; }
+    tw[p] = (tw[p] || 0) + dt;
+    if (tw[p] > 25) { Trucco.consuma(g, p); w[p] = false; tw[p] = 0; }
+  }
+}
+function fineWin(g) { for (let p = 0; p < g.n; p++) { Trucco.consuma(g, p); if (g.winOn) g.winOn[p] = false; } }
 
 const C = 15, R = 13, T = 48; // caselle da 48 px
 const MICCIA = 2.5, FIAMMA = 0.55, V_BASE = 3.3, V_PIU = 0.55, MAX_V = 4, MAX_BOMBE = 8, MAX_FIAMMA = 8;
@@ -181,13 +192,14 @@ class Bombe extends Arena {
   }
 
   passo(dt) {
+    aggiornaWin(this, dt);
     const t = this.tempoRound;
     this.appena = null;
     // giocatori
     for (let p = 0; p < this.n; p++) {
       const e = this.e[p];
       if (!e.vivo) { this.nuoviTocchi(p); continue; }
-      const v = this.velocita(e);
+      const v = this.velocita(e) * (this.winOn[p] ? 1.3 : 1);
       // chi gioca dal browser manda la posizione che ha già previsto (in pixel): il server la insegue con le sue regole
       const segue = !this.bot[p] && this.inp[p].px !== null && this.inp[p].px !== undefined;
       // la bomba va dove si è premuto: nella casella vista dal browser, se il server ci è già sopra almeno in parte
@@ -237,7 +249,7 @@ class Bombe extends Arena {
       if (!e.vivo) continue;
       const f = this.fiamme.get(idx(Math.round(e.x), Math.round(e.y)));
       // le fiamme di un compagno non fanno male
-      if (f && !(f.da != null && f.da !== p && this.squadra(f.da) === this.squadra(p))) this.elimina(p, f.da);
+      if (f && !this.winOn[p] && !(f.da != null && f.da !== p && this.squadra(f.da) === this.squadra(p))) this.elimina(p, f.da); // con il trucco le fiamme non bruciano
     }
     // la mappa si restringe: blocchi che cadono a spirale dal bordo
     if (t >= RESTRINGE && this.squadreVive().length > 1) {
@@ -267,6 +279,7 @@ class Bombe extends Arena {
   }
   nuovoRound(ora) { this.fineDopo = null; this.avvisoRestringe = false; super.nuovoRound(ora); }
   fineRound() {
+    fineWin(this);
     const vivi = this.e.filter((e) => e.vivo).map((e) => e.id);
     if (this.aSquadre) {
       const sq = this.squadreVive();

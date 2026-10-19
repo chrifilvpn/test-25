@@ -254,6 +254,14 @@ class Paroliere {
     else this.annuncia(null, prima ? 'Round finito' : '⏰ Tempo scaduto!', '', true);
   }
 
+  // il trucco segreto (!win): durante il round gli sussurra le parole più lunghe della griglia che non ha ancora trovato
+  suggerimentoWin(posto) {
+    if (this.finita || this.fase !== 'gioco' || this.finito[posto]) return null;
+    const gia = new Set(this.diSquadra(posto).map((x) => x.w));
+    const lunghe = this.tutte.filter((w) => !gia.has(w)).slice(0, 5);
+    return lunghe.length ? `🔠 ${lunghe.join(', ').toUpperCase()}` : null;
+  }
+
   avanti() {
     if (this.fase !== 'risultati') return;
     if (this.round >= this.nRound) return this.chiudi();

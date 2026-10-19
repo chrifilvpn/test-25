@@ -89,6 +89,18 @@ class Nurikabe extends SfidaRompicapo {
     return { errore: 'Mossa non valida' };
   }
 
+  // !win banana: una casella sbagliata da sistemare, altrimenti qualche casella di mare ancora da colorare
+  suggerimentoWin(posto) {
+    const t = this.tavole[posto];
+    if (this.finita || !t || t.fatto != null || t.ritirato) return null;
+    const dove = (k) => `riga ${Math.floor(k / this.W) + 1} col ${(k % this.W) + 1}`;
+    const sb = this.sbagliate(t);
+    if (sb.length) return `💡 ${dove(sb[0])} è ${this.soluzione[sb[0]] ? 'isola, non mare' : 'mare'}`;
+    const vuote = t.celle.map((v, k) => (v === VUOTA && !this.soluzione[k] ? k : -1)).filter((k) => k >= 0);
+    if (!vuote.length) return null;
+    return `💡 Mare in: ${mescola(vuote).slice(0, 3).sort((a, b) => a - b).map(dove).join(' · ')}`;
+  }
+
   // ---- computer: colora il mare in un ordine sensato (prima le caselle vicine a quelle già decise), a un ritmo che
   // dipende dal livello e dalla grandezza; il facile ogni tanto sbaglia e poi si corregge ----
   pianoBot(p, livello) {

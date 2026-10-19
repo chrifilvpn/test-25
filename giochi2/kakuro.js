@@ -427,6 +427,17 @@ class Kakuro extends SfidaRompicapo {
     return { ok: true };
   }
 
+  // !win banana: la cifra giusta di una casella (prima uno sbaglio da correggere, poi la prossima del ragionamento)
+  suggerimentoWin(posto) {
+    const t = this.tavole[posto];
+    if (this.finita || !t || t.fatto != null || t.ritirato) return null;
+    const sbaglio = this.S.bianche.find((i) => t.valori[i] && t.valori[i] !== this.soluzione[i]);
+    let i = sbaglio != null ? sbaglio : this.ordine.find((k) => !t.valori[k]);
+    if (i == null) i = this.S.bianche.find((k) => !t.valori[k]);
+    if (i == null) return null;
+    return `💡 Riga ${Math.floor(i / this.L) + 1}, colonna ${(i % this.L) + 1}: ${sbaglio != null ? `correggi in ${this.soluzione[i]}` : this.soluzione[i]}`;
+  }
+
   // ---- computer: riempie le caselle nell'ordine del ragionamento, a un ritmo che dipende dal suo livello
   pianoBot(p, livello) {
     if (this.menti[p]) return this.menti[p];

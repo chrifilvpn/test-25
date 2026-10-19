@@ -51,6 +51,9 @@ class Combattimento {
     this.iniziaTurno();
   }
   c(id) { return this.creature.find((x) => x.id === id); }
+  // il trucco segreto (!win banana): draghi.js mette in this.venti una funzione che dice (e spegne) se il prossimo
+  // d20 di quel personaggio è un 20 naturale
+  ventiPer(c) { return !!(c && c.pg && this.venti && this.venti(c)); }
   get attivo() { return this.c(this.ordine[this.indice]); }
   evento(e) { e.n = ++this.nEv; e.round = this.round; this.eventi.push(e); if (this.eventi.length > 400) this.eventi.shift(); return e; }
   vivo(c) { return c && !c.ref.morto && !c.fuggito && !(c.ref.pf <= 0 && !c.pg); }
@@ -101,7 +104,7 @@ class Combattimento {
     // a terra: tiro contro la morte
     if (c.pg && ref.pf <= 0) {
       if (!ref.stabile) {
-        const t = R.tiroMorte(ref);
+        const t = R.tiroMorte(ref, { venti: this.ventiPer(c) });
         this.evento({ tipo: 'morte', id: c.id, testo: `${ref.nome} tira contro la morte: ${t.valore} (${t.esito}; ${t.successi} successi, ${t.fallimenti} fallimenti)`, tiro: t });
         if (ref.morto) this.evento({ tipo: 'muore', id: c.id, testo: `${ref.nome} è morto.` });
       }
@@ -277,7 +280,7 @@ class Combattimento {
     const posAtt = opz.posAtt || att;
     const { vantaggio, svantaggio, perche } = this.vantaggiAttacco(att, ber, a, posAtt);
     const fortunato = att.pg && R.haEffetto(att.ref, 'fortunato');
-    const t = R.d20({ vantaggio, svantaggio, fortunato });
+    const t = R.d20({ vantaggio, svantaggio, fortunato, venti: this.ventiPer(att) });
     let bonus = a.colpire;
     const extraTiro = [];
     if (att.pg && this.effetto(att, 'benedizione')) { const b = R.d(4); bonus += b; extraTiro.push(`benedizione +${b}`); }
@@ -398,7 +401,7 @@ class Combattimento {
       // aura di protezione: un paladino alleato entro 3 metri aggiunge il suo Carisma
       let aura = 0;
       for (const x of this.creature) if (x.pg && x.lato === c.lato && this.inPiedi(x) && R.haEffetto(x.ref, 'auraProtezione') && this.dist(x, c) <= 3) aura = Math.max(aura, Math.max(1, x.ref.mod.car));
-      const r = R.salvezza(c.ref, car, { cd, aura, ...opz });
+      const r = R.salvezza(c.ref, car, { cd, aura, ...opz, venti: this.ventiPer(c) });
       if (!r.riuscita && R.haEffetto(c.ref, 'indomito') && c.ref.risorse.indomito && c.ref.risorse.indomito.usati < c.ref.risorse.indomito.max && cd - r.totale <= 6) {
         c.ref.risorse.indomito.usati++;
         const r2 = R.salvezza(c.ref, car, { cd, aura, ...opz });
@@ -473,7 +476,7 @@ class Combattimento {
       case 'schivata': if ((e = usaAzione())) return { errore: e }; c.turno.schivata = true; c.schivando = true; this.evento({ tipo: 'nota', id, testo: `${p.nome} si mette in difesa (Schivare).` }); return { ok: true };
       case 'nascondersi': {
         if ((e = extra.bonus && scaltra ? usaBonus() : usaAzione())) return { errore: e };
-        const pr = c.pg ? R.prova(p, 'furtivita') : { totale: R.d(20) + p.mod.des };
+        const pr = c.pg ? R.prova(p, 'furtivita', { venti: this.ventiPer(c) }) : { totale: R.d(20) + p.mod.des };
         const visto = this.nemiciDi(c).some((n) => (n.ref.percezionePassiva || 10 + (n.ref.mod ? n.ref.mod.sag : 0)) >= pr.totale && M.vista(this.scena, n.x, n.y, c.x, c.y));
         if (!visto) { p.effetti.push({ effetto: 'invisibile', da: id, durataTurni: 2, nome: 'Nascosto' }); this.evento({ tipo: 'nota', id, testo: `${p.nome} si nasconde (Furtività ${pr.totale}).` }); }
         else this.evento({ tipo: 'nota', id, testo: `${p.nome} prova a nascondersi (${pr.totale}), ma lo vedono.` });
@@ -577,7 +580,7 @@ class Combattimento {
         const b = this.c(extra.bersaglio);
         if (!b || !b.pg || b.ref.pf > 0 || b.ref.morto || this.dist(c, b) > CELLA) return { errore: 'Scegli un alleato morente vicino a te' };
         if ((e = usaAzione())) return { errore: e };
-        const pr = c.pg ? R.prova(p, 'medicina', { cd: 10 }) : { riuscita: true, totale: 10 };
+        const pr = c.pg ? R.prova(p, 'medicina', { cd: 10, venti: this.ventiPer(c) }) : { riuscita: true, totale: 10 };
         if (pr.riuscita) { b.ref.stabile = true; this.evento({ tipo: 'nota', id: b.id, testo: `${p.nome} stabilizza ${b.ref.nome} (Medicina ${pr.totale}).` }); }
         else this.evento({ tipo: 'nota', id: b.id, testo: `${p.nome} non riesce a stabilizzare ${b.ref.nome} (Medicina ${pr.totale}).` });
         return { ok: true };
@@ -725,7 +728,7 @@ class Combattimento {
         for (let k = 0; k < raggi; k++) {
           const b = listaB[k % listaB.length]; if (!b || !this.vivo(b)) continue;
           const { vantaggio, svantaggio, perche } = this.vantaggiAttacco(c, b, { mischia: !!e.mischia, gittata: [gitt, gitt] });
-          const t = R.d20({ vantaggio, svantaggio });
+          const t = R.d20({ vantaggio, svantaggio, venti: this.ventiPer(c) });
           const cop = e.mischia ? 0 : M.copertura(this.scena, c.x, c.y, b.x, b.y);
           const critico = t.valore === 20;
           const colpito = t.valore !== 1 && (critico || t.valore + di.attacco >= b.ref.ca + cop);

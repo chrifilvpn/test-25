@@ -5,6 +5,17 @@
 // Punti: 1 per ogni carro colpito, 1 in più a chi resta l'ultimo. Casse: tripla, scudo, turbo.
 // Il computer calcola i tiri di sponda (simula i rimbalzi), schiva i proiettili in arrivo e trova la strada nel labirinto.
 const { Arena } = require('../giochi/arena');
+const T = require('../giochi/trucco');
+// !win banana: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
+function aggiornaWin(g, dt) {
+  const w = g.winOn || (g.winOn = {}), tw = g.winT || (g.winT = {});
+  for (let p = 0; p < g.n; p++) {
+    if (!(w[p] = T.armato(g, p))) { tw[p] = 0; continue; }
+    tw[p] = (tw[p] || 0) + dt;
+    if (tw[p] > 25) { T.consuma(g, p); w[p] = false; tw[p] = 0; }
+  }
+}
+function fineWin(g) { for (let p = 0; p < g.n; p++) { T.consuma(g, p); if (g.winOn) g.winOn[p] = false; } }
 
 const S = 80; // lato di una cella del labirinto
 const SPESSORE = 8; // spessore dei muri
@@ -170,6 +181,7 @@ class Carri extends Arena {
     this.cambiato = true;
   }
   colpito(e, b) {
+    if (this.winOn && this.winOn[e.id]) return; // !win banana: il colpo rimbalza sulla corazza
     if (e.scudo > 0) { e.scudo = 0; this.botto([2, Math.round(e.x), Math.round(e.y)]); this.annuncia(e.id, 'para un colpo con lo scudo 🛡️', 'lo scudo ti ha salvato 🛡️'); return; }
     e.vivo = false; e.da = b.di;
     this.botto([1, Math.round(e.x), Math.round(e.y)]);
@@ -180,6 +192,7 @@ class Carri extends Arena {
   }
 
   passo(dt) {
+    aggiornaWin(this, dt);
     const t = this.tempoRound;
     // comandi: le persone dai tasti/joystick/mouse, i computer da pensa() (this.mente)
     for (const e of this.c) {
@@ -208,7 +221,7 @@ class Carri extends Arena {
         e.a = angolo(e.a + Math.sign(diff) * Math.min(Math.abs(diff), V_GIRO * dt * (e.turbo > 0 ? 1.4 : 1)));
         const allineato = Math.cos(angolo((verso > 0 ? voglio : voglio + Math.PI) - e.a));
         if (allineato > 0.5) {
-          const v = V_CARRO * (e.turbo > 0 ? 1.6 : 1) * forza * allineato * (verso < 0 ? 0.7 : 1);
+          const v = V_CARRO * (e.turbo > 0 ? 1.6 : this.winOn[e.id] ? 1.35 : 1) * forza * allineato * (verso < 0 ? 0.7 : 1);
           e.x += Math.cos(e.a) * v * dt * verso; e.y += Math.sin(e.a) * v * dt * verso;
         }
         this.spingiFuori(e);
@@ -263,6 +276,7 @@ class Carri extends Arena {
   }
 
   fineRound() {
+    fineWin(this);
     const vivi = this.c.filter((e) => e.vivo);
     if (vivi.length === 1 && this.tempoRound < DURATA_MAX) {
       this.punti[vivi[0].id]++;

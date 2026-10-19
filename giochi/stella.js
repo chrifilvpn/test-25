@@ -6,6 +6,17 @@
 // Due tolleranze: "Spietata" (appena si gira, chi si muove è fuori: solo 0,1 s per compensare la rete) e
 // "Con margine" (0,4 s per fermarsi).
 const { Arena, casuale } = require('./arena');
+const T = require('./trucco');
+// !win banana: un vantaggio per il round in corso (al massimo 30 secondi di gioco), poi il trucco si spegne
+function aggiornaWin(g, dt) {
+  const w = g.winOn || (g.winOn = {}), tw = g.winT || (g.winT = {});
+  for (let p = 0; p < g.n; p++) {
+    if (!(w[p] = T.armato(g, p))) { tw[p] = 0; continue; }
+    tw[p] = (tw[p] || 0) + dt;
+    if (tw[p] > 30) { T.consuma(g, p); w[p] = false; tw[p] = 0; }
+  }
+}
+function fineWin(g) { for (let p = 0; p < g.n; p++) { T.consuma(g, p); if (g.winOn) g.winOn[p] = false; } }
 const W = 1000, H = 620, R = 14, V = 105, PARTENZA = 70, TRAGUARDO = 880, DURATA = 45;
 const TOLLERANZA = { spietata: 0.1, margine: 0.4 };
 const MIN_CONTA = 1.5, MAX_CONTA = 7, MIN_GUARDA = 1.2, MAX_GUARDA = 5;
@@ -47,6 +58,7 @@ class Stella extends Arena {
     if (this.bambola !== null) { const v = this.contiVisti[this.bambola] || (this.contiVisti[this.bambola] = []); v.push(this.tempoRound - this.dalConta); }
   }
   passo(dt) {
+    aggiornaWin(this, dt);
     const t = this.tempoRound - this.dal;
     // la bambola
     if (this.bambola === null) {
@@ -67,7 +79,8 @@ class Stella extends Arena {
       e.y = Math.max(40 + R, Math.min(H - 20 - R, e.y + i.y * V * dt));
       const mosso = Math.hypot(e.x - x0, e.y - y0);
       // la bambola guarda: dopo la tolleranza, chi si muove è eliminato
-      if (this.fase2 === 'guarda' && this.tempoRound - this.dal > this.tolleranza && mosso > 0.3) this.elimina(p, 'si è mosso');
+      // (con il trucco la bambola non ti vede muovere)
+      if (this.fase2 === 'guarda' && this.tempoRound - this.dal > this.tolleranza && mosso > 0.3 && !this.winOn[p]) this.elimina(p, 'si è mosso');
       if (!e.fuori && e.x >= TRAGUARDO) {
         e.arrivo = this.tempoRound; this.arrivi.push(p); this.cambiato = true;
         const bonus = [2, 1][this.arrivi.length - 1] || 0;
@@ -91,6 +104,7 @@ class Stella extends Arena {
     this.annuncia(p, perche === 'tempo scaduto' ? 'non ce l\'ha fatta in tempo: eliminato' : 'si è mosso: eliminato!', perche === 'tempo scaduto' ? 'tempo scaduto: eliminato' : 'ti sei mosso: eliminato!', false);
   }
   fineRound() {
+    fineWin(this);
     if (this.bambola !== null && this.presi) this.annuncia(this.bambola, `ha eliminato ${this.presi} ${this.presi === 1 ? 'giocatore' : 'giocatori'} 🎎`, `hai eliminato ${this.presi} ${this.presi === 1 ? 'giocatore' : 'giocatori'} 🎎`, true);
   }
   // ---------------- computer ----------------

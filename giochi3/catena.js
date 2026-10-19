@@ -101,6 +101,12 @@ class Catena {
     this.passaA(this.n === 1 ? p : this.prossimo(p));
     return null;
   }
+  // il trucco segreto (!win): al suo turno gli sussurra la parola del computer difficile (valida e difficile da continuare)
+  suggerimentoWin(posto) {
+    if (this.finita || this.turno !== posto) return null;
+    for (let k = 0; k < 5; k++) { const a = bot(this, posto, 'difficile'); if (a.tipo === 'parola' && !this.controlla(a.testo)) return `⛓️ ${a.testo.toUpperCase()}`; }
+    return null;
+  }
   scadenza() { return this.finita ? null : this.fineTurno; }
   controllaTempo() {
     if (this.finita || Date.now() < this.fineTurno) return false;

@@ -148,7 +148,7 @@
     const [x, y] = coord(e);
     const [x0, y0] = io.pos;
     const passi = Math.max(1, Math.ceil(Math.hypot(x - x0, y - y0) / 2));
-    const lw = larghezza(p, Date.now());
+    const lw = larghezza(p, Date.now()) * (p.largo || 1);
     const inizio = perc.pts[0], meta = perc.pts[perc.pts.length - 1];
     for (let k = 1; k <= passi; k++) {
       const sx = x0 + ((x - x0) * k) / passi, sy = y0 + ((y - y0) * k) / passi;

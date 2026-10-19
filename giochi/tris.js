@@ -146,6 +146,18 @@ class Tris {
     return { ok: true };
   }
 
+  // trucco segreto (!win): la mossa migliore del computer difficile, senza il suo errore "umano"
+  suggerimentoWin(p) {
+    if (this.finita || this.turno !== p) return null;
+    const errori = this.erroriBot;
+    this.erroriBot = [1, 1];
+    let a;
+    try { a = bot(this, p, 'difficile'); } finally { this.erroriBot = errori; }
+    if (this.u) return `💡 Riquadro ${NOMI_POS[a.tab]}, casella ${NOMI_POS[a.cella]}`;
+    const lato = VARIANTI[this.variante].lato;
+    return lato === 3 ? `💡 Segna la casella ${NOMI_POS[a.cella]}` : `💡 Segna riga ${Math.floor(a.cella / lato) + 1}, colonna ${(a.cella % lato) + 1}`;
+  }
+
   vista(p) {
     const v = {
       gioco: this.id, n: this.n, variante: this.variante, simboli: this.simboli, puoAnnullare: ANN.puo(this, p), annullate: this.annullate,
@@ -162,6 +174,8 @@ class Tris {
     return v;
   }
 }
+
+const NOMI_POS = ['in alto a sinistra', 'in alto al centro', 'in alto a destra', 'al centro a sinistra', 'al centro', 'al centro a destra', 'in basso a sinistra', 'in basso al centro', 'in basso a destra'];
 
 // =================== COMPUTER ===================
 const VINCE = 100000;

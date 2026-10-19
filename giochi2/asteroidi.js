@@ -5,6 +5,17 @@
 // Punti: masso grande 20, medio 50, piccolo 100, disco volante 200 (e 150 per un'altra navicella, se si sceglie
 // "tutti contro tutti"). Vince chi ha più punti quando finisce il tempo o quando tutti hanno finito le vite.
 const { Arena } = require('../giochi/arena');
+const T = require('../giochi/trucco');
+// !win banana: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
+function aggiornaWin(g, dt) {
+  const w = g.winOn || (g.winOn = {}), tw = g.winT || (g.winT = {});
+  for (let p = 0; p < g.n; p++) {
+    if (!(w[p] = T.armato(g, p))) { tw[p] = 0; continue; }
+    tw[p] = (tw[p] || 0) + dt;
+    if (tw[p] > 25) { T.consuma(g, p); w[p] = false; tw[p] = 0; }
+  }
+}
+function fineWin(g) { for (let p = 0; p < g.n; p++) { T.consuma(g, p); if (g.winOn) g.winOn[p] = false; } }
 
 const W = 1200, H = 760;
 const RAGGI = [44, 24, 13]; // grande, medio, piccolo
@@ -81,7 +92,7 @@ class Asteroidi extends Arena {
     this.cambiato = true;
   }
   colpisci(n, da) {
-    if (!n.vivo || n.protetto > 0) return;
+    if (!n.vivo || n.protetto > 0 || (this.winOn && this.winOn[n.id])) return; // con il trucco non ti colpisce niente
     n.vivo = false; n.vite--; n.rinasce = RINASCITA;
     this.botto([3, Math.round(n.x), Math.round(n.y)]);
     if (n.vite <= 0) { n.fuori = true; this.annuncia(n.id, 'ha finito le vite 💀', 'hai finito le vite 💀'); }
@@ -91,6 +102,7 @@ class Asteroidi extends Arena {
   }
 
   passo(dt) {
+    aggiornaWin(this, dt);
     const t = this.tempoRound;
     for (const n of this.navi) {
       if (n.fuori) continue;
@@ -118,7 +130,7 @@ class Asteroidi extends Arena {
       const k = Math.exp(-ATTRITO * dt); n.vx *= k; n.vy *= k;
       const v = Math.hypot(n.vx, n.vy); if (v > V_MAX) { n.vx *= V_MAX / v; n.vy *= V_MAX / v; }
       n.x = avvolgi(n.x + n.vx * dt, W); n.y = avvolgi(n.y + n.vy * dt, H);
-      if (fuoco && n.ricarica <= 0 && this.colpi.filter((c) => c.di === n.id).length < MAX_COLPI) { this.spara(n, n.x, n.y, n.a, n.id); n.ricarica = RICARICA; this.botto([4, Math.round(n.x), Math.round(n.y)]); }
+      if (fuoco && n.ricarica <= 0 && this.colpi.filter((c) => c.di === n.id).length < MAX_COLPI) { this.spara(n, n.x, n.y, n.a, n.id); n.ricarica = RICARICA * (this.winOn[n.id] ? 0.5 : 1); this.botto([4, Math.round(n.x), Math.round(n.y)]); }
     }
     for (const m of this.massi) { m.x = avvolgi(m.x + m.vx * dt, W); m.y = avvolgi(m.y + m.vy * dt, H); m.ang += m.rot * dt; }
     for (const c of this.colpi) { c.x = avvolgi(c.x + c.vx * dt, W); c.y = avvolgi(c.y + c.vy * dt, H); c.vita -= dt; }
@@ -174,6 +186,7 @@ class Asteroidi extends Arena {
     return t >= this.durata || this.navi.every((n) => n.fuori);
   }
   fineRound() {
+    fineWin(this);
     const max = Math.max(...this.punti);
     const v = this.punti.map((x, i) => (x === max ? i : -1)).filter((i) => i >= 0);
     if (this.n > 1 && v.length === 1) this.annuncia(v[0], `vince con ${max} punti! 🏆`, `hai vinto con ${max} punti! 🏆`, true);

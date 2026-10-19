@@ -2,6 +2,7 @@
 // Ordine: 2 < 3 < ... < 10 < J < Q < K < A. A carta uguale la puntata viene restituita.
 // La vincita dipende dalla probabilità, calcolata sulle carte rimaste nel mazzo (un solo mazzo da 52).
 const { Casino, scarpa, puntataBot } = require('./casino');
+const T = require('./trucco');
 
 const forza = (c) => (c.rango === 1 ? 14 : c.rango); // l'asso è la carta più alta
 const MARGINE = 0.96; // il banco trattiene il 4%
@@ -56,6 +57,12 @@ class HigherLower extends Casino {
 
   gioca() {
     this.fase = 'rivela';
+    // il trucco segreto (!win): la prossima carta va dalla parte su cui il giocatore truccato ha puntato
+    const chi = this.puntate.findIndex((q, i) => q && T.consuma(this, i));
+    if (chi >= 0) {
+      const f = forza(this.carta), su = this.puntate[chi].scelta === 'alta';
+      T.inCima(this.mazzo, (c) => (su ? forza(c) > f : forza(c) < f));
+    }
     const nuova = this.mazzo.pop();
     const d = forza(nuova) - forza(this.carta);
     const esito = d > 0 ? 'alta' : d < 0 ? 'bassa' : 'uguale';

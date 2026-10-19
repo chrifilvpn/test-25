@@ -5,6 +5,17 @@
 // Chi ha appena ricevuto la patata non può ridarla subito a chi gliel'ha data (1 s), così niente ping-pong.
 // Chi tiene la patata corre un po' più veloce degli altri.
 const { Arena, casuale } = require('../giochi/arena');
+const T = require('../giochi/trucco');
+// !win banana: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
+function aggiornaWin(g, dt) {
+  const w = g.winOn || (g.winOn = {}), tw = g.winT || (g.winT = {});
+  for (let p = 0; p < g.n; p++) {
+    if (!(w[p] = T.armato(g, p))) { tw[p] = 0; continue; }
+    tw[p] = (tw[p] || 0) + dt;
+    if (tw[p] > 25) { T.consuma(g, p); w[p] = false; tw[p] = 0; }
+  }
+}
+function fineWin(g) { for (let p = 0; p < g.n; p++) { T.consuma(g, p); if (g.winOn) g.winOn[p] = false; } }
 const W = 1000, H = 620, R = 16, V = 215, VELOCE = 1.15, BORDO = 40;
 const COLONNE = [[270, 185], [730, 185], [270, 435], [730, 435]], R_COL = 32;
 const IMMUNITA = 1, PAUSA_SCOPPIO = 2.2, SFRIGOLA = 1.2, ONDA = 110;
@@ -40,7 +51,8 @@ class Patata extends Arena {
   vivi() { return this.e.filter((e) => !e.fuori).map((e) => e.id); }
   // la patata parte da uno dei rimasti, a caso
   daiBomba() {
-    const v = this.vivi();
+    const tutti = this.vivi(), altri = tutti.filter((q) => !(this.winOn && this.winOn[q]));
+    const v = altri.length ? altri : tutti; // con il trucco non parte da te
     const chi = v[Math.floor(Math.random() * v.length)];
     const [a, b] = MICCE[this.miccia];
     this.bomba = { chi, da: null, dal: this.tempoRound, accesa: this.tempoRound, durata: casuale(a, b) };
@@ -59,11 +71,12 @@ class Patata extends Arena {
     }
   }
   passo(dt) {
+    aggiornaWin(this, dt);
     const t = this.tempoRound, b = this.bomba;
     for (let p = 0; p < this.n; p++) {
       const e = this.e[p];
       if (e.fuori) continue;
-      const v = V * (b && b.chi === p ? VELOCE : 1);
+      const v = V * (b && b.chi === p ? VELOCE : 1) * (this.winOn[p] ? 1.15 : 1);
       const i = this.inp[p];
       const l = Math.hypot(i.x, i.y), k = l > 1 ? 1 / l : 1;
       this.muovi(e, i.x * k, i.y * k, v, dt);
@@ -93,7 +106,8 @@ class Patata extends Arena {
         }
       }
       // scoppia
-      if (t - b.accesa >= b.durata) this.scoppia();
+      // con il trucco in mano tua non scoppia: la miccia dura ancora un po'
+      if (t - b.accesa >= b.durata) { if (this.winOn[b.chi]) b.durata += 0.4 + Math.random(); else this.scoppia(); }
     }
     const rimasti = this.vivi().length;
     if (rimasti <= 1 && (!this.ordine.length || t - this.e[this.ordine[this.ordine.length - 1]].el > 1.4)) return true;
@@ -115,6 +129,7 @@ class Patata extends Arena {
     else this.annuncia(p, `salta in aria! 💥 Restano in ${rimasti.length}`, `sei saltato in aria! 💥 Restano in ${rimasti.length}`, false);
   }
   fineRound() {
+    fineWin(this);
     // un punto per ogni giocatore saltato in aria prima di te; l'ultimo rimasto ne prende 2 in più
     this.ordine.forEach((p, k) => { this.punti[p] += k; });
     const rimasti = this.vivi();

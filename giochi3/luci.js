@@ -156,6 +156,17 @@ class Luci extends SfidaRompicapo {
     return { errore: 'Mossa non valida' };
   }
 
+  // !win banana: le caselle da toccare (la soluzione col minimo di tocchi da dove sei)
+  suggerimentoWin(posto) {
+    const t = this.tavole[posto];
+    if (this.finita || !t || t.fatto != null || t.ritirato) return null;
+    const x = risolvi(t.stato, this.lato, this.q);
+    if (!x) return null;
+    const da = x.map((v, k) => (v ? `riga ${Math.floor(k / this.lato) + 1} col ${(k % this.lato) + 1}${v > 1 ? ' (2 volte)' : ''}` : null)).filter(Boolean);
+    if (!da.length) return null;
+    return `💡 Tocca: ${da.slice(0, 4).join(' · ')}${da.length > 4 ? ` (e altre ${da.length - 4})` : ''}`;
+  }
+
   // ---- computer: conosce i tocchi minimi; il facile e il medio ogni tanto toccano una casella a caso ----
   pianoBot(p, livello) {
     if (this.menti[p]) return this.menti[p];

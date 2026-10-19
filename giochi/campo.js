@@ -111,6 +111,19 @@ class Campo {
     return { ok: true };
   }
 
+  // !win banana: una casella sicura da scoprire (meglio se vicina a quelle già aperte e senza mine intorno)
+  suggerimentoWin() {
+    if (!this.mine) return null; // prima del primo clic è tutto sicuro
+    let meglio = -1, voto = -1;
+    for (let i = 0; i < this.C * this.R; i++) {
+      if (this.aperte[i] || this.mine[i] || this.bandiere.has(i)) continue;
+      const v = (this.vicini(i).some((j) => this.aperte[j] && !this.mine[j]) ? 2 : 0) + (this.numeri[i] === 0 ? 1 : 0);
+      if (v > voto) { voto = v; meglio = i; }
+    }
+    if (meglio < 0) return null;
+    return `💡 Casella sicura: riga ${Math.floor(meglio / this.C) + 1}, colonna ${(meglio % this.C) + 1}`;
+  }
+
   chiudi(vinta) {
     if (this.dal && !this.inPausa) this.tempo += Date.now() - this.dal;
     this.dal = null;

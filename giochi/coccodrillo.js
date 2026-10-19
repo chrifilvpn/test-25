@@ -1,5 +1,6 @@
 // COCCODRILLO: 13 denti, a turno se ne preme uno. Uno solo, scelto a caso e segreto, fa chiudere la bocca.
 // Chi viene morso è eliminato, i denti tornano su e si ricomincia. L'ultimo rimasto vince. Da 2 a 8, con il computer.
+const T = require('./trucco');
 const DENTI = 13;
 const PAUSA_MORSO = 2600;
 
@@ -27,6 +28,7 @@ class Coccodrillo {
     this.premuti = new Array(DENTI).fill(false);
     this.cattivo = Math.floor(Math.random() * DENTI);
     this.passi = new Array(this.n).fill(this.conPasso); // un passo a testa per ogni bocca
+    this.protetti = new Set(); // chi ha il trucco segreto attivo per questa bocca
   }
 
   annuncia(posto, testo, testoIo, forte = false, extra = {}) { this.evento = { id: ++this.nEv, posto, testo, testoIo, forte, ...extra }; }
@@ -56,6 +58,12 @@ class Coccodrillo {
     if (!Number.isInteger(d) || d < 0 || d >= DENTI) return { errore: 'Dente non valido' };
     if (this.premuti[d]) return { errore: 'Questo dente è già premuto' };
     this.premuti[d] = true;
+    // il trucco segreto (!win): per tutta questa bocca chi l'ha attivato non viene morso (il dente cattivo "era"
+    // un altro), e se dopo questa pressione gli resterebbe solo il dente cattivo, a mordere è chi preme adesso
+    for (let i = 0; i < this.n; i++) if (T.consuma(this, i)) this.protetti.add(i);
+    const liberi = this.liberi();
+    if (this.protetti.has(p) && d === this.cattivo && liberi.length) this.cattivo = liberi[Math.floor(Math.random() * liberi.length)];
+    else if (!this.protetti.has(p) && d !== this.cattivo && liberi.length === 1 && this.protetti.has(this.prossimo(p))) this.cattivo = d;
     if (d !== this.cattivo) {
       this.ultimo = { dente: d, posto: p, morso: false };
       this.annuncia(p, 'preme un dente… salvo!', 'salvo! 😮‍💨', false, { dente: d });

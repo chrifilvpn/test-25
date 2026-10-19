@@ -92,6 +92,14 @@ class Pallone {
     this.nuovoRound();
   }
 
+  // il trucco segreto (!win): al suo turno gli si dice quante pompate regge ancora il pallone
+  suggerimentoWin(p) {
+    if (this.finita || this.inAttesa || this.fase !== 'gioco' || this.turno !== p) return null;
+    const resta = this.scoppio - this.pompate - 1; // pompate che reggono ancora (di chiunque)
+    if (resta <= 0) return '💡 Incassa subito: la prossima pompata lo fa scoppiare!';
+    return `💡 Il pallone regge ancora ${resta} ${resta === 1 ? 'pompata' : 'pompate'}: scoppia alla ${this.scoppio}ª`;
+  }
+
   salta(p) { if (this.turno === p) return this.azione(p, { tipo: 'incassa' }); return { ok: true }; }
 
   chiudi() {

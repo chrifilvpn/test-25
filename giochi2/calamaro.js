@@ -8,6 +8,17 @@
 // viene spinto, cade a terra per un attimo. Punti: casa toccata 5, eliminazione 2, difensore che resiste 1
 // (più 2 se nessuno ha toccato la casa). Dopo i round vince chi ha più punti.
 const { Arena, casuale } = require('../giochi/arena');
+const T = require('../giochi/trucco');
+// !win banana: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
+function aggiornaWin(g, dt) {
+  const w = g.winOn || (g.winOn = {}), tw = g.winT || (g.winT = {});
+  for (let p = 0; p < g.n; p++) {
+    if (!(w[p] = T.armato(g, p))) { tw[p] = 0; continue; }
+    tw[p] = (tw[p] || 0) + dt;
+    if (tw[p] > 25) { T.consuma(g, p); w[p] = false; tw[p] = 0; }
+  }
+}
+function fineWin(g) { for (let p = 0; p < g.n; p++) { T.consuma(g, p); if (g.winOn) g.winOn[p] = false; } }
 // velocità: difensori un po' più svelti degli attaccanti (che a zoppo vanno alla metà)
 const W = 1000, H = 620, R = 15, V_DIF = 212, V_ATT = 195, ZOPPO = 100;
 // il disegno (simmetrico rispetto a y = 310)
@@ -62,6 +73,7 @@ class Calamaro extends Arena {
   }
   attivi(att) { return this.e.filter((e) => !e.fuori && !e.casa && e.att === att); }
   passo(dt) {
+    aggiornaWin(this, dt);
     const t = this.tempoRound;
     // movimento
     for (let p = 0; p < this.n; p++) {
@@ -72,7 +84,7 @@ class Calamaro extends Arena {
       let dx = i.x, dy = i.y;
       const l = Math.hypot(dx, dy); if (l > 1) { dx /= l; dy /= l; }
       if (t < e.terra) { dx = 0; dy = 0; }
-      const v = e.zoppo ? ZOPPO : e.att ? V_ATT : V_DIF;
+      const v = (e.zoppo ? ZOPPO : e.att ? V_ATT : V_DIF) * (this.winOn[p] ? 1.2 : 1);
       e.vx = dx * v; e.vy = dy * v;
       this.cammina(e, dx * v * dt, dy * v * dt);
       // la spinta ricevuta (senza i muri del disegno: è così che si finisce fuori)
@@ -106,7 +118,7 @@ class Calamaro extends Arena {
       this.spinte.push([Math.round(e.x), Math.round(e.y), p]);
       this.cambiato = true;
       for (const o of this.e) {
-        if (o.fuori || o.casa || o.att === e.att) continue;
+        if (o.fuori || o.casa || o.att === e.att || this.winOn[o.id]) continue; // con il trucco non ti spinge nessuno
         const dx = o.x - e.x, dy = o.y - e.y, d = Math.hypot(dx, dy);
         if (d > PORTATA || d < 0.001) continue;
         // chi salta a zoppo viene sbalzato meno lontano, ma inciampa e resta fermo un attimo
@@ -155,6 +167,7 @@ class Calamaro extends Arena {
     } else this.annuncia(p, 'esce dal disegno: eliminato!', 'sei uscito dal disegno: eliminato!');
   }
   fineRound() {
+    fineWin(this);
     const dif = this.e.filter((e) => !e.att && !e.fuori);
     for (const d of dif) this.punti[d.id] += P_RESISTE + (this.casaTocca ? 0 : P_MURO);
     if (!this.casaTocca && dif.length) this.annuncia(null, `Nessuno ha toccato la testa: i difensori rimasti prendono ${P_RESISTE + P_MURO} punti 🛡️`, '', true);

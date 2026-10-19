@@ -141,6 +141,16 @@ class DamaInt {
     this.risultato = { fazioni: [0, 1].map((x) => ({ posti: [x], punti: pezzi(x) })), etichetta: 'pezzi', pareggio: v === null, vincitori: v === null ? [] : [v] };
     return { ok: true };
   }
+  // trucco segreto (!win): la mossa del computer difficile, con le coordinate scritte sulla damiera
+  suggerimentoWin(p) {
+    if (this.finita || this.turno !== p) return null;
+    const k = bot(this, p, 'difficile').mossa;
+    const m = this.mosse(p).find((x) => chiaveMossa(x) === k);
+    if (!m) return null;
+    const pezzo = dama(this.b[m.da]) ? 'Dama' : 'Pedina';
+    return m.prese.length ? `💡 ${pezzo} ${m.via.map(nome).join(' × ')} (mangi ${m.prese.length})` : `💡 ${pezzo} ${nome(m.da)} → ${nome(m.a)}`;
+  }
+
   vista(p) {
     const mio = this.turno === p && !this.finita;
     return {

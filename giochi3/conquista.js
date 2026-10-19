@@ -5,6 +5,7 @@
 // dadi, il difensore fino a 3; si confrontano i dadi più alti a coppie e a parità vince il difensore; chi conquista
 // sposta dentro le armate; 3) uno SPOSTAMENTO tra propri territori collegati. Chi ha conquistato almeno un territorio
 // nel turno prende una carta. Vince chi raggiunge l'obiettivo (conquistare 16 territori, o tutto il mondo).
+const TRUCCO = require('../giochi/trucco'); // T qui sono i territori
 const PAUSA = process.env.TEST_VELOCE ? 1 : 0;
 void PAUSA;
 
@@ -44,6 +45,14 @@ function battaglia(attA, difA) {
   let perseA = 0, perseD = 0;
   for (let k = 0; k < Math.min(nA, nD); k++) if (a[k] > d[k]) perseD++; else perseA++;
   return { a, d, perseA, perseD };
+}
+
+// trucco segreto (!win): una battaglia che l'attaccante vince senza perdite, con dadi normali (si ritira finché
+// esce un tiro così: le facce restano credibili)
+function battagliaVinta(attA, difA) {
+  let r;
+  for (let k = 0; k < 1000; k++) { r = battaglia(attA, difA); if (!r.perseA) return r; }
+  return r;
 }
 
 class Conquista {
@@ -135,10 +144,12 @@ class Conquista {
       const dif = this.padrone[dove];
       const tiri = [];
       let r;
-      do { r = battaglia(this.armate[da], this.armate[dove]); this.armate[da] -= r.perseA; this.armate[dove] -= r.perseD; tiri.push(r); } while (a.fino && this.armate[dove] > 0 && this.armate[da] > 1);
+      const truccato = TRUCCO.armato(this, p); // vince l'attacco finché non conquista il territorio
+      do { r = (truccato ? battagliaVinta : battaglia)(this.armate[da], this.armate[dove]); this.armate[da] -= r.perseA; this.armate[dove] -= r.perseD; tiri.push(r); } while (a.fino && this.armate[dove] > 0 && this.armate[da] > 1);
       const perseA = tiri.reduce((s, x) => s + x.perseA, 0), perseD = tiri.reduce((s, x) => s + x.perseD, 0);
       this.attacco = { da, a: dove, dif, ultimo: r, tiri: tiri.length, perseA, perseD, conquistato: this.armate[dove] === 0 };
       if (this.armate[dove] === 0) {
+        if (truccato) TRUCCO.consuma(this, p);
         this.padrone[dove] = p; this.conquistato = true;
         const min = Math.min(r.a.length, this.armate[da] - 1);
         this.annuncia(p, `conquista ${T[dove].nome}!`, `conquisti ${T[dove].nome}!`, true);

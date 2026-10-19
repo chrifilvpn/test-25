@@ -48,6 +48,21 @@ function arrivi(occ, da) {
   return out;
 }
 
+// righe e buche come le disegna il browser con la punta k in basso (stessa rotazione di public/js/giochi2/damacinese.js)
+const VISTE = {};
+function vistaBuche(k) {
+  if (VISTE[k]) return VISTE[k];
+  const base = ([q, r]) => [q + r / 2, (r * Math.sqrt(3)) / 2];
+  let cx = 0, cy = 0;
+  for (const i of PUNTE[k]) { const [x, y] = base(CELLE[i]); cx += x; cy += y; }
+  const rot = Math.PI / 2 - Math.atan2(cy, cx), cos = Math.cos(rot), sin = Math.sin(rot);
+  const pos = CELLE.map((c) => { const [x, y] = base(c); return [x * cos - y * sin, Math.round((x * sin + y * cos) * 100) / 100]; });
+  const ys = [...new Set(pos.map((x) => x[1]))].sort((a, b) => b - a); // dal basso (y più grande) in su
+  const out = pos.map(([x, y]) => ({ riga: ys.indexOf(y) + 1, x, y }));
+  for (const o of out) o.buca = out.filter((z) => z.y === o.y && z.x < o.x - 1e-6).length + 1;
+  return (VISTE[k] = out);
+}
+
 class DamaCinese {
   constructor({ n, primo = 0 }) {
     this.id = 'damacinese';
@@ -105,6 +120,16 @@ class DamaCinese {
     this.risultato = { fazioni: this.punta.map((_, k) => ({ posti: [k], punti: k === v ? 100 : Math.max(0, 100 - this.manca(k)) })), etichetta: 'punti', pareggio: false, vincitori: [v] };
     return { ok: true };
   }
+  // trucco segreto (!win): la mossa del computer difficile. Le buche non hanno nomi: si dicono come le vede il
+  // giocatore, con la stella girata e la sua punta in basso (riga contata dal basso, buca contata da sinistra)
+  suggerimentoWin(p) {
+    if (this.finita || this.turno !== p) return null;
+    const a = bot(this, p, 'difficile');
+    const dove = vistaBuche(this.punta[p]);
+    const t = (i) => `riga ${dove[i].riga} dal basso, ${dove[i].buca}ª buca da sinistra`;
+    return `💡 Sposta la biglia (${t(a.da)}) → (${t(a.a)})`;
+  }
+
   vista(p) {
     const mosse = {};
     if (this.turno === p && !this.finita) for (const i of this.biglie(p)) { const a = arrivi(this.occ, i); if (a.size) mosse[i] = [...a.keys()]; }

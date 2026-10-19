@@ -152,6 +152,20 @@ class NomiCose {
     return cambiato;
   }
 
+  // il trucco segreto (!win): durante la scrittura gli sussurra una risposta valida (che gli altri non hanno scritto)
+  // per ogni categoria in cui non ne ha ancora una
+  suggerimentoWin(posto) {
+    if (this.finita || this.fase !== 'scrivi') return null;
+    const parti = [];
+    for (const c of this.cats) {
+      if (giudica(c, this.lettera, this.risposte[posto][c]) === 'ok') continue;
+      const altri = new Set(this.risposte.map((r) => forma(c, r[c])));
+      const buone = D.ELENCHI[c].filter((w) => D.normalizza(w)[0] === this.lettera && !altri.has(D.normalizza(w)));
+      if (buone.length) parti.push(`${D.CATEGORIE[c].icona} ${buone[Math.floor(Math.random() * buone.length)]}`);
+    }
+    return parti.length ? parti.join('  ') : null;
+  }
+
   piene(p) { return this.cats.every((c) => D.normalizza(this.risposte[p][c]).length > 0); }
 
   stop(p) {

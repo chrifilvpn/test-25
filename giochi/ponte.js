@@ -122,6 +122,12 @@ class Ponte {
     return true;
   }
 
+  // !win banana: quando tocca a te saltare, i vetri che reggono da qui alla fine (S = sinistra, D = destra)
+  suggerimentoWin(posto) {
+    if (this.finita || this.inAttesa || this.fase !== 'gioco' || this.turno !== posto || this.fronte >= this.L) return null;
+    return `💡 Vetri buoni da qui: ${this.sicuro.slice(this.fronte).map((l) => (l ? 'D' : 'S')).join(' ')}`;
+  }
+
   // dopo una caduta, un arrivo o la fine del round
   avanza() {
     if (!this.inAttesa) return;
