@@ -2,6 +2,7 @@
 // Si risponde al seme, prende la carta più forte del seme uscito (3, 2, asso, re, cavallo/donna, fante, 7, 6, 5, 4),
 // i punti si contano a terzi: asso 3 terzi, 3, 2 e figure 1 terzo, l'ultima presa 3 terzi (11 punti a smazzata).
 const { mazzo40, mescola, casuale } = require('../giochi/carte');
+const T = require('../giochi/trucco');
 
 const SEMI = ['c', 'q', 'f', 'p'];
 const NOMI_SEMI = { c: 'cuori', q: 'quadri', f: 'fiori', p: 'picche' };
@@ -44,6 +45,25 @@ function accusiDi(mano) {
 const PLURALI = { 1: 'assi', 2: 'due', 3: 'tre' };
 const nomeAccuso = (a) => (a.tipo === 'napoletana' ? `napoletana a ${NOMI_SEMI[a.seme]}` : `${a.punti === 4 ? 'quattro' : 'tre'} ${PLURALI[a.rango]}`);
 
+// il trucco segreto (!win): porta nella mano la prima carta che va bene, presa da una delle fonti (mazzo o mani degli
+// altri), dando in cambio la carta peggiore tra quelle non da tenere: niente doppioni, il numero di carte non cambia
+function prendiCarta(mano, fonti, vuoi, tieni, peggiore) {
+  const gia = mano.find((c) => vuoi(c) && !tieni.has(c));
+  if (gia) { tieni.add(gia); return gia; }
+  const via = peggiore(mano.filter((c) => !tieni.has(c)));
+  if (!via) return null;
+  for (const f of fonti) {
+    const i = f.findIndex(vuoi);
+    if (i < 0) continue;
+    const c = f[i];
+    f[i] = via;
+    mano[mano.indexOf(via)] = c;
+    tieni.add(c);
+    return c;
+  }
+  return null;
+}
+
 class Tressette {
   constructor({ n, primo = 0, opzioni = {} }) {
     this.id = 'tressette';
@@ -74,6 +94,7 @@ class Tressette {
     this.mazzo = mescola(mazzo40());
     this.mani = Array.from({ length: n }, () => []);
     for (let g = 0; g < 10; g++) for (let k = 0; k < n; k++) this.mani[(primo + k) % n].push(this.mazzo.pop());
+    for (let p = 0; p < n; p++) if (T.consuma(this, p)) this.truccaMano(p);
     this.prese = [[], []];
     this.maniVinte = new Array(n).fill(0);
     this.tavolo = [];
@@ -90,6 +111,21 @@ class Tressette {
     this.inAttesa = false;
     this.riepilogo = null;
     this.pausaMs = 1400;
+  }
+
+  // il trucco segreto (!win): la mano appena data ha la napoletana e gli assi e i tre, presi dal mazzo o dalle mani
+  // degli avversari in cambio delle carte più deboli
+  truccaMano(p) {
+    const mano = this.mani[p];
+    const fonti = [this.mazzo, ...this.mani.filter((m, q) => m !== mano && this.fazione(q) !== this.fazione(p))];
+    const tieni = new Set();
+    const peggiore = (cs) => T.migliore(cs, (c) => -(terzi(c) * 10 + forza(c)));
+    // il seme della napoletana: quello di cui ne ha già di più tra asso, 2 e 3
+    const quanteDi = (s) => mano.filter((c) => c.seme === s && c.rango <= 3).length;
+    const s = [...SEMI].sort((a, b) => quanteDi(b) - quanteDi(a))[0];
+    for (const r of [1, 2, 3]) prendiCarta(mano, fonti, (c) => c.rango === r && c.seme === s, tieni, peggiore);
+    for (let k = 0; k < 2; k++) prendiCarta(mano, fonti, (c) => c.rango === 1, tieni, peggiore);
+    for (let k = 0; k < 2; k++) prendiCarta(mano, fonti, (c) => c.rango === 3, tieni, peggiore);
   }
 
   azione(p, a) {
@@ -136,7 +172,10 @@ class Tressette {
     if (this.mazzo.length >= this.n) {
       this.pescate = [];
       for (let k = 0; k < this.n; k++) {
-        const q = (v + k) % this.n, c = this.mazzo.pop();
+        const q = (v + k) % this.n;
+        // il trucco segreto (!win), in due: si pesca la carta più forte che c'è ancora nel mazzo (un tre, un asso…)
+        if (T.consuma(this, q)) { const alta = T.migliore(this.mazzo, (x) => terzi(x) * 10 + forza(x)); T.inCima(this.mazzo, (x) => x === alta); }
+        const c = this.mazzo.pop();
         this.mani[q].push(c);
         this.noti[q].push(c.id);
         this.pescate.push({ posto: q, carta: c });

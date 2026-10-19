@@ -141,6 +141,28 @@ class Navale extends SfidaRompicapo {
     return r;
   }
 
+  // trucco segreto (!win): dov'è la nave più grande che non hai ancora segnato tutta (righe dall'alto, colonne da sinistra)
+  suggerimentoWin(p) {
+    const t = this.tavole[p];
+    if (this.finita || !t || t.fatto != null) return null;
+    const L = this.L, visti = new Set();
+    let meglio = null;
+    for (let i = 0; i < L * L; i++) {
+      if (!this.soluzione[i] || visti.has(i)) continue;
+      // la nave che parte da qui: verso destra o verso il basso (le navi sono dritte)
+      const nave = [i];
+      const passo = (i % L < L - 1 && this.soluzione[i + 1]) ? 1 : L;
+      for (let k = i + passo; k < L * L && this.soluzione[k] && (passo === L || k % L !== 0); k += passo) nave.push(k);
+      nave.forEach((k) => visti.add(k));
+      if (nave.some((k) => t.celle[k] !== NAVE) && (!meglio || nave.length > meglio.length)) meglio = nave;
+    }
+    if (!meglio) return null;
+    const r = (k) => Math.floor(k / L) + 1, c = (k) => (k % L) + 1;
+    const a = meglio[0], b = meglio[meglio.length - 1];
+    if (meglio.length === 1) return `💡 Nave da 1: riga ${r(a)}, colonna ${c(a)}`;
+    return r(a) === r(b) ? `💡 Nave da ${meglio.length}: riga ${r(a)}, colonne ${c(a)}–${c(b)}` : `💡 Nave da ${meglio.length}: colonna ${c(a)}, righe ${r(a)}–${r(b)}`;
+  }
+
   vista(p) {
     const t = this.tavole[p] || this.tavole[0];
     const finita = this.finita || t.fatto != null;

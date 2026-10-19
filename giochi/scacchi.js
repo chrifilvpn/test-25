@@ -416,7 +416,8 @@ function classifica(g, profMax, ms, pieno = false) {
       const rip = (g.storia.get(chiave(n)) || 0) >= 2;
       const v = rip ? 0 : -negamax(n, prof - 1, -Infinity, pieno ? Infinity : -alfa + 1, ctx, 1);
       if (ctx.stop) break;
-      giro.push({ m, v: v + Math.random() * 3 });
+      // sotto alfa è solo un limite (la mossa è peggiore): il rumore non deve farla passare davanti alla migliore
+      giro.push({ m, v: v + Math.random() * 3 - (!pieno && v < alfa ? 5 : 0) });
       if (v > alfa) alfa = v;
     }
     if (ctx.stop) break;

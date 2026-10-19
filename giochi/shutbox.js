@@ -69,8 +69,9 @@ class ShutBox {
       if (this.fase !== 'tira') return { errore: 'Prima abbassa le tessere' };
       const uno = !!a.uno;
       if (uno && !this.possoUnDado) return { errore: 'Un dado solo si tira quando le tessere alzate fanno 6 o meno' };
-      // il trucco segreto (!win): per tutto il turno i dadi danno sempre il tiro migliore
-      this.dadi = T.armato(this, p) ? this.dadiMigliori(uno) : uno ? [dado()] : [dado(), dado()];
+      // il trucco segreto (!win): da qui alla fine del turno i dadi danno sempre il tiro migliore
+      if (T.consuma(this, p)) this.truccato = p;
+      this.dadi = this.truccato === p ? this.dadiMigliori(uno) : uno ? [dado()] : [dado(), dado()];
       this.nTiri++;
       const s = this.dadi.reduce((x, y) => x + y, 0);
       if (!combinazioni(this.alzate, s, this.max).length) return this.fineTurno(`ha tirato ${s}: nessuna combinazione possibile`);
@@ -88,7 +89,6 @@ class ShutBox {
       if (this.alzate === 0) {
         this.annuncia(p, 'CHIUDE LA SCATOLA! 📦 Vince subito', 'hai CHIUSO LA SCATOLA! 📦 Hai vinto', true);
         this.punti[p] += 0;
-        T.consuma(this, p);
         return this.chiudi([p], true);
       }
       return { ok: true };
@@ -108,7 +108,7 @@ class ShutBox {
   }
   fineTurno(perche) {
     const p = this.turno, resto = sommaDi(this.alzate);
-    T.consuma(this, p); // il trucco vale un turno
+    this.truccato = null; // il trucco vale un turno
     this.punti[p] += resto;
     (this.storico[this.round - 1] || (this.storico[this.round - 1] = new Array(this.n).fill(null)))[p] = resto;
     this.annuncia(p, `${perche}: prende ${resto} punti`, `${perche.replace('ha tirato', 'hai tirato')}: prendi ${resto} punti`);

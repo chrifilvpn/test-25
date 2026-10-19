@@ -3,6 +3,20 @@
 // - MONETE IN SALITA: un percorso di lunghezza fissa pieno di monete e ostacoli; chi resta indietro è fuori,
 //   chi arriva al traguardo prende un bonus in base all'ordine d'arrivo.
 const { Arena, casuale } = require('./arena');
+const T = require('./trucco');
+// il trucco segreto (!win): un vantaggio per il resto del round (al massimo 25 secondi di gioco), poi si spegne
+function conTrucco(g, p) {
+  if (!T.armato(g, p) || g.fase !== 'gioco') return false;
+  const da = (g._winDa = g._winDa || {});
+  if (da[p] == null || da[p] > g.tempoRound) da[p] = g.tempoRound;
+  if (g.tempoRound - da[p] < 25) return true;
+  T.consuma(g, p); delete da[p];
+  return false;
+}
+// a fine round si spegne (se è servito almeno 3 secondi; altrimenti vale anche per il prossimo round)
+function fineTrucco(g, sempre = false) {
+  for (let p = 0; p < g.n; p++) { const da = g._winDa && g._winDa[p]; if (da != null && (sempre || g.tempoRound - da >= 3)) T.consuma(g, p); if (g._winDa) delete g._winDa[p]; }
+}
 const W = 1000, H = 620, R = 15, V = 300;
 const LUNGHEZZA = 6000; // monete in salita: lunghezza del percorso
 
@@ -176,13 +190,14 @@ class Salita extends Arena {
       const e = this.e[p];
       if (e.fuori || e.arrivo !== null) continue;
       const i = this.inp[p];
+      const win = conTrucco(this, p); // il trucco segreto: più veloce, niente fango né pericoli, e i fantasmi non lo prendono
       e.immune = Math.max(0, e.immune - dt);
       // su che terreno è?
       let terreno = null;
       for (const o of this.ostacoli) if ((o.tipo === 'zona' || o.tipo === 'ponte') && dentro(e, o)) { terreno = o.tipo === 'ponte' ? 'ponte' : o.z; if (terreno === 'ponte') break; }
-      let vx = i.x * V, vy = i.y * V;
+      let vx = i.x * V * (win ? 1.35 : 1), vy = i.y * V * (win ? 1.35 : 1);
       if (e.fermo > 0) { e.fermo -= dt; vx = 0; vy = 0; }
-      if (LENTO[terreno]) { vx *= LENTO[terreno]; vy *= LENTO[terreno]; }
+      if (LENTO[terreno] && !win) { vx *= LENTO[terreno]; vy *= LENTO[terreno]; }
       if (terreno === 'ghiaccio') { const k = Math.min(1, 1.6 * dt); e.vx += (vx - e.vx) * k; e.vy += (vy - e.vy) * k; } // si scivola
       else { e.vx = vx; e.vy = vy; }
       e.x = Math.max(R, Math.min(W - R, e.x + e.vx * dt));
@@ -191,16 +206,17 @@ class Salita extends Arena {
       e.x = Math.max(R, Math.min(W - R, e.x));
       if (e.y < this.cam + R + 4) { e.y = this.cam + R + 4; e.vy = Math.max(0, e.vy); } // non si va oltre il bordo alto
       // lava e pericoli che si muovono: spinta all'indietro
-      if (e.immune <= 0) {
+      if (e.immune <= 0 && !win) {
         const mob = this.ostacoli.find((o) => o.tipo === 'mobile' && Math.hypot(o.x - e.x, o.y - e.y) < o.r + R - 4);
         if (mob || terreno === 'lava') this.colpisci(p, mob ? 'mobile' : 'lava');
       }
       // monete
       if (this.modo === 'monete') {
-        for (const m of this.monete) if (!m.presa && Math.hypot(m.x - e.x, m.y - e.y) < R + 12) { m.presa = true; e.monete++; this.punti[p]++; }
+        for (const m of this.monete) if (!m.presa && Math.hypot(m.x - e.x, m.y - e.y) < R + (win ? 45 : 12)) { m.presa = true; e.monete++; this.punti[p]++; }
         if (e.y <= fineP) { e.arrivo = this.tempoRound; this.arrivi.push(p); const bonus = [30, 20, 10][this.arrivi.length - 1] || 5; this.punti[p] += bonus; this.cambiato = true; this.annuncia(p, `arriva in cima! +${bonus} 🏁`, `sei arrivato in cima! +${bonus} 🏁`); }
       }
       // troppo in basso: presi dai fantasmi / rimasti indietro
+      if (win && e.y > this.cam + H - 40) { e.y = this.cam + H - 40; spingiFuori(e, this.ostacoli); e.y = Math.min(e.y, this.cam + H - 23); }
       if (e.y > this.cam + H - 22) {
         e.fuori = true; e.fuoriT = this.tempoRound; this.cambiato = true;
         this.annuncia(p, this.modo === 'fuga' ? 'è stato preso dai fantasmi! 👻' : 'è rimasto indietro ed è fuori!', this.modo === 'fuga' ? 'ti hanno preso i fantasmi! 👻' : 'sei rimasto indietro: fuori!');
@@ -224,6 +240,7 @@ class Salita extends Arena {
   }
   soloDa(s) { this._solo = this._solo || this.tempoRound; return this.tempoRound - this._solo > s; }
   fineRound() {
+    fineTrucco(this);
     this._solo = null;
     if (this.modo === 'fuga') {
       this.e.forEach((e, p) => { this.punti[p] += Math.round(e.fuoriT ?? this.tempoRound); });

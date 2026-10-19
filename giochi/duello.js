@@ -3,6 +3,20 @@
 // Ognuno ha 3 cuori: bombe e martellate tolgono un cuore, le palle di neve spingono (e chi cade nel vuoto perde un cuore).
 // Chi resta senza cuori è fuori per il round; l'ultimo rimasto vince il round.
 const { Arena, casuale } = require('./arena');
+const T = require('./trucco');
+// il trucco segreto (!win): un vantaggio per il resto del round (al massimo 25 secondi di gioco), poi si spegne
+function conTrucco(g, p) {
+  if (!T.armato(g, p) || g.fase !== 'gioco') return false;
+  const da = (g._winDa = g._winDa || {});
+  if (da[p] == null || da[p] > g.tempoRound) da[p] = g.tempoRound;
+  if (g.tempoRound - da[p] < 25) return true;
+  T.consuma(g, p); delete da[p];
+  return false;
+}
+// a fine round si spegne (se è servito almeno 3 secondi; altrimenti vale anche per il prossimo round)
+function fineTrucco(g, sempre = false) {
+  for (let p = 0; p < g.n; p++) { const da = g._winDa && g._winDa[p]; if (da != null && (sempre || g.tempoRound - da >= 3)) T.consuma(g, p); if (g._winDa) delete g._winDa[p]; }
+}
 const W = 1000, H = 620, G = 1900, V = 250, SALTO = 760, LARG = 26, ALT = 40;
 // Le mappe: piattaforme (base = non ci si lascia cadere attraverso; mx/per/fase = nuvola che si sposta avanti e
 // indietro), il power-up esclusivo della mappa e, nel Vulcano, la lava che sale. Tutti i dislivelli tra piattaforme
@@ -82,6 +96,7 @@ class Duello extends Arena {
   ferisci(p, danno, spintaX, spintaY, da) {
     const e = this.e[p];
     if (e.fuori || e.rinasce > 0 || e.immune > 0) return;
+    if (conTrucco(this, p)) return; // il trucco segreto: i colpi non gli fanno niente
     if (e.scudo > 0) { e.scudo = 0; this.cambiato = true; this.annuncia(p, 'para il colpo con lo scudo 🛡️', 'lo scudo ti ha protetto 🛡️'); return; }
     e.vx = spintaX; e.vy = spintaY; e.stordito = 0.35; e.terra = false; e.su = null;
     if (danno) { e.cuori -= danno; e.immune = INVULNERABILE; e.colpo++; this.cambiato = true; if (da !== undefined && da !== p) this.annuncia(da, `colpisce @! 💥`, 'colpito! 💥', false, { bersaglio: p, testoTe: 'ti hanno colpito! 💔' }); }
@@ -95,11 +110,13 @@ class Duello extends Arena {
   }
   perdiCuore(p, perche) {
     const e = this.e[p];
+    if (conTrucco(this, p)) { e.rinasce = 0.4; this.cambiato = true; return; } // col trucco segreto ricompare subito, senza perdere il cuore
     e.cuori--; e.colpo++; this.cambiato = true;
     if (e.cuori <= 0) this.elimina(p); else { e.rinasce = RINASCITA; this.annuncia(p, perche === 'lava' ? 'è finito nella lava! 🔥' : 'è caduto nel vuoto! 💔', perche === 'lava' ? 'sei finito nella lava! 🔥' : 'sei caduto nel vuoto! 💔'); }
   }
   passo(dt) {
     const t = this.tempoRound;
+    for (let p = 0; p < this.n; p++) conTrucco(this, p); // fa partire (e finire) il tempo del trucco segreto
     this.muoviPiattaforme(t, dt);
     if (this.lava !== null && t > LAVA_DA) this.lava = Math.max(LAVA_MAX, this.lava - LAVA_VEL * dt * (this.lava > H ? 12 : 1));
     // nuovi oggetti che cadono dal cielo: i generali e quello esclusivo della mappa
@@ -221,6 +238,7 @@ class Duello extends Arena {
     }
   }
   fineRound() {
+    fineTrucco(this);
     // punti: uno per ogni giocatore uscito prima di te; chi resta prende 2 in più
     this.e.forEach((e) => { if (e.fuori) this.punti[e.id] += e.ordine; else this.punti[e.id] += this.usciti2.length + 2; });
     const vivi = this.e.filter((e) => !e.fuori);

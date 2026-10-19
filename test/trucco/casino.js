@@ -145,8 +145,8 @@ for (let k = 0; k < 60; k++) {
   g.dadi = [2, 3, 4, 5, 6]; g.tiri = 1;
   T.arma(g, 0);
   g.azione(0, { tipo: 'tira', tieni: [0, 1, 2] });
-  assert.ok(GIOCHI.yahtzee._test === undefined || true);
-  assert.ok([[2, 3, 4, 5, 6], [2, 3, 4, 5, 1]].some((d) => d.every((x, i) => g.dadi[i] === x)), `yahtzee: scala (${g.dadi})`);
+  const ord = g.dadi.slice().sort().join('');
+  assert.ok(g.dadi.slice(0, 3).join('') === '234' && (ord === '23456' || ord === '12345'), `yahtzee: scala grande (${g.dadi})`);
 }
 // ---- shut the box: per tutto il turno i dadi migliori, quasi sempre si chiude la scatola ----
 {
@@ -168,9 +168,7 @@ for (let k = 0; k < 60; k++) {
   assert.strictEqual(g.dado, 6, 'ludo: il 6 per uscire');
   const h = crea('ludo', 2);
   h.pos[0] = [5, -1, -1, -1]; h.pos[1] = [-1, -1, -1, -1];
-  h.pos[1][0] = (5 + 3 + 20 - 20 * 1) % 40; // il posto 1 (giallo, colore 2) ha una pedina 3 caselle davanti
-  h.pos[1][0] = (2 * 10 * 3 + 8) % 40; // casella assoluta 8 vista dal giallo: (20 + r) % 40 = 8 → r = 28
-  h.pos[1][0] = 28;
+  h.pos[1][0] = 28; // il posto 1 (giallo) è sulla casella assoluta (20 + 28) % 40 = 8, tre davanti alla pedina rossa
   T.arma(h, 0);
   h.azione(0, { tipo: 'tira' });
   assert.ok(h.dado === 3 || h.dado === 6, `ludo: il numero che mangia o fa uscire (${h.dado})`);

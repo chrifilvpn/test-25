@@ -137,7 +137,8 @@ class Scopa {
   // date agli avversari (in cambio delle carte peggiori): la carta che fa scopa con la tavola, il settebello, i 7
   truccaMano(p) {
     const mano = this.mani[p];
-    const altri = this.mani.filter((m, q) => m !== mano && (!this.aSquadre || q % 2 !== p % 2));
+    // prima dagli avversari, per ultimo dal compagno
+    const altri = this.mani.filter((m) => m !== mano).sort((a, b) => (this.aSquadre && this.mani.indexOf(a) % 2 === p % 2 ? 1 : 0) - (this.aSquadre && this.mani.indexOf(b) % 2 === p % 2 ? 1 : 0));
     const fonti = [this.mazzo, ...altri];
     const tieni = new Set();
     const peggiore = (cs) => T.migliore(cs, (c) => -valoreCarte([c]));

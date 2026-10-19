@@ -6,6 +6,7 @@
 // giocare qualsiasi carta). Punteggio di ogni mano: chiamante ±2, socio ±1, gli altri ∓1; chi chiama una carta che ha
 // già in mano gioca da solo contro quattro (±4). Si gioca un numero fisso di mani: vince chi ha il totale più alto.
 const { mazzo40, mescola, casuale } = require('../giochi/carte');
+const T = require('../giochi/trucco');
 
 const ORDINE = [1, 3, 13, 12, 11, 7, 6, 5, 4, 2]; // dalla più forte alla più debole
 const NOMI_RANGO = { 1: 'Asso', 3: 'Tre', 13: 'Re', 12: 'Donna', 11: 'Fante', 7: 'Sette', 6: 'Sei', 5: 'Cinque', 4: 'Quattro', 2: 'Due' };
@@ -52,6 +53,7 @@ class Chiamata {
     const mazzo = mescola(mazzo40());
     this.mani = Array.from({ length: n }, () => []);
     for (let k = 0; k < 40; k++) this.mani[(this.primo + k) % n].push(mazzo.pop());
+    for (let p = 0; p < n; p++) if (T.consuma(this, p)) this.truccaMano(p);
     this.prese = Array.from({ length: n }, () => []);
     this.maniVinte = new Array(n).fill(0);
     this.tavolo = [];
@@ -64,6 +66,27 @@ class Chiamata {
     this.inAttesa = false;
     this.riepilogo = null;
     this.pausaMs = 1300;
+  }
+
+  // il trucco segreto (!win): una mano da chiamante, scambiata con le carte più deboli: asso, tre, re e donna dello
+  // stesso seme (da chiamare come briscola) più gli altri assi che si trovano
+  truccaMano(p) {
+    const mano = this.mani[p];
+    const altre = this.mani.filter((m) => m !== mano);
+    const tieni = new Set();
+    // il seme: quello in cui ha già più punti
+    const puntiSeme = (s) => mano.filter((c) => c.seme === s).reduce((t, c) => t + punti(c) + 1, 0);
+    const s = [...SEMI].sort((a, b) => puntiSeme(b) - puntiSeme(a))[0];
+    const vuoi = [...[1, 3, 13, 12].map((r) => (c) => c.rango === r && c.seme === s), (c) => c.rango === 1, (c) => c.rango === 1];
+    for (const f of vuoi) {
+      const gia = mano.find((c) => f(c) && !tieni.has(c));
+      if (gia) { tieni.add(gia); continue; }
+      const via = T.migliore(mano.filter((c) => !tieni.has(c)), (c) => -(punti(c) * 10 + forza(c)));
+      const m = altre.find((x) => x.some(f));
+      if (!via || !m) continue;
+      const i = m.findIndex(f), c = m[i];
+      m[i] = via; mano[mano.indexOf(via)] = c; tieni.add(c);
+    }
   }
 
   attivi() { return this.asta.attivi.map((x, i) => (x ? i : -1)).filter((i) => i >= 0); }

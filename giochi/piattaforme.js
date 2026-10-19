@@ -4,6 +4,20 @@
 // che crollano, e si può saltare in testa agli altri. Chi cade in una buca riparte dall'ultimo punto sicuro.
 // Vince chi arriva primo alla bandiera (le monete danno punti in più).
 const { Arena, casuale } = require('./arena');
+const TR = require('./trucco');
+// il trucco segreto (!win): un vantaggio per il resto del round (al massimo 25 secondi di gioco), poi si spegne
+function conTrucco(g, p) {
+  if (!TR.armato(g, p) || g.fase !== 'gioco') return false;
+  const da = (g._winDa = g._winDa || {});
+  if (da[p] == null || da[p] > g.tempoRound) da[p] = g.tempoRound;
+  if (g.tempoRound - da[p] < 25) return true;
+  TR.consuma(g, p); delete da[p];
+  return false;
+}
+// a fine round si spegne (se è servito almeno 3 secondi; altrimenti vale anche per il prossimo round)
+function fineTrucco(g, sempre = false) {
+  for (let p = 0; p < g.n; p++) { const da = g._winDa && g._winDa[p]; if (da != null && (sempre || g.tempoRound - da >= 3)) TR.consuma(g, p); if (g._winDa) delete g._winDa[p]; }
+}
 const T = 40, RIGHE = 24, W = 1000, H = 620;
 const LARG = 24, ALT = 34, V = 250, GRAV = 1900, SALTO = 760, POT_T = 8;
 const STELLA_T = 5, STORDITO_FULMINE = 1.4, STORDITO_BUCCIA = 1.1, STORDITO_TESTA = 0.9, RITORNO_SCATOLA = 6, MONETE_PUNTO = 5, CROLLO = 0.6, RITORNO_CROLLO = 3;
@@ -141,13 +155,14 @@ class Piattaforme extends Arena {
     for (let p = 0; p < this.n; p++) {
       const e = this.e[p], i = this.inp[p];
       if (e.arrivo !== null) continue;
+      const win = conTrucco(this, p); // il trucco segreto: una stella che non si vede, più veloce e sempre il doppio salto
       e.stella = Math.max(0, e.stella - dt);
       if (e.cade > 0) { e.cade -= dt; this.nuoviTocchi(p); if (e.cade <= 0) { const c = this.liv.controlli[e.ctrl]; e.x = c.x; e.y = c.y; e.vx = 0; e.vy = 0; e.salto++; } continue; }
       if (e.potT > 0) { e.potT -= dt; if (e.potT <= 0) e.pot = null; }
-      const vel = V * (e.pot === 'turbo' ? 1.45 : 1) * (e.stella > 0 ? 1.15 : 1);
+      const vel = V * (e.pot === 'turbo' ? 1.45 : 1) * (e.stella > 0 ? 1.15 : 1) * (win ? 1.25 : 1);
       if (e.stordito > 0) { e.stordito -= dt; this.nuoviTocchi(p); e.vx *= Math.exp(-5 * dt); this.muovi(e, dt); if (e.y > RIGHE * T + 60) { e.cade = 1; e.stordito = 0; this.cambiato = true; } continue; }
       e.vx = i.x * vel; if (i.x) e.dir = Math.sign(i.x);
-      if (e.aTerra) e.salti = e.pot === 'molla' ? 2 : 1;
+      if (e.aTerra) e.salti = e.pot === 'molla' || win ? 2 : 1;
       const tocchi = this.nuoviTocchi(p) + (i.y < -0.5 && !e.suSu ? 1 : 0);
       e.suSu = i.y < -0.5;
       if (tocchi && e.salti > 0) { e.vy = -SALTO; e.salti--; e.aTerra = false; }
@@ -158,7 +173,7 @@ class Piattaforme extends Arena {
       }
       for (const m of this.liv.monete) if (!e.prese.has(m.id) && Math.abs(m.x - e.x) < 22 && Math.abs(m.y - e.y) < 26) { e.prese.add(m.id); e.monete++; }
       // bucce di banana: si scivola (chi l'ha buttata ci passa sopra senza problemi per un secondo)
-      for (const b of this.bucce) if (!b.via && e.stella <= 0 && Math.abs(b.x - e.x) < 18 && Math.abs(b.y - (e.y + ALT / 2)) < 14 && !(b.da === p && this.tempoRound - b.t < 1)) { b.via = true; e.stordito = STORDITO_BUCCIA; e.vx = e.dir * 260; e.vy = -300; this.cambiato = true; this.annuncia(p, 'scivola su una buccia! 🍌', 'sei scivolato su una buccia! 🍌'); }
+      for (const b of this.bucce) if (!b.via && e.stella <= 0 && !win && Math.abs(b.x - e.x) < 18 && Math.abs(b.y - (e.y + ALT / 2)) < 14 && !(b.da === p && this.tempoRound - b.t < 1)) { b.via = true; e.stordito = STORDITO_BUCCIA; e.vx = e.dir * 260; e.vy = -300; this.cambiato = true; this.annuncia(p, 'scivola su una buccia! 🍌', 'sei scivolato su una buccia! 🍌'); }
       this.bucce = this.bucce.filter((b) => !b.via);
       // salto in testa a un altro: lui resta stordito, tu rimbalzi
       if (e.vy > 50) for (let q = 0; q < this.n; q++) {
@@ -174,11 +189,11 @@ class Piattaforme extends Arena {
       // buca
       if (e.y > RIGHE * T + 60) { e.cade = 1; this.cambiato = true; }
       // spuntoni: basta toccarli con i piedi o con il corpo
-      else if (e.stella <= 0 && (e.y + ALT / 2 - 2) % T > T * 0.45 && [e.x - LARG / 2 + 4, e.x, e.x + LARG / 2 - 4].some((x) => this.punta(x, e.y + ALT / 2 - 2))) { this.muore(p, 'punte'); continue; }
+      else if (e.stella <= 0 && !win && (e.y + ALT / 2 - 2) % T > T * 0.45 && [e.x - LARG / 2 + 4, e.x, e.x + LARG / 2 - 4].some((x) => this.punta(x, e.y + ALT / 2 - 2))) { this.muore(p, 'punte'); continue; }
       // nemici: da sopra si schiacciano (e si rimbalza), di lato o da sotto ti prendono
       for (const m of this.liv.nemici) {
         if (m.morto > 0 || Math.abs(m.x - e.x) > LARG / 2 + 12 || Math.abs(m.y - e.y) > ALT / 2 + 12) continue;
-        if (e.stella > 0 || (e.vy > 50 && e.y + ALT / 2 - e.vy * dt <= m.y - 2)) { m.morto = 4; e.vy = -SALTO * 0.6; this.cambiato = true; this.annuncia(p, 'schiaccia un nemico! 👟', 'nemico schiacciato! 👟'); }
+        if (e.stella > 0 || win || (e.vy > 50 && e.y + ALT / 2 - e.vy * dt <= m.y - 2)) { m.morto = 4; e.vy = -SALTO * 0.6; this.cambiato = true; this.annuncia(p, 'schiaccia un nemico! 👟', 'nemico schiacciato! 👟'); }
         else { this.muore(p, 'nemico'); break; }
       }
       if (e.cade > 0) continue;
@@ -214,6 +229,7 @@ class Piattaforme extends Arena {
     }
   }
   fineRound() {
+    fineTrucco(this);
     // le monete: un punto ogni 5
     this.e.forEach((e, p) => { const b = Math.floor(e.monete / MONETE_PUNTO); if (b) this.punti[p] += b; });
   }

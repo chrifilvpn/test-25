@@ -5,6 +5,7 @@
 // Più vicino al centro, più punti; i bersagli lontani valgono di più.
 // Bersaglio, assi e oscillazione dipendono solo dal tempo del round: il browser li ricalcola da solo.
 const { Arena, casuale } = require('./arena');
+const T = require('./trucco');
 const W = 1000, H = 620, TEMPO = 6, BORDO = 0.35;
 const DIST = { 1: { nome: 'vicino', R: 62, y: 360, per: 1, cala: 12, vento: 0.5 }, 2: { nome: 'medio', R: 42, y: 318, per: 2, cala: 30, vento: 1 }, 3: { nome: 'lontano', R: 28, y: 292, per: 3, cala: 52, vento: 1.6 } };
 const ANELLI = [[0.15, 10], [0.35, 8], [0.55, 6], [0.75, 4], [1, 2]];
@@ -54,10 +55,14 @@ class Bersaglio extends Arena {
   tiro(p, mx, my, t) {
     if (this.tirato[p] || this.fase !== 'gioco') return false;
     this.tirato[p] = true;
-    const tr = deriva(this.aria), x = mx + tr.x, y = my + tr.y, arriva = t + volo(this.b.d);
+    const tr = deriva(this.aria), arriva = t + volo(this.b.d);
+    let x = mx + tr.x, y = my + tr.y;
+    // il trucco segreto (!win): la freccia va al centro, a pochi pixel, e nessuna asse la ferma
+    const win = T.consuma(this, p);
+    if (win) { const c = posBersaglio(this.b, arriva), a = Math.random() * 6.3, r = Math.random() * this.b.R * 0.1; x = c.x + Math.cos(a) * r; y = c.y + Math.sin(a) * r; }
     const f = { p, x: Math.round(x), y: Math.round(y), t, arriva, esito: 'mancato', punti: 0 };
     // prima gli assi: la freccia li incontra a metà strada
-    for (const a of this.assi) {
+    if (!win) for (const a of this.assi) {
       const q = posAsse(a, t + (arriva - t) * 0.6);
       if (Math.abs(x - q.x) <= a.w / 2 && Math.abs(y - q.y) <= a.h / 2) { f.esito = 'asse'; f.asse = a.id; f.dx = Math.round(x - q.x); f.dy = Math.round(y - q.y); break; }
     }

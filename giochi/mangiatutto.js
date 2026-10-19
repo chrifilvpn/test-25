@@ -3,6 +3,20 @@
 // fantasmi del computer; in più giocatori uno fa il mangiatore e gli altri i fantasmi (quelli che mancano li fa il
 // computer), e il mangiatore cambia a ogni round. Labirinto, nomi e disegni originali.
 const { Arena } = require('./arena');
+const TR = require('./trucco');
+// il trucco segreto (!win): un vantaggio per il resto del round (al massimo 25 secondi di gioco), poi si spegne
+function conTrucco(g, p) {
+  if (!TR.armato(g, p) || g.fase !== 'gioco') return false;
+  const da = (g._winDa = g._winDa || {});
+  if (da[p] == null || da[p] > g.tempoRound) da[p] = g.tempoRound;
+  if (g.tempoRound - da[p] < 25) return true;
+  TR.consuma(g, p); delete da[p];
+  return false;
+}
+// a fine round si spegne (se è servito almeno 3 secondi; altrimenti vale anche per il prossimo round)
+function fineTrucco(g, sempre = false) {
+  for (let p = 0; p < g.n; p++) { const da = g._winDa && g._winDa[p]; if (da != null && (sempre || g.tempoRound - da >= 3)) TR.consuma(g, p); if (g._winDa) delete g._winDa[p]; }
+}
 const LAB = [
   '###################',
   '#o.......#.......o#',
@@ -111,6 +125,8 @@ class Mangiatutto extends Arena {
     const t = this.tempoRound;
     if (this.presa > 0) { this.presa -= dt; if (this.presa <= 0) { if (this.vite <= 0) return true; this.riparti(); this.cambiato = true; } return false; }
     this.tempoVita += dt;
+    // il trucco segreto (!win): il mangiatore non viene preso e i fantasmi rallentano; un fantasma corre di più e non si fa mangiare
+    const win = Array.from({ length: this.n }, (_, p) => conTrucco(this, p));
     this.paura = Math.max(0, this.paura - dt);
     if (!this.paura) { this.catena = 0; for (const f of this.f) f.paura = false; }
     // il mangiatore
@@ -139,13 +155,14 @@ class Mangiatutto extends Arena {
         if (Math.round(f.x) === USCITA[0] && Math.round(f.y) === USCITA[1]) Object.assign(f, { stato: 'casa', x: CASA[0], y: CASA[1], esce: this.tempoVita + 1.2, paura: false });
         continue;
       }
-      const v = (this.tunnel(f) ? V_TUNNEL : f.paura ? V_PAURA : f.posto !== null && !this.bot[f.posto] ? V_UMANO : V_FANT) * (1 + this.round * 0.01);
+      const v = (this.tunnel(f) ? V_TUNNEL : f.paura ? V_PAURA : f.posto !== null && !this.bot[f.posto] ? V_UMANO : V_FANT) * (1 + this.round * 0.01) * (win[pm] ? 0.6 : 1) * (f.posto !== null && win[f.posto] ? 1.3 : 1);
       if (f.posto !== null && !this.bot[f.posto]) { const d = this.direzioneInput(f.posto); if (d) [f.dx, f.dy] = d; f.libero = true; this.cammina(f, v, dt, () => [f.dx, f.dy]); }
       else { f.libero = false; const liv = f.posto !== null ? this.bot[f.posto] : this.livFant; this.cammina(f, v, dt, (c, r) => this.pensaFantasma(f, c, r, liv)); }
     }
     // incontri
     for (const f of this.f) {
       if (f.stato !== 'caccia' || Math.hypot(f.x - m.x, f.y - m.y) > 0.65) continue;
+      if (f.paura ? f.posto !== null && win[f.posto] : win[pm]) continue;
       if (f.paura) {
         this.catena++; const pt = 200 * 2 ** (this.catena - 1); this.punti[pm] += pt;
         Object.assign(f, { stato: 'occhi', paura: false, vx: -f.vx, vy: -f.vy });
@@ -159,7 +176,7 @@ class Mangiatutto extends Arena {
     }
     return t >= DURATA;
   }
-  fineRound() {}
+  fineRound() { fineTrucco(this); }
   // il vicino più vicino alla meta (senza tornare indietro, se si può): gli occhi usano la strada vera
   versoMeta(c, r, meta, f, porta) {
     let meglio = [0, 0], dm = Infinity;

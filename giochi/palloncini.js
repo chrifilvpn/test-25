@@ -2,6 +2,20 @@
 // piano verso sinistra; con un solo tasto gli dai una spinta verso destra. Bisogna evitare gli spuntoni che arrivano
 // dall'alto e i bordi (anche loro pungono). Chi resta in aria più a lungo vince il round.
 const { Arena, casuale } = require('./arena');
+const T = require('./trucco');
+// il trucco segreto (!win): un vantaggio per il resto del round (al massimo 25 secondi di gioco), poi si spegne
+function conTrucco(g, p) {
+  if (!T.armato(g, p) || g.fase !== 'gioco') return false;
+  const da = (g._winDa = g._winDa || {});
+  if (da[p] == null || da[p] > g.tempoRound) da[p] = g.tempoRound;
+  if (g.tempoRound - da[p] < 25) return true;
+  T.consuma(g, p); delete da[p];
+  return false;
+}
+// a fine round si spegne (se è servito almeno 3 secondi; altrimenti vale anche per il prossimo round)
+function fineTrucco(g, sempre = false) {
+  for (let p = 0; p < g.n; p++) { const da = g._winDa && g._winDa[p]; if (da != null && (sempre || g.tempoRound - da >= 3)) T.consuma(g, p); if (g._winDa) delete g._winDa[p]; }
+}
 const W = 1000, H = 620, Y_PALLONE = 480, R_PALLONE = 20;
 const V_SBARRA = 115;
 const VENTO = 240, SPINTA = 210, ATTRITO = 1.4, DURATA = 90;
@@ -67,6 +81,8 @@ class Palloncini extends Arena {
       b.vx -= vento * dt;
       b.vx *= Math.exp(-ATTRITO * dt);
       b.x += b.vx * dt;
+      // col trucco segreto il palloncino non scoppia: gli spuntoni lo sfiorano e i bordi lo respingono
+      if (conTrucco(this, p)) { if (b.x < 22 + R_PALLONE || b.x > W - 22 - R_PALLONE) { b.x = Math.max(22 + R_PALLONE, Math.min(W - 22 - R_PALLONE, b.x)); b.vx = 0; } continue; }
       const tocca = b.x < 22 + R_PALLONE - 6 || b.x > W - 22 - R_PALLONE + 6 || this.spuntoni.some((s) => Math.hypot(s.x - b.x, s.y - Y_PALLONE) < s.r + R_PALLONE - 3)
         || this.sbarre.some((s) => Math.abs(s.y - Y_PALLONE) < 12 + R_PALLONE - 4 && Math.abs(s.x - b.x) > s.w / 2 - R_PALLONE + 4);
       if (tocca) {
@@ -83,6 +99,7 @@ class Palloncini extends Arena {
   // in più giocatori il round finisce quando ne resta uno solo (ma solo dopo che è rimasto in aria altri 3 secondi, per il gusto)
   ultimoSolo() { this._solo = this._solo || this.tempoRound; return this.tempoRound - this._solo > 3; }
   fineRound() {
+    fineTrucco(this);
     this._solo = null;
     for (let p = 0; p < this.n; p++) {
       const t = this.popTempo[p] ?? this.tempoRound;

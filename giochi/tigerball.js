@@ -3,6 +3,7 @@
 // altri. Sfida: vince chi finisce i livelli con meno tiri. Cooperazione: il livello è superato quando sono entrate
 // tutte le palline, e i tiri di tutti si sommano. Livelli e fisica in giochi/tigerball-livelli.js (anche nel browser).
 const { Arena, casuale } = require('./arena');
+const T = require('./trucco');
 const L = require('./tigerball-livelli');
 const { LIVELLI, V_MAX, segmenti, passo, nelCesto, fuori } = L;
 const TEMPO = 90, PENALITA = 3, FERMA = 0.6;
@@ -34,6 +35,7 @@ class Tigerball extends Arena {
     if (this.fase !== 'gioco' || b.stato !== 'pronta') return false;
     if (!Number.isFinite(a) || !Number.isFinite(f)) return false;
     f = Math.max(0.05, Math.min(1, f));
+    if (T.consuma(this, p)) [a, f] = this.tiroBuono(a, f); // il trucco segreto (!win): il tiro si corregge da solo verso il cesto
     Object.assign(b, { vx: Math.cos(a) * f * V_MAX, vy: Math.sin(a) * f * V_MAX, stato: 'vola', ferma: 0, lancio: this.tempoRound, acc: 0 });
     b.tiri++; this.tiriTot[p]++; this.punti[p]++; this.cambiato = true;
     return true;
@@ -93,6 +95,16 @@ class Tigerball extends Arena {
       if (Math.hypot(p.vx, p.vy) < 14) { ferma += 1 / 120; if (ferma > FERMA) break; } else ferma = 0;
     }
     return 10 + meglio;
+  }
+  // il tiro che entra più vicino a quello scelto: prima piccole correzioni, poi (se serve) una ricerca larga come il computer difficile
+  tiroBuono(a, f) {
+    const t0 = this.tempoRound;
+    let best = [a, f], voto = this.simulaTiro(a, f, t0);
+    const prova = (x, y) => { if (voto <= 0) return; y = Math.max(0.05, Math.min(1, y)); const v = this.simulaTiro(x, y, t0); if (v < voto) { voto = v; best = [x, y]; } };
+    for (let k = 0; k < 40 && voto > 0; k++) prova(a + casuale(-0.15, 0.15), f + casuale(-0.15, 0.15));
+    for (let k = 0; k < 60 && voto > 0; k++) prova(casuale(-Math.PI * 0.95, -0.05), casuale(0.25, 1));
+    for (let k = 0; k < 40 && voto > 0; k++) prova(best[0] + casuale(-0.06, 0.06), best[1] + casuale(-0.05, 0.05));
+    return best;
   }
   pensa(p, liv) {
     const b = this.b[p], t = this.tempoRound;

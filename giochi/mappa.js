@@ -135,6 +135,22 @@ class Mappa {
     if (this.n === 1) this.risultato.titolo = `Hai fatto ${this.punti[0]} punti`;
   }
 
+  // trucco segreto (!win): la strada più corta senza nemici da dove sei all'uscita, a frecce
+  suggerimentoWin(p) {
+    const x = this.g[p];
+    if (this.finita || this.fase !== 'gioco' || !x || x.stato !== 'viaggio' || this.scelte[p] !== undefined) return null;
+    const d = distanze(this.m.uscita, (c) => !this.m.nemici.has(c));
+    if (d[x.pos] === Infinity) return null;
+    const frecce = [];
+    for (let c = x.pos; c !== this.m.uscita;) {
+      const v = passi(c).find((k) => d[k] === d[c] - 1);
+      const [cx, cy] = xy(c), [vx, vy] = xy(v);
+      frecce.push(vy < cy ? '⬆️' : vy > cy ? '⬇️' : vx < cx ? '⬅️' : '➡️');
+      c = v;
+    }
+    return `💡 Strada sicura: ${frecce.join(' ')}`;
+  }
+
   vista(p) {
     const x = this.g[p];
     const tutto = this.fase !== 'gioco' || this.finita; // la mappa si scopre quando hanno finito tutti (niente suggerimenti in chat)

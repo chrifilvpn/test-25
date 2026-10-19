@@ -161,6 +161,31 @@ class Nascondino {
     this.risultato = { fazioni: this.punti.map((x, i) => ({ posti: [i], punti: x })), etichetta: 'punti', pareggio: v.length > 1, vincitori: v.length > 1 ? [] : v };
   }
 
+  // trucco segreto (!win): nel round in corso. Chi caccia sa dov'è il nascosto più vicino e la mossa che lo prende
+  // (anche se lui si sposta); chi è nascosto sa dove sono i cacciatori e dove andare per non farsi prendere.
+  suggerimentoWin(p) {
+    if (this.finita || this.fase !== 'caccia' || this.scelte[p] !== undefined) return null;
+    const qui = this.pos[p];
+    const rel = (c) => { const [ax, ay] = xy(qui), [bx, by] = xy(c), dx = bx - ax, dy = by - ay; return [dy ? `${Math.abs(dy)}${dy < 0 ? '⬆️' : '⬇️'}` : '', dx ? `${Math.abs(dx)}${dx < 0 ? '⬅️' : '➡️'}` : ''].filter(Boolean).join(' ') || 'qui'; };
+    const mossa = (c) => (c === qui ? 'resta fermo' : `vai ${rel(c)}`);
+    if (this.ruolo[p] === 'caccia') {
+      const nasc = this.nascosti();
+      if (!nasc.length) return null;
+      // la mossa che copre più caselle dove i nascosti possono finire
+      const copre = (m) => nasc.reduce((t, v) => { const dopo = mosseNascosto(this.pos[v]); return t + dopo.filter((d) => dist(d, m) <= PRESA).length / dopo.length; }, 0);
+      const vicinanza = (m) => Math.min(...nasc.map((v) => dist(this.pos[v], m))); // a parità, verso il più vicino
+      const m = mosseCaccia(qui).reduce((a, b) => (copre(b) > copre(a) + 1e-9 || (Math.abs(copre(b) - copre(a)) < 1e-9 && vicinanza(b) < vicinanza(a)) ? b : a));
+      const vicino = nasc.reduce((a, b) => (dist(this.pos[b], qui) < dist(this.pos[a], qui) ? b : a));
+      return `💡 Il nascosto più vicino è a ${rel(this.pos[vicino])} da te: ${mossa(m)}`;
+    }
+    const caccia = this.cacciatori();
+    const pericolo = (c) => caccia.filter((h) => mosseCaccia(this.pos[h]).some((d) => dist(d, c) <= PRESA)).length;
+    const lontano = (c) => Math.min(...caccia.map((h) => dist(this.pos[h], c)));
+    const m = mosseNascosto(qui).reduce((a, b) => (pericolo(b) < pericolo(a) || (pericolo(b) === pericolo(a) && lontano(b) > lontano(a)) ? b : a));
+    const vicino = caccia.reduce((a, b) => (dist(this.pos[b], qui) < dist(this.pos[a], qui) ? b : a));
+    return `💡 Il cacciatore più vicino è a ${rel(this.pos[vicino])} da te: ${mossa(m)}${pericolo(m) ? '' : ' (lì non ti prende)'}`;
+  }
+
   vista(p) {
     const cacciatore = this.ruolo[p] === 'caccia';
     // chi è nascosto vede sé stesso e i cacciatori; chi caccia vede i cacciatori e gli indizi

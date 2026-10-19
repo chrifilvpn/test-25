@@ -69,16 +69,19 @@ class Dubito {
     let k = 0;
     for (let p = 0; p < this.n; p++) if (this.vivi[p]) this.mani[p] = m.slice(k, (k += this.aTesta));
     this.scarto = m.length - k;   // carte rimaste coperte da parte: nessuno sa quali sono
-    // il trucco segreto (!win): una mano di sole carte giuste, scambiate con quelle rimaste coperte da parte
+    // il trucco segreto (!win): una mano di sole carte giuste, scambiate con quelle rimaste coperte da parte (e, se
+    // non bastano, con quelle appena date agli altri)
     const resto = m.slice(k);
     for (let p = 0; p < this.n; p++) {
       if (!this.vivi[p] || !T.consuma(this, p)) continue;
       const mano = this.mani[p];
+      const fonti = [resto, ...this.mani.filter((x) => x !== mano)];
       for (let i = 0; i < mano.length; i++) {
         if (buona(mano[i], this.carta)) continue;
-        const j = resto.findIndex((c) => buona(c, this.carta));
-        if (j < 0) break;
-        [mano[i], resto[j]] = [resto[j], mano[i]];
+        const f = fonti.find((x) => x.some((c) => buona(c, this.carta)));
+        if (!f) break;
+        const j = f.findIndex((c) => buona(c, this.carta));
+        [mano[i], f[j]] = [f[j], mano[i]];
       }
     }
     this.tavolo = [];              // carte giocate in questo round (coperte)
