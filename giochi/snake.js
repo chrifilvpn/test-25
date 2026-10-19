@@ -156,14 +156,11 @@ class Snake {
     return cambiato;
   }
 
-  // il trucco segreto: true per i primi 25 secondi di gioco dopo il comando, poi si spegne
+  // il trucco segreto: si spegne subito (vale una volta) e dura i 25 secondi di gioco dopo il comando
   conTrucco(i, ora) {
-    if (!T.armato(this, i)) return false;
-    const da = (this._winDa = this._winDa || {});
-    if (da[i] == null) da[i] = ora;
-    if (ora - da[i] < WIN_MS) return true;
-    T.consuma(this, i); delete da[i];
-    return false;
+    const fino = (this._winFino = this._winFino || {});
+    if (T.consuma(this, i)) fino[i] = ora + WIN_MS;
+    return fino[i] > ora;
   }
   // la prossima casella della testa è un muro o un serpente?
   pericolo(i) {
@@ -176,7 +173,6 @@ class Snake {
 
   chiudi() {
     this.finita = true;
-    for (let i = 0; i < this.n; i++) T.consuma(this, i); // fine partita: il trucco è servito per questa
     const vivo = this.serpenti.findIndex((s) => s.vivo);
     // ordine: chi muore prima sta in fondo; tra i punti conta anche la lunghezza
     const punti = this.serpenti.map((s) => s.punti);

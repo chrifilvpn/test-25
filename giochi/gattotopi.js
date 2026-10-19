@@ -11,9 +11,9 @@ function conTrucco(g, p) {
   T.consuma(g, p); delete da[p];
   return false;
 }
-// a fine round si spegne (se è servito almeno 3 secondi; altrimenti vale anche per il prossimo round)
+// a fine round si spegne (se è servito almeno un secondo; altrimenti vale anche per il prossimo round)
 function fineTrucco(g, sempre = false) {
-  for (let p = 0; p < g.n; p++) { const da = g._winDa && g._winDa[p]; if (da != null && (sempre || g.tempoRound - da >= 3)) T.consuma(g, p); if (g._winDa) delete g._winDa[p]; }
+  for (let p = 0; p < g.n; p++) { const da = g._winDa && g._winDa[p]; if (da != null && (sempre || g.tempoRound - da >= 1)) T.consuma(g, p); if (g._winDa) delete g._winDa[p]; }
 }
 const W = 1000, H = 620, R_TOPO = 14, R_GATTO = 24, V_TOPO = 240, V_GATTO = 275, DURATA = 50;
 const PUNTI_PRESA = 3, PUNTI_FORMAGGIO = 1, MAX_FORMAGGI = 6;

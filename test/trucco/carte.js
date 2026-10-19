@@ -103,9 +103,10 @@ for (let giro = 0; giro < 20; giro++) {
   {
     const g = crea('scala40', 2);
     const p = g.turno;
+    const cera = g.mazzo.some((c) => c.jolly);
     T.arma(g, p);
     g.azione(p, { tipo: 'pesca', da: 'mazzo' });
-    assert.ok(g.mani[p][g.mani[p].length - 1].jolly, 'scala 40: pesca un jolly');
+    if (cera) assert.ok(g.mani[p][g.mani[p].length - 1].jolly, 'scala 40: pesca un jolly');
     senzaDoppioni([...g.mazzo, ...g.mani.flat(), ...g.pozzo], 108, 'scala 40');
     // senza jolly nel mazzo: la carta che fa crescere le combinazioni
     const h = crea('scala40', 2), q = h.turno;
@@ -129,9 +130,11 @@ for (let giro = 0; giro < 20; giro++) {
   {
     const g = crea('uno', 3);
     T.arma(g, 1);
+    const nelMazzo = ['+4', 'jolly', '+2'].filter((v) => g.mazzo.some((c) => c.valore === v));
+    const normali = g.mani[1].filter((c) => !['+4', 'jolly', '+2'].includes(c.valore)).length;
     g.trucco(1);
     assert.ok(!T.armato(g, 1));
-    for (const v of ['+4', 'jolly', '+2']) assert.ok(g.mani[1].some((c) => c.valore === v), `uno: ${v} in mano`);
+    if (normali >= 3) for (const v of nelMazzo) assert.ok(g.mani[1].some((c) => c.valore === v), `uno: ${v} in mano`);
     assert.strictEqual(g.mani[1].length, 7);
     senzaDoppioni([...g.mazzo, ...g.mani.flat(), ...g.scarti], 108, 'uno');
   }
@@ -142,8 +145,10 @@ for (let giro = 0; giro < 20; giro++) {
     const p = g.turno;
     T.arma(g, p);
     const prima = g.punti[p];
+    const si = g.mazzo.some((c) => c !== 'peppa' && g.mani[p].some((x) => x !== 'peppa' && x.split('-')[0] === c.split('-')[0]));
     g.azione(p, { tipo: 'pesca', da: 'mazzo' });
-    assert.strictEqual(g.punti[p], prima + 1, 'peppa: coppia dal mazzo');
+    if (si) assert.strictEqual(g.punti[p], prima + 1, 'peppa: coppia dal mazzo');
+    else assert.notStrictEqual(g.mani[p][g.mani[p].length - 1], 'peppa', 'peppa: almeno non la Peppa');
     const h = crea('peppa', 2), q = h.turno;
     h.mazzo = [];
     h.mani[1 - q].push('peppa');

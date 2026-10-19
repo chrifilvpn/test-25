@@ -11,9 +11,9 @@ function conTrucco(g, p) {
   T.consuma(g, p); delete da[p];
   return false;
 }
-// a fine round si spegne (se è servito almeno 3 secondi; altrimenti vale anche per il prossimo round)
+// a fine round si spegne (se è servito almeno un secondo; altrimenti vale anche per il prossimo round)
 function fineTrucco(g, sempre = false) {
-  for (let p = 0; p < g.n; p++) { const da = g._winDa && g._winDa[p]; if (da != null && (sempre || g.tempoRound - da >= 3)) T.consuma(g, p); if (g._winDa) delete g._winDa[p]; }
+  for (let p = 0; p < g.n; p++) { const da = g._winDa && g._winDa[p]; if (da != null && (sempre || g.tempoRound - da >= 1)) T.consuma(g, p); if (g._winDa) delete g._winDa[p]; }
 }
 const W = 1000, H = 620, R = 16, V = 215, V_PALLA = 640, VITA_PALLA = 1.3, RICARICA = 0.35, DURATA = 75, RINASCITA = 1.5, PROTEZIONE = 1.2;
 // CAMPI a tema, simmetrici rispetto al centro (così nessun angolo è avvantaggiato). Ogni blocco è
