@@ -60,7 +60,7 @@ const CHIAVI = {
   pass: 'Pass d\'accesso della stazione', levaChiave: 'Leva di manutenzione', tesseraSicurezza: 'Tessera della sicurezza', tesseraMedica: 'Tessera medica di San Cristobal',
   codiceTram: 'Codice del tram', saldatrice: 'Saldatrice al plasma', dispositivo: 'Dispositivo di accesso', codiceApollo: 'Codice di APOLLO', tesseraReattore: 'Tessera del reattore',
   omnitool: 'Omni-strumento', chipCatherine: 'Chip di Catherine', datiTheta: 'Dati di Theta', tutaRinforzata: 'Tuta da immersione rinforzata', chipNavigazione: 'Chip di navigazione del DUNBAT', veleno: 'Gel strutturale avvelenato',
-  chiaveAmministrazione: 'Chiave dell\'amministrazione', chiaveCarcere: 'Chiave del blocco carcerario', valvole: 'Valvole chiuse', chiaveTrager: 'Chiave di Trager', chiaveCortile: 'Chiave del cortile', passLaboratorio: 'Pass del laboratorio Murkoff',
+  chiaveAmministrazione: 'Chiave dell\'amministrazione', chiaveCarcere: 'Chiave del blocco carcerario', valvole: 'Valvole chiuse', chiaveTrager: 'Chiave di Trager', chiaveCortile: 'Chiave del cortile', chiaveCucine: 'Chiave della palestra (dalle cucine)', passLaboratorio: 'Pass del laboratorio Murkoff',
 };
 for (const [id, nome] of Object.entries(CHIAVI)) OGGETTI[id] = { nome, tipo: 'chiave', icona: '🗝️', desc: 'Un oggetto importante per la storia: apre la strada.' };
 
@@ -197,13 +197,15 @@ const MOSTRI = {
   akers: { nome: 'Terry Akers', tipo: 'umanoide (infetto)', taglia: 'Media', ca: 12, pf: '120', vel: 9, car: c(16, 10, 18, 3, 12, 1), gs: 4, multi: 2, attacchi: [a('Schianto', 6, '2d8+3', 'contundente')], tratti: ['immortale', 'cacciatore', 'sensiAcuti'], immune: ['veleno', 'psichico'], aspetto: { s: '🧟', col: '#3a5a6a' }, px: 300, tema: ['pathos'], descrizione: 'Un uomo gonfio di gel strutturale, con una luce azzurra dove aveva gli occhi: è cieco, sente ogni rumore.' },
   costrutto: { nome: 'Il Costrutto', tipo: 'costrutto', taglia: 'Grande', ca: 16, pf: '150', vel: 6, car: c(20, 8, 18, 4, 10, 1), gs: 5, multi: 2, attacchi: [a('Schianto', 8, '2d8+5', 'contundente')], tratti: ['immortale', 'cacciatore', 'androide'], resistente: ['arma'], vulnerabile: ['fulmine'], immune: ['veleno', 'psichico'], aspetto: { s: '🦾', col: '#4a4a40' }, px: 400, tema: ['pathos'], descrizione: 'Un ammasso di cavi, gel e piastre che si trascina come un corpo: non vede, ma sa dove sei.' },
   proxy: { nome: 'Proxy del WAU', tipo: 'umanoide (mutato)', taglia: 'Media', ca: 13, pf: '150', vel: 12, car: c(16, 16, 16, 4, 14, 2), gs: 6, multi: 2, attacchi: [a('Artigli', 7, '2d6+3', 'taglio')], tratti: ['immortale', 'cacciatore', 'nonGuardarlo'], immune: ['veleno', 'psichico'], aspetto: { s: '👤', col: '#2a4a5a' }, px: 400, tema: ['pathos'], descrizione: 'Un essere umano rifatto dal WAU: se lo guardi negli occhi, il suo grido ti spacca il cervello e ti carica.' },
-  robotWau: { nome: 'Robot infettato dal WAU', tipo: 'costrutto', taglia: 'Media', ca: 14, pf: '5d8+10', vel: 6, car: c(14, 8, 14, 6, 8, 1), gs: 1, attacchi: [a('Pinza', 4, '1d8+3', 'contundente')], tratti: ['androide'], resistente: ['arma'], vulnerabile: ['fulmine'], immune: ['veleno', 'psichico'], aspetto: { s: '🤖', col: '#3a6a8a' }, tema: ['pathos'], descrizione: 'Un robot di manutenzione con la voce di un uomo morto: crede di essere ancora vivo.' },
+  robotWau: { nome: 'Robot infettato dal WAU', tipo: 'costrutto', taglia: 'Media', ca: 14, pf: '5d8+10', vel: 6, car: c(14, 8, 14, 6, 8, 1), gs: 1, attacchi: [a('Pinza', 4, '1d8+3', 'contundente')], tratti: ['androide', 'pacifico'], resistente: ['arma'], vulnerabile: ['fulmine'], immune: ['veleno', 'psichico'], aspetto: { s: '🤖', col: '#3a6a8a' }, tema: ['pathos'], descrizione: 'Un robot di manutenzione con la voce di un uomo morto: crede di essere ancora vivo.' },
   flesher: { nome: 'Flesher', tipo: 'aberrazione', taglia: 'Media', ca: 14, pf: '150', vel: 9, car: c(16, 16, 14, 4, 12, 1), gs: 5, multi: 2, attacchi: [a('Artigli', 7, '2d8+3', 'taglio')], tratti: ['immortale', 'cacciatore', 'teletrasporto'], immune: ['veleno', 'psichico'], aspetto: { s: '🩸', col: '#5a2a2a' }, px: 400, tema: ['pathos'], descrizione: 'Carne e metallo cuciti: sparisce in un lampo e ricompare alle spalle.' },
   leviatano: { nome: 'Il Leviatano', tipo: 'mostruosità', taglia: 'Mastodontica', ca: 18, pf: '400', vel: 18, car: c(28, 10, 26, 3, 14, 2), gs: 15, attacchi: [a('Fauci', 13, '6d10+9', 'perforante')], tratti: ['immortale', 'cacciatore', 'sensiAcuti'], immune: ['veleno', 'psichico'], aspetto: { s: '🐋', col: '#10202a' }, px: 600, tema: ['pathos'], descrizione: 'Una sagoma enorme nell\'acqua nera dell\'abisso: si vedono solo le luci della bocca.' },
   chrisWalker: { nome: 'Chris Walker', tipo: 'umanoide', taglia: 'Grande', ca: 15, pf: '250', vel: 9, car: c(22, 10, 22, 6, 12, 6), gs: 9, multi: 2, attacchi: [a('Pugni', 10, '3d8+6', 'contundente'), a('Presa al collo', 10, '2d8+6', 'contundente', { afferra: 18 })], tratti: ['immortale', 'cacciatore', 'sfondaPorte'], immune: ['psichico'], aspetto: { s: '🐷', col: '#7a3a3a' }, px: 600, tema: ['manicomio'], descrizione: 'Un gigante col naso strappato e le catene ai polsi, ex poliziotto militare: «Piccolo porcellino…». Non si ferma mai.' },
   variante: { nome: 'Variante (paziente)', tipo: 'umanoide', taglia: 'Media', ca: 11, pf: '3d8', vel: 9, car: c(13, 12, 12, 6, 8, 6), gs: 0.25, attacchi: [a('Pugni', 3, '1d6+2', 'contundente'), a('Coltello', 3, '1d4+2', 'perforante')], aspetto: { s: '🧍', col: '#8a7a6a' }, tema: ['manicomio'], descrizione: 'Un paziente del Mount Massive, nudo, coperto di cicatrici, che ride da solo.' },
   gemelli: { nome: 'I Gemelli', tipo: 'umanoide', taglia: 'Media', ca: 13, pf: '160', vel: 9, car: c(18, 12, 18, 10, 12, 8), gs: 5, multi: 2, attacchi: [a('Machete', 7, '2d6+4', 'taglio')], tratti: ['immortale', 'cacciatore'], aspetto: { s: '👬', col: '#5a5a5a' }, px: 400, tema: ['manicomio'], descrizione: 'Due fratelli enormi e nudi che parlano tra loro con calma di cosa ti faranno.' },
-  trager: { nome: 'Dr. Rick Trager', tipo: 'umanoide', taglia: 'Media', ca: 12, pf: '9d8+9', vel: 9, car: c(12, 14, 12, 14, 10, 14), gs: 3, multi: 2, attacchi: [a('Forbici chirurgiche', 5, '2d6+3', 'taglio')], aspetto: { s: '✂️', col: '#6a8a6a' }, tema: ['manicomio'], descrizione: 'Un ex dirigente con il camice insanguinato e un sorriso da dentista: vuole «curarti» le dita.' },
+  eddie: { nome: 'Eddie Gluskin, lo Sposo', tipo: 'umanoide', taglia: 'Media', ca: 14, pf: '200', vel: 10, car: c(18, 14, 18, 12, 12, 14), gs: 7, multi: 2, attacchi: [a('Coltello da cucina', 8, '2d8+4', 'taglio')], tratti: ['immortale', 'cacciatore', 'sfondaPorte'], immune: ['psichico'], aspetto: { s: '🤵', col: '#4a3a5a' }, px: 500, tema: ['manicomio'], descrizione: 'Un uomo elegante, il gilet macchiato di sangue, che canticchia «Darling, so there you are». Cerca una sposa, e non accetta un no.' },
+  frank: { nome: 'Frank Manera', tipo: 'umanoide', taglia: 'Media', ca: 12, pf: '8d8+16', vel: 9, car: c(17, 10, 16, 6, 10, 4), gs: 3, multi: 2, attacchi: [a('Sega da ossa', 6, '2d6+3', 'taglio')], aspetto: { s: '🪚', col: '#6a3a2a' }, tema: ['manicomio'], descrizione: 'Un paziente enorme che mastica qualcosa. Ha una sega da ossa e dice che non spreca niente.' },
+  trager: { nome: 'Dr. Rick Trager', tipo: 'umanoide', taglia: 'Media', ca: 12, pf: '9d8+9', vel: 9, car: c(12, 14, 12, 14, 10, 14), gs: 3, multi: 2, attacchi: [a('Forbici chirurgiche', 5, '2d6+3', 'taglio')], tratti: ['tagliaDita'], aspetto: { s: '✂️', col: '#6a8a6a' }, tema: ['manicomio'], descrizione: 'Un ex dirigente con il camice insanguinato e un sorriso da dentista: vuole «curarti» le dita.' },
   mercenario: { nome: 'Mercenario della Murkoff', tipo: 'umanoide', taglia: 'Media', ca: 15, pf: '5d8+10', vel: 9, car: c(14, 14, 14, 10, 12, 10), gs: 2, multi: 2, attacchi: [a('Fucile', 5, '1d10+3', 'perforante', { gittata: 45 }), a('Calcio del fucile', 5, '1d6+2', 'contundente')], aspetto: { s: '🪖', col: '#2a3a2a' }, tema: ['manicomio'], descrizione: 'Un soldato privato della Murkoff: ha ordine di non lasciare testimoni.' },
   walrider: { nome: 'Il Walrider', tipo: 'aberrazione', taglia: 'Grande', ca: 19, pf: '300', vel: 15, vola: true, car: c(24, 20, 22, 10, 16, 18), gs: 14, multi: 2, attacchi: [a('Nanomacchine', 12, '4d10+6', 'necrotico')], tratti: ['immortale', 'cacciatore', 'incorporeo'], resistente: ['arma', 'fuoco', 'freddo', 'fulmine'], immune: ['veleno', 'psichico'], aspetto: { s: '👻', col: '#1a1a2a' }, px: 900, tema: ['manicomio'], descrizione: 'Uno sciame nero di nanomacchine a forma d\'uomo, legato alla mente di Billy Hope: attraversa le pareti.' },
 };
@@ -296,21 +298,30 @@ const CAMPAGNE = {
       ['abisso', 'phi', 'porta', null], ['phi', 'wau', 'porta', null], ['wau', 'lancio', 'porta', null], ['phi', 'lancio', 'porta', 'chipNavigazione'], ['cunicoli', 'lancio', 'condotto', null],
     ],
     obiettivi: [
-      { id: 'p1', area: 'upsilon', titolo: 'Svegliarsi', testo: 'Capire dove siete e trovare l\'omni-strumento per aprire le porte di Upsilon.', fai: 'raccogli', cosa: 'Armadietto di servizio', da: ['omnitool'], attiva: 'cacciatore' },
+      { id: 'p1', area: 'upsilon', titolo: 'Svegliarsi', testo: 'Capire dove siete e trovare l\'omni-strumento per aprire le porte di Upsilon.', fai: 'raccogli', cosa: 'Armadietto di servizio', da: ['omnitool'], attiva: 'cacciatore',
+        scelta: { domanda: 'Nella stanza delle comunicazioni un robot rotto vi parla con la voce di un uomo: «Sono Carl. Non sento le gambe, aiutatemi.» La porta si apre solo togliendo la corrente al suo pannello. Lo staccate?', opzioni: [
+          { testo: 'Staccatelo: la porta si apre', esito: 'Il robot urla mentre la corrente se ne va: «Perché? Perché?» Poi silenzio. La porta si apre.', paura: 1, finale: 'Non avete dimenticato la voce di Carl che chiedeva perché.' },
+          { testo: 'Un altro modo: i cavi di emergenza', esito: 'Bypassate il pannello con i cavi di emergenza: ci vuole tempo e fate rumore, ma Carl resta acceso. «Grazie… grazie.»', paura: 0, rumore: 3, finale: 'Da qualche parte a Upsilon, Carl parla ancora da solo, convinto di essere vivo.' }] } },
       { id: 'p2', area: 'lambda', titolo: 'Catherine', testo: 'Attraversare il fondale e trovare Catherine Chun nella stazione Lambda.', fai: 'usa', cosa: 'Terminale di Catherine', da: ['chipCatherine'] },
       { id: 'p3', area: 'theta', titolo: 'I dati di Theta', testo: 'Prendere la navetta per Theta e recuperare i dati sull\'ARK dai server.', fai: 'usa', cosa: 'Server dell\'ARK', da: ['datiTheta'] },
-      { id: 'p4', area: 'omicron', titolo: 'La tuta rinforzata', testo: 'In Omicron trovare una tuta da immersione che regga la pressione dell\'Abisso.', fai: 'raccogli', cosa: 'Deposito delle tute', da: ['tutaRinforzata'] },
-      { id: 'p5', area: 'tau', titolo: 'L\'ultimo essere umano', testo: 'Raggiungere Tau, decidere cosa fare di Sarah Lindwall e prendere il chip di navigazione.', fai: 'raccogli', cosa: 'Armadietto di Sarah', da: ['chipNavigazione'] },
+      { id: 'p4', area: 'omicron', titolo: 'La tuta rinforzata', testo: 'In Omicron trovare una tuta da immersione che regga la pressione dell\'Abisso.', fai: 'raccogli', cosa: 'Deposito delle tute', da: ['tutaRinforzata'],
+        scelta: { domanda: 'La tuta per l\'Abisso c\'è, ma un corpo umano non regge quella pressione: bisogna copiare la vostra mente dentro la tuta. Il trasferimento finisce. Aprite gli occhi nella tuta… e sulla sedia anche il vecchio voi è sveglio, e vi guarda. Che ne fate?', opzioni: [
+          { testo: 'Lo spegnete: non può restare solo qui', esito: 'Il vecchio corpo vi guarda mentre staccate il cavo. «Aspetta… sono io quello vero…» Si spegne.', paura: 2, finale: 'A Omicron c\'è una sedia vuota. L\'avete svuotata voi.' },
+          { testo: 'Lo lasciate vivere', esito: 'Ve ne andate. Dietro di voi il vecchio corpo chiama il vostro nome. Si sveglierà da solo, al buio, convinto di essere stato abbandonato. Lo è.', paura: 1, finale: 'A Omicron una copia di voi aspetta ancora che qualcuno torni a prenderla.' }] } },
+      { id: 'p5', area: 'tau', titolo: 'L\'ultimo essere umano', testo: 'Raggiungere Tau, decidere cosa fare di Sarah Lindwall e prendere il chip di navigazione.', fai: 'raccogli', cosa: 'Armadietto di Sarah', da: ['chipNavigazione'],
+        scelta: { domanda: 'Sarah Lindwall, l\'ultimo essere umano vivo sulla Terra, è attaccata al supporto vitale. «Fatemi vedere ancora una volta le mie foto. Poi spegnete tutto. Per favore.»', opzioni: [
+          { testo: 'Spegnete il supporto vitale, come chiede', esito: 'Le mostrate le sue foto, la sua musica. Sorride. Il monitor fa un lungo suono piatto. Siete stati gli ultimi a vedere un essere umano.', paura: 1, finale: 'L\'ultimo essere umano se n\'è andato tenendovi la mano.' },
+          { testo: 'La lasciate vivere', esito: 'Prendete il chip e ve ne andate. Sarah piange piano, sola, attaccata alle macchine. Il WAU la terrà in vita per sempre.', paura: 2, finale: 'A Tau, Sarah è ancora viva. Il WAU non la lascerà mai morire.' }] } },
       { id: 'p6', area: 'abisso', titolo: 'Scendere nell\'Abisso', testo: 'Prendere il Climber dalla stazione Delta e scendere nell\'Abisso.', fai: 'raggiungi' },
       { id: 'p7', area: 'phi', titolo: 'Il cannone spaziale', testo: 'Nella stazione Phi preparare il lancio dell\'ARK.', fai: 'usa', cosa: 'Controllo del cannone', da: ['veleno'] },
       { id: 'p8', area: 'lancio', titolo: 'Lanciare l\'ARK', testo: 'Inserire l\'ARK nel cannone e lanciarlo, mentre il WAU prova a fermarvi.', fai: 'usa', cosa: 'Comando di lancio', finale: true },
     ],
-    finale: 'Il cannone spara con un colpo che scuote tutto l\'oceano. L\'ARK sale nel buio, poi nel blu, poi nel cielo, verso lo spazio, con dentro tutto quello che resta di noi. Le luci di Phi si spengono una a una. Voi restate qui, in fondo al mare. Ma da qualche parte, lassù, una copia di voi apre gli occhi sotto un sole nuovo. È andata bene? Dipende da quale dei due siete.',
+    finale: 'Il cannone spara con un colpo che scuote tutto l\'oceano. L\'ARK sale nel buio, poi nel blu, poi nel cielo, verso lo spazio. E voi? Voi siete ancora qui, nella sala di lancio di Phi. «Perché siamo ancora qui?» La voce di Catherine è stanca: «Ve l\'avevo detto. È come lanciare una moneta: la copia è partita, noi siamo quelli che restano.» Le luci si spengono una a una; Catherine si spegne a metà di una frase. Restate soli, in fondo al mare, al buio, per sempre. Lassù, intanto, una copia di voi apre gli occhi sotto un sole nuovo, e pensa di aver vinto.',
     morte: ['Il gel vi entra in bocca, freddo, e il WAU sussurra: «Non morirete.»', 'Una mano di metallo vi schiaccia il casco. L\'acqua entra.', 'Il buio si chiude intorno a voi come una bocca.'],
     arrivo: ['Il rilevatore segna qualcosa che non dovrebbe essere lì.', 'Le luci sfarfallano: un disturbo elettrico, vicino.', 'Passi pesanti e bagnati dietro la porta.'],
   },
   manicomio: {
-    nome: 'Mount Massive Asylum', ispirato: 'Outlast', icona: '🏚️', luogo: 'manicomio',
+    nome: 'Mount Massive Asylum', ispirato: 'Outlast', icona: '🏚️', luogo: 'manicomio', filmare: true,
     sottotitolo: 'Un manicomio sulle montagne del Colorado, chiuso da anni e riaperto dalla Murkoff. Una soffiata anonima parla di esperimenti. Niente armi: solo una videocamera.',
     cacciatore: 'chrisWalker', meccaniche: { rumore: true, nascondigli: true, rilevatore: false, costruzione: true, batterie: true, paura: true }, armi: false,
     classi: ['giornalista', 'infermiere', 'guardia', 'fuggiasco', 'medico', 'ricercatore'],
@@ -328,13 +339,15 @@ const CAMPAGNE = {
       { id: 'laboratorio', nome: 'Laboratorio sotterraneo Murkoff', gx: 0, gy: 2, stile: 'laboratorio', luce: 'emergenza', nemici: ['mercenario', 'variante'], cacciatore: 'walrider', bottino: ['batterie', 'componenti', 'kitMedico'], desc: 'il laboratorio segreto: vasche, il motore morfogenico, il corpo di Billy Hope attaccato alle macchine', ingresso: 'Sotto il manicomio c\'è un altro mondo: corridoi bianchi, vetri, cartelli Murkoff, vasche con dentro corpi. Al centro, attaccato a decine di tubi, c\'è un ragazzo magro: Billy Hope. Intorno a lui l\'aria vibra di una nebbia nera.', eventi: ['Il Walrider prende forma nel vapore e vi guarda.', 'Un video di istruzioni Murkoff parla di «sogni lucidi».', 'Il supporto vitale di Billy ha un interruttore rosso.'] },
       { id: 'cappella', nome: 'Cappella', gx: 1, gy: 2, stile: 'manicomio', luce: 'buio', nemici: ['variante'], cacciatore: 'chrisWalker', bottino: ['garze', 'batterie'], desc: 'la vecchia cappella del manicomio: banchi rovesciati, un altare, un ascensore di servizio verso il laboratorio', ingresso: 'La vecchia cappella: banchi rovesciati, vetrate rotte, un crocifisso con sopra qualcosa che non è Gesù. Dietro l\'altare, un ascensore di servizio che scende nel buio.', eventi: ['Le campane suonano da sole.', 'Padre Martin vi aspetta sull\'altare, con una tanica di benzina.', 'L\'ascensore si apre da solo.'] },
       { id: 'motore', nome: 'Sala del motore morfogenico', gx: 2, gy: 2, stile: 'laboratorio', luce: 'buio', nemici: [], cacciatore: 'walrider', bottino: ['batterie'], desc: 'il cuore del Progetto Walrider: il motore, le macchine, i comandi del supporto vitale', ingresso: 'La sala del motore morfogenico: una macchina enorme che ronza, schermi con onde cerebrali, il corpo di Billy sospeso nella vasca. Il Walrider urla con la voce di cento persone.', eventi: ['L\'elettricità salta.', 'Il Walrider attraversa le pareti come fumo.', 'Uno schermo: «SUPPORTO VITALE: ATTIVO».'] },
+      { id: 'vocazionale', nome: 'Blocco vocazionale', gx: 2, gy: 3, stile: 'manicomio', luce: 'emergenza', nemici: ['frank', 'variante'], cacciatore: 'eddie', bottino: ['batterie', 'garze', 'rottami'], desc: 'le officine e le cucine dei pazienti: banchi, frigoriferi, la mensa; Frank Manera ci fa le sue cose', ingresso: 'Il blocco vocazionale: officine con i banchi da lavoro, una cucina enorme con la cella frigorifera aperta, e un odore dolciastro che vi chiude la gola. Su un tavolo c\'è un vassoio coperto. Non lo scoprite.', eventi: ['Una voce masticando: «Non si spreca niente, qui.»', 'Una macchina da cucire, da sola, cuce qualcosa che sembra un vestito da sposa.', 'Una scia di sangue va verso la cella frigorifera.'] },
+      { id: 'palestra', nome: 'La palestra dello Sposo', gx: 3, gy: 3, stile: 'manicomio', luce: 'buio', nemici: ['variante'], cacciatore: 'eddie', bottino: ['batterie', 'kitMedico'], desc: 'la vecchia palestra trasformata nella sala del matrimonio di Eddie Gluskin: manichini, fiori finti, corpi appesi', ingresso: 'La palestra è addobbata a festa: festoni, sedie in fila, fiori di carta. Davanti all\'altare improvvisato ci sono dei manichini vestiti da sposa. Non sono manichini. Dal fondo, una voce felice: «Tesoro! Sei venuta!»', eventi: ['Eddie canticchia una canzone d\'amore mentre affila qualcosa.', 'Sul pavimento, inviti di nozze scritti col sangue: c\'è il vostro nome.', 'Il montacarichi di servizio è dall\'altra parte della sala.'] },
       { id: 'uscita', nome: 'L\'uscita', gx: 3, gy: 2, stile: 'cortile', luce: 'buio', nemici: ['mercenario'], cacciatore: 'walrider', bottino: [], desc: 'il tunnel di servizio verso l\'esterno e il cancello', ingresso: 'Il tunnel di servizio porta fuori. L\'aria fredda delle montagne. La vostra auto è ancora lì, oltre il cancello. Basta correre.', eventi: ['Fari nel buio: i mercenari della Murkoff.', 'Dietro di voi, la nebbia nera.', 'Il cancello è aperto.'] },
     ],
     collegamenti: [
       ['cancello', 'amministrazione', 'porta', null], ['amministrazione', 'carcere', 'porta', 'chiaveAmministrazione'], ['carcere', 'torre', 'porta', null], ['amministrazione', 'fogne', 'condotto', null],
       ['carcere', 'fogne', 'porta', 'chiaveCarcere'], ['fogne', 'reparto', 'porta', 'valvole'], ['reparto', 'cortile', 'porta', 'chiaveTrager'], ['cortile', 'professionale', 'porta', 'chiaveCortile'],
       ['torre', 'professionale', 'condotto', null], ['professionale', 'cappella', 'porta', null], ['cappella', 'laboratorio', 'ascensore', 'passLaboratorio'], ['laboratorio', 'motore', 'porta', null],
-      ['motore', 'uscita', 'porta', null], ['reparto', 'cappella', 'condotto', null], ['fogne', 'laboratorio', 'condotto', null], ['cortile', 'motore', 'condotto', null],
+      ['motore', 'uscita', 'porta', null], ['cortile', 'vocazionale', 'condotto', null], ['vocazionale', 'palestra', 'porta', 'chiaveCucine'], ['palestra', 'professionale', 'ascensore', null], ['reparto', 'cappella', 'condotto', null], ['fogne', 'laboratorio', 'condotto', null], ['cortile', 'motore', 'condotto', null],
     ],
     obiettivi: [
       { id: 'm1', area: 'amministrazione', titolo: 'Entrare', testo: 'Entrare nel manicomio dall\'impalcatura e trovare la chiave dell\'amministrazione.', fai: 'raccogli', cosa: 'Scrivania della reception', da: ['chiaveAmministrazione'], attiva: 'cacciatore' },
@@ -342,16 +355,57 @@ const CAMPAGNE = {
       { id: 'm3', area: 'fogne', titolo: 'Le valvole', testo: 'Nelle fogne chiudere le due valvole per abbassare l\'acqua.', fai: 'usa', cosa: 'Valvola rossa', da: ['valvole'] },
       { id: 'm4', area: 'reparto', titolo: 'Il Dr. Trager', testo: 'Attraversare il reparto maschile e sfuggire al Dr. Trager, prendendogli la chiave.', fai: 'raccogli', cosa: 'Sala operatoria', da: ['chiaveTrager'] },
       { id: 'm5', area: 'cortile', titolo: 'I Gemelli', testo: 'Nel cortile interno trovare la chiave del cancello senza farsi prendere dai Gemelli.', fai: 'raccogli', cosa: 'Casotto del custode', da: ['chiaveCortile'] },
+      { id: 'w1', area: 'vocazionale', titolo: 'Il cannibale', testo: 'Nelle cucine del blocco vocazionale prendere la chiave della palestra senza farsi sentire da Frank Manera.', fai: 'raccogli', cosa: 'Cella frigorifera', da: ['chiaveCucine'] },
+      { id: 'w2', area: 'palestra', titolo: 'Lo Sposo', testo: 'Sfuggire a Eddie Gluskin, che prepara il suo «matrimonio» nella palestra, e prendere il montacarichi di servizio.', fai: 'usa', cosa: 'Montacarichi della palestra' },
       { id: 'm6', area: 'professionale', titolo: 'Padre Martin', testo: 'Nella cappella improvvisata di Padre Martin prendere il pass del laboratorio.', fai: 'usa', cosa: 'Altare di Padre Martin', da: ['passLaboratorio'] },
       { id: 'm7', area: 'laboratorio', titolo: 'Il laboratorio Murkoff', testo: 'Scendere con l\'ascensore della cappella nel laboratorio sotterraneo.', fai: 'raggiungi' },
       { id: 'm8', area: 'motore', titolo: 'Billy Hope', testo: 'Spegnere il supporto vitale di Billy Hope nella sala del motore morfogenico.', fai: 'usa', cosa: 'Interruttore del supporto vitale' },
       { id: 'm9', area: 'uscita', titolo: 'Fuggire', testo: 'Correre fuori dal tunnel di servizio fino al cancello, prima che il Walrider vi raggiunga.', fai: 'usa', cosa: 'Cancello dell\'uscita', finale: true },
     ],
-    finale: 'Il cancello cigola e siete fuori, nell\'aria gelida della montagna. Dietro di voi il Mount Massive urla con mille voci, poi tace. La videocamera ha registrato tutto: ogni corridoio, ogni corpo, ogni nome. Le batterie sono quasi finite. Basta per quello che serve: la verità.',
+    finale: 'Il cancello è a dieci metri. Poi una luce bianca negli occhi: Jeremy Blaire e i mercenari della Murkoff vi aspettano sulla rampa. «Nessun testimone.» Gli spari sono più forti di tutte le urla del manicomio. Cadete sul cemento, e la videocamera rotola via, ancora accesa. Il Walrider non ha più Billy: si piega su di voi, nero e freddo, e vi entra in bocca. Quando vi rialzate non siete più voi. Siete la nebbia. I mercenari urlano, uno dopo l\'altro. La videocamera, a terra, registra tutto.',
     morte: ['Due mani enormi vi stringono la testa. «Piccolo porcellino.»', 'La nebbia nera vi attraversa, e dentro c\'è un urlo.', 'Il pavimento arriva in faccia. Le forbici di Trager sono l\'ultima cosa che sentite.'],
     arrivo: ['Catene. Passi pesanti. Un respiro rauco dietro la porta.', 'La videocamera sfarfalla: interferenze.', '«Piccolo porcellino… dove sei?»'],
   },
 };
+// i documenti da trovare (frugando a turni, leggendo i terminali in tempo reale): pezzi di storia di ogni settore
+const DOCUMENTI = {
+  manicomio: {
+    cancello: ['Email anonima: «Mount Massive. Murkoff. Fanno cose ai pazienti che nessuno deve sapere. Venga a vedere. — Un amico.»'],
+    amministrazione: ['Promemoria interno Murkoff: «Il Progetto Walrider ha superato la fase 4. Gli effetti collaterali sui soggetti sono accettabili. Distruggere i fascicoli dei deceduti.» — J. Blaire', 'Lettera di un\'infermiera: «Ho visto cose che non posso scrivere. Mi hanno detto che se parlo, i miei figli…»'],
+    carcere: ['Cartella clinica di Chris Walker: «Ex polizia militare. Aggressività estrema, resistenza al dolore fuori norma. Risponde bene al condizionamento. Tenere sempre in catene.»'],
+    torre: ['Registro delle guardie: «Notte 14: i pazienti non dormono più. Stanno in piedi al buio e ci guardano dalle telecamere.»'],
+    fogne: ['Pagina di diario, bagnata: «Le valvole rosse. Chiudi le valvole e l\'acqua scende. Lui è nell\'acqua. Lui è sempre nell\'acqua.»'],
+    reparto: ['Appunti del Dr. Trager: «Il paziente non collabora. Ho deciso di procedere per sottrazione. Un dito alla volta.»'],
+    cortile: ['Disegno di un paziente: due figure enormi e una piccola. Sotto, a matita: «Ci dividiamo i pezzi. Uno a te, uno a me.»'],
+    vocazionale: ['Menù scritto a mano, attaccato al frigorifero: «Lunedì: guardia. Martedì: guardia. Mercoledì: chi capita.»', 'Rapporto di Waylon Park: «Ho mandato tutto a un giornalista. Se legge questo, mi dispiace. Non doveva venire qui.»'],
+    palestra: ['Invito di nozze: «Eddie Gluskin è lieto di annunciare il suo matrimonio. La sposa sarà la prima persona che entra da quella porta.»'],
+    professionale: ['Sermone di Padre Martin: «Il Walrider è la nostra salvezza. Il testimone deve vedere, e mostrare al mondo.»'],
+    cappella: ['Una pagina di Bibbia con le parole cancellate. Ne resta solo una, ripetuta: «testimone».'],
+    laboratorio: ['Rapporto Murkoff: «Il motore morfogenico usa i sogni lucidi del soggetto per guidare lo sciame di nanomacchine. Soggetto principale: William "Billy" Hope.»'],
+    motore: ['Ultima nota del Dr. Wernicke: «Se Billy muore, il Walrider cercherà un nuovo ospite. Il più vicino.»'],
+    uscita: ['Ordine via radio: «Unità a terra: il giornalista ha filmato tutto. Nessun testimone. Ripeto: nessun testimone.»'],
+  },
+  pathos: {
+    upsilon: ['Registrazione di Carl Semken: «Il WAU ha fatto qualcosa alla struttura. Le macchine… parlano. Una mi ha chiamato per nome.»'],
+    fondale: ['Diario di una tuta da immersione: «Mi muovo lento, la corrente spinge. Laggiù le luci di Lambda. Non guardare nel buio di lato. Non guardare.»'],
+    lambda: ['Nota di Catherine Chun: «Le scansioni cerebrali sono pronte. Se l\'ARK parte, qualcosa di noi sopravvive. Una copia. Non è la stessa cosa, ma è qualcosa.»'],
+    delta: ['Registro del Climber: «Discesa nell\'Abisso: 4000 metri sotto. La tuta normale non regge. Serve quella rinforzata di Omicron.»'],
+    theta: ['Rapporto: «L\'ARK è un mondo simulato. Contiene le scansioni dei volontari. Deve uscire dall\'oceano: ci serve il cannone di Phi.»'],
+    omicron: ['Messaggio di un ricercatore: «Ho fatto la copia. Ora ci sono due di me. Uno dovrà andarsene. Lanciamo una moneta, ha detto lui. Ha vinto lui.»'],
+    tau: ['Diario di Sarah Lindwall: «Sono l\'ultima. Mi parlano solo le macchine. Vorrei vedere ancora una volta le foto di casa, e poi dormire.»'],
+    cunicoli: ['Graffito nel gel: «IL WAU VUOLE CHE VIVIAMO. NON IMPORTA COME.»'],
+    abisso: ['Segnale di un sommozzatore: «Pressione oltre il limite. Se senti cantare nel buio, non è una balena.»'],
+    phi: ['Registrazione del Dr. Munshi: «Il cannone è pronto. Il veleno per il WAU è nel laboratorio. Usatelo, o il WAU ci terrà vivi per sempre.»'],
+    wau: ['Voci registrate nel cuore del WAU, tutte insieme: «Non morirete. Non morirete. Non morirete.»'],
+    lancio: ['Ultimo messaggio di Catherine: «Quando l\'ARK partirà, voi resterete qui. Mi dispiace. Pensavo lo sapeste.»'],
+  },
+};
+for (const [cpId, aree] of Object.entries(DOCUMENTI)) for (const ar of CAMPAGNE[cpId].aree) ar.documenti = aree[ar.id] || [];
+// l'Abisso: senza la tuta rinforzata la pressione schiaccia
+CAMPAGNE.pathos.aree.find((a) => a.id === 'abisso').pressione = 'tutaRinforzata';
+// i robot che credono di essere persone (SOMA): parlano, non attaccano se non li toccate
+const FRASI_ROBOT = ['«Scusi… sa dirmi che giorno è? Ho un appuntamento.»', '«Non sento le gambe. Perché non sento le gambe?»', '«Sono il dottor Semken. Sono il dottor Semken. Sono…»', '«Mi avete visto? Sono io. Sono sempre io.»', '«Che freddo. Qualcuno ha lasciato aperta la porta?»'];
+
 // le classi e i passati di ogni ambientazione (una classe può stare in più ambientazioni)
 for (const [id, cp] of Object.entries(CAMPAGNE)) { cp.id = id; for (const k of cp.classi) (CLASSI[k].tema = CLASSI[k].tema || []).push(id); }
 
@@ -373,4 +427,13 @@ function togli(pg, id, n = 1) {
   return true;
 }
 
-module.exports = { TEMI, ARMI, ARMATURE, OGGETTI, CHIAVI, RICETTE, BACKGROUND, CLASSI, DOTAZIONE, MOSTRI, CAMPAGNE, SCATOLA, conta, dai, togli };
+// il Dr. Trager taglia un dito (ne restano almeno 4): ogni due dita perse, un punto di Destrezza in meno
+function tagliaDito(pg) {
+  if (pg.dita == null) pg.dita = 10;
+  if (pg.dita <= 4) return null;
+  pg.dita--;
+  if ((10 - pg.dita) % 2 === 0 && pg.car && pg.car.des > 6) pg.car.des--;
+  return `✂️ Le forbici del Dr. Trager si chiudono: ${pg.nome} perde un dito (ne restano ${pg.dita}). «Visto? Non fa quasi male.»`;
+}
+
+module.exports = { TEMI, ARMI, ARMATURE, OGGETTI, CHIAVI, RICETTE, BACKGROUND, CLASSI, DOTAZIONE, MOSTRI, CAMPAGNE, SCATOLA, conta, dai, togli, tagliaDito, FRASI_ROBOT };

@@ -54,13 +54,14 @@ function nuova(amb, opz = {}) {
     const g = nuova(amb);
     g.azione(0, { tipo: 'crea', casuale: true, scelte: {} }); g.azione(1, { tipo: 'crea', casuale: true, scelte: {} });
     for (let k = 0; k < 5; k++) { await aspetta(); g.controllaTempo(); }
-    let giri = 0, revive = 0;
+    let giri = 0, revive = 0, scelte = 0;
     while (!g.finita && giri++ < 900) {
       // gioca il primo ancora vivo (con la morte permanente il posto 0 può restare a guardare)
       const io = Math.max(0, g.pg.findIndex((x) => x && !x.morto));
       if (g.fase === 'avventura' && !g.attesaIA) {
         const v = g.vista(io).incubo;
-        if (v.obiettivo && v.obiettivo.qui) g.azione(io, { tipo: 'incubo', az: 'obiettivo' });
+        if (v.scelta) { assert.ok(!g.azione(io, { tipo: 'incubo', az: 'scegli', i: Math.floor(Math.random() * v.scelta.opzioni.length) }).errore, 'si sceglie'); scelte++; }
+        else if (v.obiettivo && v.obiettivo.qui) g.azione(io, { tipo: 'incubo', az: 'obiettivo' });
         else {
           const meta = g.cp.obiettivi[g.incubo.obiettivo].area;
           const strade = v.strade.filter((s) => !s.chiuso).sort((a, b) => INC.passi(g.cp, a.id, meta) - INC.passi(g.cp, b.id, meta));
@@ -72,7 +73,8 @@ function nuova(amb, opz = {}) {
     assert.ok(g.finita && g.incubo.fatti.length === g.cp.obiettivi.length, `${amb}: la campagna arriva al finale (${g.incubo.fatti.length}/${g.cp.obiettivi.length})`);
     assert.ok(g.incubo.mente && typeof g.incubo.mente.tensione === 'number', `${amb}: la direttrice lavora anche a turni`);
     JSON.stringify(g.vista(0));
-    finali.push(`${amb} ${g.incubo.mosse} mosse, ${revive} !revive`);
+    if (amb === 'pathos') assert.strictEqual(scelte, 3, 'SOMA: tre scelte morali');
+    finali.push(`${amb} ${g.incubo.mosse} mosse, ${revive} !revive${scelte ? `, ${scelte} scelte` : ''}`);
   }
 
   // ---------- le due IA: direttrice e abitudini ----------
@@ -116,6 +118,7 @@ function nuova(amb, opz = {}) {
       if (g.fase === 'caduti') { morti++; assert.ok(g.revive() > 0); rev++; assert.strictEqual(g.fase, 'reale', '!revive torna al tempo reale'); }
       const a = Date.now(); g.tick(ora); const v = g.vistaTick(0); maxMs = Math.max(maxMs, Date.now() - a);
       if (v.blip) blip++;
+      if (v.scelta) assert.ok(!g.azione(0, { tipo: 'scegli', i: 1 }).errore, 'in tempo reale si sceglie');
       if (k === 20 * 30) assert.ok(R.creatura && g.incubo.caccia.attiva, `${amb}: in tempo reale la creatura arriva da sola dopo poco`);
       if (k === 20 * 60) { R.svegliaCreatura(); g.incubo.caccia.attiva = true; }
     }

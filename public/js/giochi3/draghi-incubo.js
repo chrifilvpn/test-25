@@ -214,8 +214,10 @@
     if (!inc || !inc.strade || !pg || pg.morto || p.fase !== 'avventura' || p.attesaIA) return '';
     const m = inc.meccaniche, ha = (id) => (pg.oggetti || []).some((o) => o.id === id && o.n > 0);
     const b = (az, ic, nome, ok = true, extra = '') => `<button type="button" class="dr-in-bt" data-az="dr-in-az" data-id="${az}" ${extra} ${ok ? '' : 'disabled'}><span>${ic}</span>${nome}</button>`;
+    // una scelta morale aperta: si decide prima di tutto il resto
+    if (inc.scelta) return `<div class="dr-in-azioni dr-in-scelta"><p>❓ ${esc(inc.scelta.domanda)}</p><div class="dr-in-riga">${inc.scelta.opzioni.map((o, i) => `<button type="button" class="dr-in-bt" data-az="dr-in-scegli" data-id="${i}" data-forte="1">${esc(o)}</button>`).join('')}</div></div>`;
     const vai = inc.strade.map((s) => `<button type="button" class="dr-in-bt dr-in-vai ${s.chiuso ? 'chiuso' : ''}" data-az="dr-in-az" data-id="vai" data-area="${esc(s.id)}" ${s.chiuso ? 'disabled' : ''} title="${s.chiuso ? `Chiuso: serve ${esc(s.serve)}` : esc(s.tipo)}"><span>${s.chiuso ? '🔒' : TIPO_LINK[s.tipo]}</span>${esc(s.nome)}</button>`).join('');
-    return `<div class="dr-in-azioni"><div class="dr-in-riga">${inc.obiettivo && inc.obiettivo.qui ? b('obiettivo', '🎯', esc(inc.obiettivo.cosa || 'Obiettivo'), true, 'data-forte="1"') : ''}${b('cerca', '🔎', `Fruga${inc.scorte ? ` (${inc.scorte})` : ''}`, inc.scorte > 0)}${m.nascondigli ? b('nascondi', st && st.nascosto ? '🚪' : '🫣', st && st.nascosto ? 'Esci' : 'Nasconditi') : ''}${m.rilevatore && ha('rilevatore') ? b('rilevatore', '📡', 'Rilevatore') : ''}${m.batterie ? b('torcia', st && st.torcia ? '🔦' : '🌑', st && st.torcia ? 'Spegni' : 'Accendi') : ''}${ha('batterie') ? b('ricarica', '🔋', 'Batterie') : ''}${ha('kitMedico') && pg.pf < pg.pfMax ? b('cura', '➕', 'Kit medico') : ''}</div>
+    return `<div class="dr-in-azioni"><div class="dr-in-riga">${inc.obiettivo && inc.obiettivo.qui ? b('obiettivo', '🎯', esc(inc.obiettivo.cosa || 'Obiettivo'), true, 'data-forte="1"') : ''}${b('cerca', '🔎', `Fruga${inc.scorte ? ` (${inc.scorte})` : ''}`, inc.scorte > 0)}${m.nascondigli ? b('nascondi', st && st.nascosto ? '🚪' : '🫣', st && st.nascosto ? 'Esci' : 'Nasconditi') : ''}${m.rilevatore && ha('rilevatore') ? b('rilevatore', '📡', 'Rilevatore') : ''}${inc.filmare ? b('filma', '🎥', `Filma${inc.filmati ? ` (${inc.filmati})` : ''}`, !!(st && st.torcia)) : ''}${m.batterie ? b('torcia', st && st.torcia ? '🔦' : '🌑', st && st.torcia ? 'Spegni' : 'Accendi') : ''}${ha('batterie') ? b('ricarica', '🔋', 'Batterie') : ''}${ha('kitMedico') && pg.pf < pg.pfMax ? b('cura', '➕', 'Kit medico') : ''}</div>
       <div class="dr-in-riga"><small>Vai verso:</small>${vai}</div>${inc.rilevato ? `<p class="dr-in-ril">📡 ${inc.rilevato.passi === 0 ? 'Il segnale è QUI.' : inc.rilevato.passi === 1 ? 'Segnale nel settore accanto!' : inc.rilevato.passi === 2 ? 'Segnale a due settori.' : 'Niente si muove.'}</p>` : ''}</div>`;
   }
   // i pulsanti horror nel pannello del turno di combattimento
@@ -226,6 +228,7 @@
     const bt = (az, ic, n, d, { chi = '', ogg = '', portata = '', ok = t.azione } = {}) => `<button type="button" class="dr-cb-az ${sel(az, ogg) ? 'sel' : ''}" data-az="dr-cb-az" data-id="${az}" ${chi ? `data-chi="${chi}"` : ''} ${ogg ? `data-ogg="${ogg}"` : ''} ${portata ? `data-portata="${portata}"` : ''} ${ok ? '' : 'disabled'} title="${esc(d)}"><span>${ic}</span>${n}</button>`;
     const lista = [];
     lista.push(me.armadietto ? '<span class="dr-in-nota">🗄️ Sei in un nascondiglio: muoviti per uscire.</span>' : bt('armadietto', '🗄️', 'Nasconditi', 'Chiuditi in un armadietto o sotto un letto vicino: nessuno ti può colpire (la creatura però annusa)'));
+    if (!inc.armi) lista.push(bt('scappa', '🏃', 'Scappa', 'Niente armi: corri via (Atletica contro CD 11, 14 se qualcuno ti è addosso). Se scappano tutti, lo scontro finisce'));
     if (cl.hacker) lista.push(bt('hackera', '💻', 'Hackera', 'Spegni un androide vicino (Indagare contro CD 10 + GS)', { chi: 'nemico', portata: 1.5 }));
     for (const o of pg.oggetti || []) {
       const d = O[o.id]; if (!d || d.tipo !== 'uso' || o.n <= 0) continue;
@@ -238,6 +241,7 @@
   function clic(ctx, el) {
     const az = el.dataset.az, id = el.dataset.id;
     if (az === 'dr-in-az') return ctx.invia({ tipo: 'incubo', az: id, ...(el.dataset.area ? { area: el.dataset.area } : {}) });
+    if (az === 'dr-in-scegli') return ctx.invia({ tipo: 'incubo', az: 'scegli', i: Number(id) });
     if (az === 'dr-in-costruisci') return ctx.invia({ tipo: 'incubo', az: 'costruisci', ricetta: id });
     if (az.startsWith('dr-re-')) return clicReale(ctx, el);
     return undefined;
@@ -287,6 +291,7 @@
     if (az === 'dr-re-cura') { RT.seq.cura++; invia(true); return undefined; }
     if (az === 'dr-re-ricarica') { RT.seq.ricarica++; invia(true); return undefined; }
     if (az === 'dr-re-hack') { RT.seq.hack++; invia(true); return undefined; }
+    if (az === 'dr-re-scegli') return ctx.invia({ tipo: 'scegli', i: Number(id) });
     if (az === 'dr-re-zaino') { RT.zaino = !RT.zaino; return ctx.ridisegna(); }
     if (az === 'dr-re-manda') {
       const el2 = document.querySelector('#panno [data-tieni="reale"]'), testo = (el2 ? el2.value : ctx.ui.t_reale || '').trim();
@@ -423,6 +428,15 @@
       else if (f.tipo === 'grata') suono([[140, 0.08], [160, 0.08]], { tipo: 'square', volume: 0.025 });
     }
     if (d.fx.length) RT.fxVisti = Math.max(RT.fxVisti || 0, ...d.fx.map((f) => f.n));
+    // la scelta morale (SOMA): una finestra sopra il gioco, che intanto va avanti
+    const schermo = document.querySelector('#panno .dr-re-schermo');
+    let sc = document.getElementById('dr-re-scelta');
+    const chiaveSc = d.scelta ? d.scelta.domanda : '';
+    if (schermo && (chiaveSc !== RT.sceltaVista || (d.scelta && !sc))) {
+      RT.sceltaVista = chiaveSc;
+      if (sc) sc.remove();
+      if (d.scelta) { sc = document.createElement('div'); sc.id = 'dr-re-scelta'; sc.className = 'dr-re-scelta'; sc.innerHTML = `<p>❓ ${esc(d.scelta.domanda)}</p>${d.scelta.opzioni.map((o, i) => `<button type="button" data-az="dr-re-scegli" data-id="${i}">${esc(o)}</button>`).join('')}`; schermo.appendChild(sc); }
+    }
     // il cuore batte più forte quando la creatura è vicina
     const ogni = [0, 1300, 850, 520][d.vicina || 0] * (d.inseguito ? 0.7 : 1);
     if (ogni && performance.now() - (RT.cuoreT || 0) > ogni) { RT.cuoreT = performance.now(); suono([[55, 0.07], [0, 0.08], [48, 0.09]], { tipo: 'sine', volume: 0.05 + 0.02 * d.vicina }); }

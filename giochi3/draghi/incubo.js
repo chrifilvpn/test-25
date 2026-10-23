@@ -42,6 +42,8 @@ const metodi = {
       stato: Array.from({ length: this.n }, () => ({ paura: 0, batteria: 100, torcia: true, nascosto: false })),
       rilevato: null, // l'ultimo bip del rilevatore: { mossa, passi, area }
       mente: D.nuovaMente(), // la direttrice e quello che la creatura ha imparato (direttore.js)
+      scelte: {}, sceltaAperta: null, // le scelte morali (SOMA): { idObiettivo: indice dell'opzione }
+      documenti: [], filmati: [], // i documenti letti e quello che avete filmato (Outlast)
     };
     for (const a of cp.aree) this.incubo.scorte[a.id] = 3;
   },
@@ -63,7 +65,7 @@ const metodi = {
     pg.oggetti = pg.oggetti.filter((o) => o.id && H.OGGETTI[o.id]); // niente pozioni e corde da fantasy
     for (const o of pg.oggetti) if (H.SCATOLA[o.id]) o.n *= H.SCATOLA[o.id];
     for (const id of H.DOTAZIONE[cp.id] || []) H.dai(pg, id, H.SCATOLA[id] || 1);
-    if (!cp.armi) { pg.armi = pg.armi.filter((a) => B.ARMI[a] && B.ARMI[a].mischia); pg.oggetti = pg.oggetti.filter((o) => !H.SCATOLA[o.id]); }
+    if (!cp.armi) { pg.armi = []; pg.oggetti = pg.oggetti.filter((o) => !H.SCATOLA[o.id]); } // niente armi, neanche da mischia
     pg.oro = 0;
     R.ricalcola(pg);
   },
@@ -96,6 +98,9 @@ const metodi = {
     for (const st of inc.stato) st.nascosto = false;
     this.scrivi('sistema', `📍 ${ar.nome}${ar.luce === 'buio' ? ' (buio)' : ar.luce === 'emergenza' ? ' (luci d\'emergenza)' : ''}`);
     if (nuova && !silenzio) this.scrivi('master', ar.ingresso);
+    if (nuova && ar.stile === 'fondale') this.scrivi('sistema', `🌊 Fuori, sul fondale: si cammina piano, la corrente spinge, la tuta scricchiola.${ar.pressione && !this.chiaviDelGruppo().has(ar.pressione) ? ' La pressione qui è troppa per la vostra tuta!' : ''}`);
+    // i robot che credono di essere persone: parlano e non attaccano
+    if (nuova && ar.nemici.length && ar.nemici.every((id) => (H.MOSTRI[id].tratti || []).includes('pacifico'))) { this.scrivi('master', `🤖 Un robot vi viene incontro, zoppicando: ${caso(H.FRASI_ROBOT)}`); if (!inc.ripulite.includes(id)) inc.ripulite.push(id); }
     // un obiettivo che si fa arrivando
     const ob = this.obiettivoOra;
     if (ob && ob.fai === 'raggiungi' && ob.area === id) this.completaObiettivo();
@@ -135,6 +140,8 @@ const metodi = {
       const buio = ar.luce === 'buio' && !(st.torcia && st.batteria > 0);
       const pr = R.prova(pg, pg.abilita.includes('indagare') ? 'indagare' : 'percezione', { cd: 10, svantaggio: buio || st.paura >= 7 });
       const trovati = [];
+      const doc = pr.riuscita && (ar.documenti || []).find((t) => !inc.documenti.includes(t));
+      if (doc) { inc.documenti.push(doc); this.scrivi('master', `📄 ${pg.nome} trova un documento: ${doc}`); this.daiPx(Math.round(15 * this.livelloMedio()), 'un documento'); }
       if (pr.riuscita) { const n = 1 + (pr.totale >= 15 ? 1 : 0) + (pr.totale >= 20 ? 1 : 0); for (let k = 0; k < n; k++) trovati.push(caso(ar.bottino.length ? ar.bottino : ['rottami'])); if (Math.random() < 0.3) trovati.push(cp.armi ? caso(['proiettili', 'cartucce', 'chiodi', 'carburante', 'batterie']) : 'batterie'); }
       for (const id of trovati) H.dai(pg, id, H.SCATOLA[id] || 1);
       this.scrivi('tiro', `🔎 ${pg.nome} fruga in ${ar.nome} (${pr.nomeTipo} ${pr.totale}${buio ? ', al buio' : ''}): ${trovati.length ? trovati.map((id) => `${H.OGGETTI[id].icona} ${H.OGGETTI[id].nome}`).join(', ') : 'niente di utile'}.`, { posto: p });
@@ -142,6 +149,19 @@ const metodi = {
       this.passaTempo();
       return { ok: true };
     }
+    if (az === 'filma') {
+      if (!cp.filmare) return { errore: 'Qui non c\'è niente da filmare' };
+      if (!(st.torcia && st.batteria > 0)) return { errore: 'Accendi la videocamera (e servono batterie)' };
+      const c = inc.caccia, mostro = c.attiva && c.area === inc.area && inc.mosse >= c.fino ? this.areaDi(c.area).cacciatore || cp.cacciatore : null;
+      const cosa = mostro && !inc.filmati.includes(mostro) ? mostro : !inc.filmati.includes(inc.area) ? inc.area : null;
+      if (!cosa) return { errore: 'Qui hai già filmato tutto' };
+      inc.filmati.push(cosa); st.batteria = Math.max(0, st.batteria - 5);
+      if (cosa === mostro) { this.scrivi('sistema', `🎥 ${pg.nome} filma ${H.MOSTRI[mostro].nome} da vicino, con le mani che tremano. Questa la vedranno tutti.`, { posto: p }); this.paura(p, 2); this.daiPx(Math.round(60 * this.livelloMedio()), 'un filmato'); }
+      else { this.scrivi('sistema', `🎥 ${pg.nome} filma ${ar.nome}: ${ar.desc}.`, { posto: p }); this.daiPx(Math.round(20 * this.livelloMedio()), 'un filmato'); }
+      this.passaTempo();
+      return { ok: true };
+    }
+    if (az === 'scegli') return this.scegli(p, a.i);
     if (az === 'nascondi') {
       if (!mec.nascondigli) return { errore: 'Qui non ci sono nascondigli' };
       st.nascosto = !st.nascosto;
@@ -196,6 +216,7 @@ const metodi = {
     if (az === 'obiettivo') {
       const ob = this.obiettivoOra;
       if (!ob || ob.area !== inc.area || ob.fai === 'raggiungi') return { errore: 'Qui non c\'è niente da fare per l\'obiettivo' };
+      if (inc.sceltaAperta) return { errore: 'Prima decidete cosa fare' };
       this.scrivi('azione', `${ob.fai === 'usa' ? 'Uso' : 'Prendo'}: ${ob.cosa}.`, { posto: p, chi: pg.nome });
       this.rumore(1);
       this.completaObiettivo(p);
@@ -219,6 +240,8 @@ const metodi = {
   completaObiettivo(p = null) {
     const inc = this.incubo, ob = this.obiettivoOra;
     if (!ob) return;
+    // una scelta morale: prima si decide (pulsanti), poi l'obiettivo è fatto
+    if (ob.scelta && inc.scelte[ob.id] == null) { inc.sceltaAperta = ob.id; this.scrivi('master', `❓ ${ob.scelta.domanda}`); return 'scelta'; }
     inc.fatti.push(ob.id);
     inc.obiettivo++;
     for (const id of ob.da || []) { inc.chiavi.push(id); this.scrivi('sistema', `🗝️ Trovato: ${H.OGGETTI[id].nome}.`); }
@@ -236,8 +259,23 @@ const metodi = {
     const nuovo = this.obiettivoOra;
     if (nuovo) this.scrivi('sistema', `🎯 Nuovo obiettivo: ${nuovo.titolo}. ${nuovo.testo}`);
   },
+  // la scelta morale: la fa chiunque del gruppo, e conta per tutti
+  scegli(p, i) {
+    const inc = this.incubo, ob = this.obiettivoOra;
+    if (!inc.sceltaAperta || !ob || ob.id !== inc.sceltaAperta) return { errore: 'Non c\'è niente da decidere' };
+    const o = ob.scelta.opzioni[Number(i)];
+    if (!o) return { errore: 'Scelta non valida' };
+    inc.scelte[ob.id] = Number(i); inc.sceltaAperta = null;
+    this.scrivi('azione', o.testo, { posto: p, chi: this.pg[p] ? this.pg[p].nome : '' });
+    this.scrivi('master', o.esito);
+    for (const k of this.pgVivi()) this.paura(k, o.paura || 0);
+    if (o.rumore) this.rumore(o.rumore);
+    this.completaObiettivo(p);
+    return { ok: true };
+  },
   vittoriaIncubo() {
-    this.scrivi('master', this.cp.finale);
+    const epilogo = this.cp.obiettivi.filter((o) => o.scelta && this.incubo.scelte[o.id] != null).map((o) => o.scelta.opzioni[this.incubo.scelte[o.id]].finale);
+    this.scrivi('master', this.cp.finale + (epilogo.length ? ` ${epilogo.join(' ')}` : ''));
     this.chiudi(`${this.cp.nome}: ce l'avete fatta.`);
   },
 
@@ -251,8 +289,10 @@ const metodi = {
       const st = inc.stato[k];
       if (cp.meccaniche.batterie && st.torcia && ar.luce !== 'accesa' && st.batteria > 0) { st.batteria = Math.max(0, st.batteria - (cp.id === 'manicomio' ? 7 : 4)); if (!st.batteria) { st.torcia = false; this.scrivi('sistema', `🪫 La ${cp.id === 'manicomio' ? 'videocamera' : 'torcia'} di ${this.pg[k].nome} si spegne: batterie finite.`, { posto: k }); } }
       if (ar.luce === 'buio' && !(st.torcia && st.batteria > 0)) this.paura(k, 1);
+      if (ar.pressione && !this.chiaviDelGruppo().has(ar.pressione)) { const q = R.tira('1d6').totale; R.applicaDanno(this.pg[k], q, 'contundente', {}); this.scrivi('sistema', `🌊 La pressione schiaccia la tuta di ${this.pg[k].nome}: ${q} danni. Serve la tuta rinforzata!`, { posto: k }); if (this.pg[k].pf <= 0) { this.pg[k].pf = 0; this.pg[k].morto = true; this.scrivi('master', `💀 ${this.pg[k].nome}: il vetro del casco si incrina, poi l'oceano entra.`); } }
       else if (ar.luce === 'accesa' && Math.random() < 0.5) this.paura(k, -1);
     }
+    if (!this.pgVivi().length) { this.tuttiMorti(); return; }
     const prima = inc.rumore;
     inc.rumore = Math.max(0, inc.rumore - 1);
     if (!c.attiva) return;
@@ -406,7 +446,8 @@ const metodi = {
     const ril = inc.rilevato && inc.rilevato.mossa === inc.mosse ? inc.rilevato : null;
     return {
       id: cp.id, nome: cp.nome, icona: cp.icona, luogo: cp.luogo, sottotitolo: cp.sottotitolo, meccaniche: cp.meccaniche, armi: cp.armi,
-      area: inc.area, mosse: inc.mosse, rumore: inc.rumore, cols: Math.max(...cp.aree.map((a) => a.gx)) + 1, righe: Math.max(...cp.aree.map((a) => a.gy)) + 1,
+      area: inc.area, mosse: inc.mosse, rumore: inc.rumore, filmare: !!cp.filmare, documenti: inc.documenti.length, filmati: inc.filmati.length,
+      scelta: inc.sceltaAperta && ob && ob.scelta ? { domanda: ob.scelta.domanda, opzioni: ob.scelta.opzioni.map((o) => o.testo) } : null, cols: Math.max(...cp.aree.map((a) => a.gx)) + 1, righe: Math.max(...cp.aree.map((a) => a.gy)) + 1,
       aree: cp.aree.filter((a) => note.has(a.id)).map((a) => ({ id: a.id, nome: inc.visitate.includes(a.id) ? a.nome : '?', gx: a.gx, gy: a.gy, stile: a.stile, luce: inc.visitate.includes(a.id) ? a.luce : null, visitata: inc.visitate.includes(a.id), obiettivo: !!(ob && ob.area === a.id && inc.visitate.includes(a.id)), segnale: !!(ril && ril.area === a.id) })),
       collegamenti: cp.collegamenti.filter((l) => note.has(l[0]) && note.has(l[1]) && (inc.visitate.includes(l[0]) || inc.visitate.includes(l[1]))).map((l) => ({ a: l[0], b: l[1], tipo: l[2], chiuso: !!(l[3] && !chiavi.has(l[3])), serve: l[3] ? H.OGGETTI[l[3]].nome : null })),
       strade: vicini(cp, inc.area).map((v) => ({ id: v.id, nome: inc.visitate.includes(v.id) ? this.areaDi(v.id).nome : `${this.areaDi(v.id).nome.split(' ')[0]}…`, tipo: v.tipo, chiuso: !!(v.serve && !chiavi.has(v.serve)), serve: v.serve ? H.OGGETTI[v.serve].nome : null })),

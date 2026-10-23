@@ -228,6 +228,7 @@ class TempoReale {
     if (!colpito) { this.avvisa(`${n.ref.nome} attacca ${pg.nome} con ${a.nome}: ${t.valore + a.bonus} contro CA ${pg.ca}, mancato.`, 'tiro', p.posto); return; }
     const q = R.tira(a.danno, { critico: t.valore === 20 }).totale;
     this.danno(p, q, a.tipo, `${n.ref.nome} (${a.nome})`);
+    if ((n.ref.tratti || []).includes('tagliaDita') && pg.pf > 0 && Math.random() < 0.5) { const t = H.tagliaDito(pg); if (t) { R.ricalcola(pg); this.avvisa(t, 'pericolo', p.posto); this.versione++; } }
   }
   danno(p, q, tipo, da) {
     const pg = this.g.pg[p.posto];
@@ -276,6 +277,7 @@ class TempoReale {
       const ob = g.obiettivoOra;
       if (ob && ob.fai === 'raggiungi' && ob.area === ar.id) this.obiettivo(p);
     }
+    if (this.cp.filmare && Math.round(this.t / DT) % 10 === 0) this.filma();
     const pr = this.gioc.find((p) => !g.pg[p.posto].morto) || this.gioc[0];
     g.incubo.area = this.areaIn(pr).id;
     return this.versione !== v0 || g.finita || g.fase !== 'reale';
@@ -291,7 +293,9 @@ class TempoReale {
       else if (this.t >= p.azione.fino) { const a = p.azione; p.azione = null; a.fatto(); }
     }
     if (p.armadietto) return;
-    const vel = p.ril ? VEL.rilevatore : p.acc ? VEL.accucciato : p.corre ? VEL.corre : VEL.cammina;
+    const fondo = this.areaIn(p).stile === 'fondale';
+    if (fondo) p.corre = false; // sul fondale non si corre
+    const vel = (p.ril ? VEL.rilevatore : p.acc ? VEL.accucciato : p.corre ? VEL.corre : VEL.cammina) * (fondo ? 0.65 : 1);
     const l = Math.hypot(p.mx, p.my);
     if (l > 0.1) {
       const k = Math.min(1, l);
@@ -306,6 +310,7 @@ class TempoReale {
       st.batteria = Math.max(0, st.batteria - DT * (this.cp.id === 'manicomio' ? 0.6 : 0.3));
       if (!st.batteria) { st.torcia = false; this.avvisa('🪫 Batterie finite: la luce si spegne.', 'sistema', p.posto); this.versione++; }
     }
+    if (ar.pressione && !g.chiaviDelGruppo().has(ar.pressione) && this.t > (p.pressione || 0)) { p.pressione = this.t + 4; this.avvisa('🌊 La pressione schiaccia la tuta: serve quella rinforzata!', 'pericolo', p.posto); this.danno(p, R.tira('1d6').totale, 'contundente', 'la pressione'); }
     // la paura: al buio sale piano, alla luce scende
     if (Math.random() < DT / 6) g.paura(p.posto, ar.luce === 'buio' && !(st.torcia && st.batteria > 0) ? 1 : ar.luce === 'accesa' ? -1 : 0);
     // il rilevatore fa bip
@@ -357,6 +362,7 @@ class TempoReale {
     if (n.stordito > this.t) return;
     const vivi = this.gioc.filter((p) => !this.g.pg[p.posto].morto && this.g.pg[p.posto].pf > 0);
     const visto = vivi.filter((p) => this.vedePg(n, p, { lontano: 9 })).sort((a, b) => dist(a, n) - dist(b, n))[0];
+    if (visto && n.ref.tratti.includes('pacifico') && !n.provocato) { if (dist(n, visto) < 5 && this.t > (n.parla || 0)) { n.parla = this.t + 12; this.avvisa(`🤖 ${caso(H.FRASI_ROBOT)}`, 'master', visto.posto); } n.a = angolo(n, visto); return; }
     if (visto) { n.stato = 'insegue'; n.meta = { x: visto.x, y: visto.y }; n.perso = this.t + 5; }
     else if (n.stato === 'insegue' && this.t > n.perso) n.stato = 'giro';
     if (n.stato === 'giro') {
@@ -536,7 +542,7 @@ class TempoReale {
     }
     const sub = R.applicaDanno(n.ref, q, tipo, {});
     this.effetto({ tipo: 'sangue', x: n.x, y: n.y, olio: n.androide });
-    if (p) { n.stato = 'insegue'; n.meta = { x: p.x, y: p.y }; n.perso = this.t + 5; }
+    if (p) { n.provocato = true; n.stato = 'insegue'; n.meta = { x: p.x, y: p.y }; n.perso = this.t + 5; }
     if (n.ref.pf <= 0) {
       n.via = true;
       this.avvisa(`☠️ ${n.ref.nome} è a terra.`, 'tiro');
@@ -550,6 +556,7 @@ class TempoReale {
   attacca(p) {
     const g = this.g, pg = g.pg[p.posto];
     if (p.cd > 0 || p.armadietto || pg.pf <= 0) return;
+    if (!this.cp.armi) { p.cd = 1.5; this.avvisa('✋ Qui non hai armi: scappa, nasconditi o distraili con il rumore.', 'sistema', p.posto); return; }
     const lista = this.armi(pg);
     const a = lista[Math.min(p.arma, lista.length - 1)];
     if (!a) return;
@@ -650,7 +657,7 @@ class TempoReale {
       } };
       return;
     }
-    if (ch === 'k') { const term = this.mappa.terminali.find((q) => q.x === cosa.cx && q.y === cosa.cy); this.letti.add(i); this.salvataggio = { x: p.x, y: p.y }; this.avvisa(`🖥️ ${term ? term.testo : 'Il terminale è morto.'}`, 'master', p.posto); this.avvisa('💾 Posizione registrata al terminale: con !revive si riparte da qui.', 'sistema', p.posto); this.versione++; return; }
+    if (ch === 'k') { const term = this.mappa.terminali.find((q) => q.x === cosa.cx && q.y === cosa.cy); this.letti.add(i); this.salvataggio = { x: p.x, y: p.y }; this.avvisa(`${this.cp.filmare ? '📄' : '🖥️'} ${term ? term.testo : 'Il terminale è morto.'}`, 'master', p.posto); if (term && !g.incubo.documenti.includes(term.testo)) g.incubo.documenti.push(term.testo); this.avvisa('💾 Posizione registrata al terminale: con !revive si riparte da qui.', 'sistema', p.posto); this.versione++; return; }
     if (ch === 'o') {
       const pt = this.mappa.punti.find((q) => q.x === cosa.cx && q.y === cosa.cy);
       const ob = g.obiettivoOra;
@@ -678,11 +685,31 @@ class TempoReale {
   obiettivo(p) {
     const g = this.g, ob = g.obiettivoOra;
     if (!ob) return;
+    if (g.completaObiettivo(p.posto) === 'scelta') { this.avvisa(`❓ ${ob.scelta.domanda}`, 'master'); this.versione++; return; }
     this.avvisa(`✅ ${ob.titolo}`, 'master');
-    g.completaObiettivo(p.posto);
     if (!g.finita) { const nuovo = g.obiettivoOra; if (nuovo) this.avvisa(`🎯 ${nuovo.titolo}: ${nuovo.testo}`); }
     if (g.incubo.caccia.attiva && !this.creatura) this.svegliaCreatura();
     this.versione++;
+  }
+  // Outlast: con la videocamera accesa si filma da soli chi si vede per la prima volta (e ogni settore nuovo)
+  filma() {
+    const g = this.g, inc = g.incubo;
+    for (const p of this.gioc) {
+      const st = inc.stato[p.posto];
+      if (g.pg[p.posto].morto || !(st.torcia && st.batteria > 0) || p.armadietto) continue;
+      const c = this.creatura;
+      for (const e of [...this.nemici.filter((n) => !n.via), ...(c && c.fuori ? [c] : [])]) {
+        const id = e.ref.id || e.ref.nome;
+        if (inc.filmati.includes(id) || dist(e, p) > 12 || !this.visibile(p, e)) continue;
+        inc.filmati.push(id);
+        const forte = e === c;
+        this.avvisa(`🎥 ${g.pg[p.posto].nome} filma ${e.ref.nome}${forte ? ', con le mani che tremano' : ''}. (${inc.filmati.length} filmati)`, 'sistema', p.posto);
+        g.daiPx(Math.round((forte ? 60 : 20) * g.livelloMedio()), 'un filmato');
+        if (forte) g.paura(p.posto, 2);
+      }
+      const ar = this.areaIn(p);
+      if (!inc.filmati.includes(ar.id)) { inc.filmati.push(ar.id); g.daiPx(Math.round(10 * g.livelloMedio()), 'un filmato'); }
+    }
   }
   costruisci(p, id) {
     const g = this.g, pg = g.pg[p.posto];
@@ -726,6 +753,15 @@ class TempoReale {
   azione(p, a) {
     if (a && a.tipo === 'input') { this.input(p, a.dati || {}); return { ok: true }; }
     if (a && a.tipo === 'scrivi') return this.scrivi(this.gioc[p], a.testo);
+    if (a && a.tipo === 'scegli') {
+      const g = this.g, ob = g.obiettivoOra, o = ob && ob.scelta && ob.scelta.opzioni[Number(a.i)];
+      const r = g.scegli(p, a.i);
+      if (r.errore) return r;
+      this.avvisa(`${o.esito}`, 'master'); this.avvisa(`✅ ${ob.titolo}`, 'master');
+      if (!g.finita) { const nuovo = g.obiettivoOra; if (nuovo) this.avvisa(`🎯 ${nuovo.titolo}: ${nuovo.testo}`); }
+      this.versione++;
+      return r;
+    }
     return { errore: 'In tempo reale si gioca con la tastiera o il joystick' };
   }
 
@@ -854,6 +890,7 @@ Racconta l'esito in 1-3 frasi brevi, in italiano, al presente (i PNG parlano tra
       bat: Math.round(st.batteria), paura: st.paura, cd: +p.cd.toFixed(2),
       porte: this.porteAperte(occhi),
       msg: this.messaggi.filter((m) => m.posto == null || m.posto === posto).slice(-6).map((m) => ({ n: m.n, testo: m.testo, tipo: m.tipo })),
+      scelta: (() => { const ob = g.obiettivoOra; return g.incubo.sceltaAperta && ob && ob.scelta ? { domanda: ob.scelta.domanda, opzioni: ob.scelta.opzioni.map((o) => o.testo) } : null; })(),
       allarme: !!(c && c.fuori && c.stato === 'caccia' && dist(c, occhi) < 16),
       inseguito: !!(c && c.fuori && c.stato === 'caccia' && c.preda === occhi.posto),
       vicina: !c || (c.x === 0 && c.y === 0) || c.scacciata > this.t ? 0 : c.fuori ? (dist(c, occhi) < 8 ? 3 : dist(c, occhi) < 15 ? 2 : dist(c, occhi) < 24 ? 1 : 0) : dist(c, occhi) < 10 ? 1 : 0,
@@ -872,7 +909,7 @@ Racconta l'esito in 1-3 frasi brevi, in italiano, al presente (i PNG parlano tra
       aree: this.cp.aree.map((a) => ({ id: a.id, nome: a.nome, gx: a.gx, gy: a.gy, luce: a.luce, stile: a.stile, visitata: g.incubo.visitate.includes(a.id) })),
       aperti: [...this.aperti], letti: [...this.letti],
       punto: (() => { const p = this.puntoObiettivo(); return p ? [p.x, p.y] : null; })(),
-      armi: pg ? this.armi(pg).map((a) => ({ nome: a.nome, mischia: a.mischia, munizioni: a.munizioni, danno: a.danno, colpire: a.colpire })) : [],
+      armi: pg && this.cp.armi ? this.armi(pg).map((a) => ({ nome: a.nome, mischia: a.mischia, munizioni: a.munizioni, danno: a.danno, colpire: a.colpire })) : [],
       creaturaSveglia: !!this.creatura, nomeCreatura: MOSTRI[this.cp.cacciatore].nome,
     };
   }
