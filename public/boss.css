@@ -40,9 +40,7 @@ html.avvio-studio body > *:not(#studio):not(#studio-carica) { visibility: hidden
 #studio .st-cerca input::placeholder { color: #8594a5; }
 .st-utente { display: flex; align-items: center; gap: 10px; font-size: 13px; color: #4a5a6c; }
 .st-campana { position: relative; border: 0; background: none; font-size: 17px; padding: 4px; }
-.st-badge { position: absolute; top: -2px; right: -3px; background: #d93025; color: #fff; font-size: 10px; font-weight: 700; border-radius: 8px; padding: 0 5px; line-height: 15px; }
 .st-avatar { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: #3f9b6b; color: #fff; font-weight: 600; font-size: 13px; }
-.st-avatar-p { width: 24px; height: 24px; font-size: 11px; background: #7a5cc4; }
 
 /* tre colonne */
 .st-corpo { display: grid; grid-template-columns: 250px minmax(0, 1fr) 250px; gap: 28px; max-width: 1400px; margin: 0 auto; padding: 24px; }

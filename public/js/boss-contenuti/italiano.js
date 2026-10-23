@@ -48,7 +48,7 @@
 
   window.BossContenuti = window.BossContenuti || {};
   window.BossContenuti.italiano = {
-    id: 'italiano', nome: 'Italiano', prof: 'Prof.ssa A. Conti',
+    id: 'italiano', nome: 'Italiano',
     argomenti: [
       // ============================== LEOPARDI ==============================
       { id: 'leopardi', titolo: 'Giacomo Leopardi', minuti: 18, giorni: -34, corpo: () => `

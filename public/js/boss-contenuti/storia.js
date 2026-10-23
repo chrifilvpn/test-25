@@ -73,7 +73,7 @@
 
   window.BossContenuti = window.BossContenuti || {};
   window.BossContenuti.storia = {
-    id: 'storia', nome: 'Storia', prof: 'Prof.ssa A. Conti',
+    id: 'storia', nome: 'Storia',
     argomenti: [
       // ============================== BELLE ÉPOQUE E GIOLITTI ==============================
       { id: 'giolitti', titolo: 'La Belle Époque e l\'età giolittiana', minuti: 16, giorni: -35, corpo: () => `
