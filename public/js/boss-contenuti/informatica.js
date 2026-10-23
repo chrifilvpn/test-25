@@ -110,7 +110,7 @@ if ($utente && password_verify($_POST['password'] ?? '', $utente['hash_password'
 $hash = password_hash($_POST['password'], PASSWORD_DEFAULT);`;
   window.BossContenuti = window.BossContenuti || {};
   window.BossContenuti.informatica = {
-    id: 'informatica', nome: 'Informatica', prof: 'Prof. G. Conti',
+    id: 'informatica', nome: 'Informatica',
     argomenti: [
       { id: 'htmlcss', titolo: 'HTML e CSS: struttura della pagina e box model', minuti: 11, giorni: -30, corpo: () => `
         <p class="st-intro">Una pagina web è fatta di <b>contenuto</b> (HTML), <b>presentazione</b> (CSS) e <b>comportamento</b> (JavaScript). In questa lezione costruiamo la struttura di una pagina con i tag semantici di HTML5 e impariamo come il browser calcola le dimensioni di ogni elemento.</p>

@@ -58,7 +58,7 @@
 
   window.BossContenuti = window.BossContenuti || {};
   window.BossContenuti.gpoi = {
-    id: 'gpoi', nome: 'GPOI', prof: 'Prof. M. Ferri',
+    id: 'gpoi', nome: 'GPOI',
     argomenti: [
       // ============================== TROVARE L'IDEA ==============================
       { id: 'idea', titolo: 'Dall\'idea all\'impresa: come trovare la giusta idea', minuti: 9, giorni: -9, corpo: () => `

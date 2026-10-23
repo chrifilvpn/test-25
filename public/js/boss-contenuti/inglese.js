@@ -4,7 +4,7 @@
   void ide; void terminale; void figura; void tabella;
   window.BossContenuti = window.BossContenuti || {};
   window.BossContenuti.inglese = {
-    id: 'inglese', nome: 'Inglese', prof: 'Prof.ssa L. Bianchi',
+    id: 'inglese', nome: 'Inglese',
     argomenti: [
       { id: 'cloud', titolo: 'Cloud computing and data centres', minuti: 9, giorni: -26, corpo: () => `
         <p class="st-intro"><b>Cloud computing</b> is the delivery of computing services — servers, storage, databases, networking and software — over the Internet. Instead of buying and maintaining their own machines, companies <i>rent</i> resources from a provider and pay only for what they use.</p>

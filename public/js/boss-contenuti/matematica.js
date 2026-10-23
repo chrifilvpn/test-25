@@ -104,7 +104,7 @@
 
   window.BossContenuti = window.BossContenuti || {};
   window.BossContenuti.matematica = {
-    id: 'matematica', nome: 'Matematica', prof: 'Prof.ssa A. Ferri',
+    id: 'matematica', nome: 'Matematica',
     argomenti: [
       // ============================ 1. LIMITI ============================
       { id: 'limiti', titolo: 'Limiti e continuità', minuti: 18, giorni: -41, corpo: () => `

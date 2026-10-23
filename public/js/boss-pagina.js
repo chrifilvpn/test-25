@@ -300,7 +300,7 @@ nav a {
           <div><b>Informatica Facile</b><small>Dispense e materiali per il triennio</small></div></div>
         <nav class="st-nav">${materie().map((m) => `<button type="button" data-vai-m="${m.id}">${m.nome}</button>`).join('')}<button type="button" data-vai-e="esercitazioni">Esercitazioni</button><button type="button" data-vai-e="verifiche">Verifiche</button></nav>
         <label class="st-cerca"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M13 13l4 4" stroke="currentColor" stroke-width="1.8"/></svg><input type="search" placeholder="Cerca negli argomenti…" aria-label="Cerca"></label>
-        <div class="st-utente"><button type="button" class="st-campana" aria-label="Notifiche">🔔<span class="st-badge" hidden>1</span></button><span class="st-avatar">S</span><span class="st-nome-ut">Studente · 5ªB</span></div>
+        <div class="st-utente"><button type="button" class="st-campana" aria-label="Notifiche">🔔</button><span class="st-avatar">S</span><span class="st-nome-ut">Studente</span></div>
       </header>
       <div class="st-corpo">
         <aside class="st-indice" id="st-menu"></aside>
@@ -312,8 +312,8 @@ nav a {
             <ul class="st-allegati"><li>📄 Tabella potenze di 2.pdf</li><li>📄 Esercitazione 3 - testo.pdf</li><li>🗂️ Packet Tracer - lab2.pkt</li></ul></div></aside>
       </div>
       <footer class="st-piede">Informatica Facile · materiale didattico a uso interno · aggiornato il ${breve(0)}/${tra(0).getFullYear()}</footer>
-      <div class="st-notifica" hidden role="status"><div class="st-notifica-icona">📎</div>
-        <div><b>Nuovo materiale pubblicato</b><p>Prof. M. Rossi ha caricato «Esercitazione subnetting – testo e griglia di correzione».</p><small>Sistemi e Reti · adesso</small></div>
+      <div class="st-notifica" hidden role="status"><div class="st-notifica-icona">🔔</div>
+        <div><b>Nessuna notifica</b><p>Non ci sono novità.</p></div>
         <button type="button" class="st-chiudi-notifica" aria-label="Chiudi">✕</button></div>
     </div>`;
   }
@@ -338,17 +338,17 @@ nav a {
     root.querySelector('#st-v-verifiche').hidden = st.vista !== 'verifiche';
     if (st.vista === 'home') {
       lett.innerHTML = `${briciole([])}<h1>Dispense del quinto anno</h1><p class="st-intro">Scegli una materia e un argomento. Ogni argomento ha la sua pagina; da ogni pagina puoi passare alle esercitazioni sullo stesso argomento.</p>
-        <div class="st-schede">${materie().map((m) => `<section class="st-scheda"><h2>${m.nome}</h2><small>${m.prof} · ${m.argomenti.length} argomenti</small><ol>${m.argomenti.map((a) => `<li><button type="button" class="st-link" data-vai-a="${m.id}:${a.id}">${a.titolo}</button></li>`).join('')}</ol></section>`).join('')}</div>`;
+        <div class="st-schede">${materie().map((m) => `<section class="st-scheda"><h2>${m.nome}</h2><small>${m.argomenti.length} argomenti</small><ol>${m.argomenti.map((a) => `<li><button type="button" class="st-link" data-vai-a="${m.id}:${a.id}">${a.titolo}</button></li>`).join('')}</ol></section>`).join('')}</div>`;
     } else if (st.vista === 'materia') {
       const m = materia(st.m);
-      lett.innerHTML = `${briciole([[m.nome]])}<h1>${m.nome}</h1><p class="st-intro">${m.prof} · Classe 5ª. Indice degli argomenti:</p>
+      lett.innerHTML = `${briciole([[m.nome]])}<h1>${m.nome}</h1><p class="st-intro">Classe 5ª. Indice degli argomenti:</p>
         <ol class="st-indice-mat">${m.argomenti.map((a, i) => `<li><button type="button" class="st-link" data-vai-a="${m.id}:${a.id}"><b>${i + 1}.</b> ${a.titolo}</button><small>${a.minuti} min di lettura</small></li>`).join('')}</ol>
         <div class="st-fine-lezione"><button type="button" class="st-bt" data-vai-e="esercitazioni">✎ Esercitazioni di ${m.nome}</button><button type="button" class="st-bt secondario" data-vai-e="verifiche">Verifica di ${m.nome}</button></div>`;
     } else if (st.vista === 'argomento') {
       const m = materia(st.m), a = argomento(st.m, st.a), i = m.argomenti.indexOf(a);
       const prec = m.argomenti[i - 1], succ = m.argomenti[i + 1];
       lett.innerHTML = `${briciole([[scegliMateria(m.id), null, true], [a.titolo]])}<h1>${a.titolo}</h1>
-        <div class="st-meta"><span class="st-avatar st-avatar-p">${m.prof.split(' ').pop()[0]}</span><span>${m.prof}</span><span>·</span><span>Aggiornato il ${lunga(a.giorni)}</span><span>·</span><span>${a.minuti} min di lettura</span><span class="st-tag">${m.nome}</span><span class="st-tag">Classe 5ª</span></div>
+        <div class="st-meta"><span>Aggiornato il ${lunga(a.giorni)}</span><span>·</span><span>${a.minuti} min di lettura</span><span class="st-tag">${m.nome}</span><span class="st-tag">Classe 5ª</span></div>
         ${a.corpo()}
         <div class="st-fine-lezione"><button type="button" class="st-bt" data-vai-e="esercitazioni">✎ Esercitati su questo argomento</button><button type="button" class="st-bt secondario">⬇ Scarica PDF</button></div>
         <div class="st-pagine">${prec ? `<button type="button" class="st-link" data-vai-a="${m.id}:${prec.id}">← ${prec.titolo}</button>` : '<span></span>'}${succ ? `<button type="button" class="st-link" data-vai-a="${m.id}:${succ.id}">${succ.titolo} →</button>` : ''}</div>`;
@@ -506,7 +506,7 @@ nav a {
       if (b('[data-consegna]')) return consegna();
       if (b('[data-annulla]') || b('[data-nuova]')) { const v = al.verifiche; v.domande = null; v.consegnata = false; v.fine = null; return allenamento('verifiche'); }
       if (b('.st-chiudi-notifica')) { root.querySelector('.st-notifica').hidden = true; return; }
-      if (b('.st-campana')) { root.querySelector('.st-notifica').hidden = false; root.querySelector('.st-badge').hidden = true; return; }
+      if (b('.st-campana')) { root.querySelector('.st-notifica').hidden = false; return; }
     });
     root.addEventListener('change', (e) => {
       const cm = e.target.closest('[data-cambia-m]');
@@ -539,18 +539,9 @@ nav a {
   // l'indirizzo resta sempre /dispense: la posizione nelle dispense non va nell'URL
   function query() { return ''; }
 
-  let notificata = false;
   function mostrata() {
     // a ogni apertura si riapre l'ultimo capitolo visitato (mai un indice)
     if (st.capitolo && root) vai('argomento', st.capitolo.m, st.capitolo.a);
-    if (notificata) return;
-    notificata = true;
-    setTimeout(() => {
-      if (!window.Boss || !window.Boss.attivo) { notificata = false; return; }
-      root.querySelector('.st-notifica').hidden = false;
-      root.querySelector('.st-badge').hidden = false;
-      setTimeout(() => { root.querySelector('.st-notifica').hidden = true; }, 7000);
-    }, 3500 + Math.random() * 2500);
   }
 
   return { html, avvia, query, mostrata, _test: { corretta, prepara, norm, subnetCasuale, ORDINE, stato: () => st, esercizi: () => al } };

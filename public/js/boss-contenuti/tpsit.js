@@ -254,7 +254,7 @@ class PagellaTest {
 }`;
   window.BossContenuti = window.BossContenuti || {};
   window.BossContenuti.tpsit = {
-    id: 'tpsit', nome: 'TPSIT', prof: 'Prof.ssa L. Bianchi',
+    id: 'tpsit', nome: 'TPSIT',
     argomenti: [
       { id: 'clientserver', titolo: 'Architettura client-server', minuti: 9, giorni: -28, corpo: () => `
         <p class="st-intro">Nell'architettura <b>client-server</b> un programma, il <b>server</b>, offre un servizio e resta in attesa; altri programmi, i <b>client</b>, gli inviano richieste e ricevono risposte.</p>

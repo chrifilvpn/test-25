@@ -163,7 +163,7 @@ public class Impronta {
 }`;
   window.BossContenuti = window.BossContenuti || {};
   window.BossContenuti.sistemi = {
-    id: 'sistemi', nome: 'Sistemi e Reti', prof: 'Prof. M. Rossi',
+    id: 'sistemi', nome: 'Sistemi e Reti',
     argomenti: [
       { id: 'osi', titolo: 'Il modello ISO/OSI', minuti: 12, giorni: -30, corpo: () => `
         <p class="st-intro">Il modello <b>ISO/OSI</b> (Open Systems Interconnection) divide la comunicazione in rete in <b>7 livelli</b>. Ogni livello offre servizi a quello superiore e usa quelli del livello inferiore: così ogni parte si può progettare e cambiare senza toccare le altre.</p>
