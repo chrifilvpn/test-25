@@ -2611,6 +2611,8 @@ fissa('DISPENSE: ARGOMENTI, ESERCITAZIONI, VERIFICHE');
   // niente percentuali o barre di avanzamento nelle dispense
   const tutto = ['boss-pagina.js', 'boss.js', ...fs.readdirSync(path.join(cartella, 'boss-contenuti')).map((f) => `boss-contenuti/${f}`)].map((f) => fs.readFileSync(path.join(cartella, f), 'utf8')).join('\n') + fs.readFileSync(path.join(__dirname, '..', 'public', 'boss.css'), 'utf8');
   for (const vietato of ['st-progresso', '% completato', 'Avanzamento del corso', 'st-barra', 'st-perc']) assert.ok(!tutto.includes(vietato), `nessuna traccia di avanzamento: ${vietato}`);
+  // niente nomi di professori, niente notifiche finte, niente classe precisa (farebbero insospettire)
+  for (const vietato of ['Prof.', 'prof:', '.prof', 'ha caricato', 'Nuovo materiale pubblicato', 'st-badge', '5ªB']) assert.ok(!tutto.includes(vietato), `niente nomi o notifiche finte: ${vietato}`);
   // le scorciatoie di ritorno non scattano dentro un campo di testo (Esc invece apre sempre le dispense)
   const boss = fs.readFileSync(path.join(cartella, 'boss.js'), 'utf8');
   const regole = boss.slice(boss.indexOf('// (inizio: regole dei tasti di ritorno'), boss.indexOf('// (fine: regole dei tasti di ritorno'));
@@ -2641,7 +2643,7 @@ fissa('DISPENSE: ARGOMENTI, ESERCITAZIONI, VERIFICHE');
   assert.ok(/if \(st\.vista === 'argomento'\) \{ al0\.m = st\.m; al0\.a = st\.a;/.test(pag), 'esercitazioni e verifiche partono dalla materia e dal capitolo che si stava leggendo');
   assert.ok(/const avvio = \(\) => \{ prepara\(\); attiva\(\{ subito: true \}\); \};/.test(boss), 'all\'apertura si parte sempre dalle dispense');
   assert.ok(/<html lang="it" class="avvio-studio">/.test(indice) && /html\.avvio-studio,html\.avvio-studio body\{background:#f5f7fa!important\}/.test(indice) && /if \(document\.body\) avvio\(\);/.test(boss) && /<title data-vero="Informatica Facile">Dispense di Informatica/.test(indice) && /<link rel="icon" href="[^"]*" data-vero="[^"]*">/.test(indice), 'nessun lampo del sito vero (nemmeno lo sfondo verde): pagina nascosta, sfondo delle dispense, titolo e icona finti fin dall\'inizio, dispense disegnate subito');
-  console.log(`✓ Dispense: ${file.length} materie, ${argomenti} argomenti con la loro pagina, ${domande} domande valide (risposta giusta riconosciuta, spiegazione), subnetting generato, niente percentuali di avanzamento, scorciatoie di ritorno ferme dentro i campi di testo, partenza sempre dalle dispense senza pulsanti di ritorno, logo premuto 3 secondi, apertura dentro un capitolo (primo a caso in Sistemi e Reti, poi l'ultimo visitato), menu della sola materia, esercitazioni contestuali`);
+  console.log(`✓ Dispense: ${file.length} materie, ${argomenti} argomenti con la loro pagina, ${domande} domande valide (risposta giusta riconosciuta, spiegazione), subnetting generato, niente percentuali di avanzamento, niente nomi di professori né notifiche finte, scorciatoie di ritorno ferme dentro i campi di testo, partenza sempre dalle dispense senza pulsanti di ritorno, logo premuto 3 secondi, apertura dentro un capitolo (primo a caso in Sistemi e Reti, poi l'ultimo visitato), menu della sola materia, esercitazioni contestuali`);
 }
 
 // ======================= DIFESE: GUARDIA E BAN AUTOMATICO =======================

@@ -123,7 +123,7 @@ Ricorda che col piano gratuito il sito si addormenta dopo 15 minuti senza visite
 Funziona in tutto il sito, anche dentro le partite e nelle pagine che verranno aggiunte.
 
 - **All'apertura si parte sempre dalle dispense**, anche a ogni ricarica e dal link d'invito di un tavolo: è la prima barriera per chi non sa come uscirne. Il sito vero non si vede nemmeno per un attimo (la pagina parte nascosta, con titolo e icona delle dispense già scritti nell'HTML, lo sfondo chiaro delle dispense al posto del panno verde e le dispense disegnate appena la pagina è letta, senza aspettare gli altri script; sul telefono anche la barra del browser è bianca sulle dispense). Non c'è nessun pulsante per tornare al gioco: bisogna sapere come si fa. Non è una protezione vera (chi legge il codice della pagina lo scopre), è una tenda.
-- **Esc** o la **rotellina del mouse** (clic centrale, ovunque, anche sopra un link) apre subito una pagina di dispense scolastiche (Sistemi e Reti, TPSIT, Informatica) con codice, terminali, schemi di rete e notifiche.
+- **Esc** o la **rotellina del mouse** (clic centrale, ovunque, anche sopra un link) apre subito una pagina di dispense scolastiche (Sistemi e Reti, TPSIT, Informatica) con codice, terminali e schemi di rete.
 - Per tornare esattamente dove eri: `/` oppure `\`, oppure scrivi **gioca** (maiuscolo o minuscolo). **Sul telefono** (dove senza un campo di testo la tastiera non compare): **tieni premuto il logo in alto per 3 secondi** (se il dito si sposta o si stacca prima non succede niente; funziona anche col mouse).
 - La partita non si chiude: resti collegato al tavolo e trovi tutto com'era (turno, punteggio, carte, pezzi, timer).
 - La scheda del browser mostra "Dispense di Informatica" con un'icona da documento, e l'indirizzo diventa `/dispense`. Non si aggiungono voci alla cronologia. Se ricarichi la pagina (mentre "studi" o no) riparti dalle dispense e uscendo torni alla partita.
@@ -319,7 +319,7 @@ Carte francesi: cuori, quadri, fiori, picche.
 
 **Air Hockey più solido**: la fisica fa passi più piccoli (il disco non passa più attraverso la racchetta), il disco schiacciato contro la sponda non accelera più, la velocità massima è sempre rispettata; la propria racchetta nel browser si muove alla stessa velocità di quella del server; il computer non si butta più sul disco nell'angolo e, se lo sta bloccando, si allontana.
 
-**Dispense**: classe 5ªB, date di lezioni e scadenze calcolate da oggi (una settimana dopo l'altra), pagine in inglese (ICT English, Grammar).
+**Dispense**: niente nomi di professori, nessuna notifica finta (la campanella dice solo «Nessuna notifica») e nessuna sezione precisa (solo «Studente», «Classe 5ª»); date di lezioni e scadenze calcolate da oggi (una settimana dopo l'altra), pagine in inglese (ICT English, Grammar).
 
 Varianti non incluse: napola e accuse nello scopone, scala 40 con 5 o 6 giocatori, rientro dopo l'eliminazione.
 
