@@ -307,7 +307,7 @@
     if (p.suggerite && p.suggerite.n > cr.sugVisto) { const prima = cr.sugVisto; cr.sugVisto = p.suggerite.n; if (prima && cr.sugPasso) applicaSuggerite(ctx, p.suggerite.scelte, cr.sugPasso); cr.sugPasso = null; }
     const vis = passiVisibili(ctx);
     if (!vis.some((x) => x.id === cr.passo)) cr.passo = 'equip';
-    const nav = vis.map((x, i) => { const ok = passoOk(ctx, x.id), rag = raggiungibile(ctx, x.id); return `<button type="button" class="dr-passo ${cr.passo === x.id ? 'sel' : ''} ${ok && rag && x.id !== 'fine' ? 'fatto' : ''}" data-az="dr-cr-passo" data-id="${x.id}" ${rag ? '' : 'disabled'}><i>${ok && rag && x.id !== 'fine' && cr.passo !== x.id ? '✓' : i + 1}</i><span>${x.nome}</span></button>`; }).join('');
+    const nav = vis.map((x, i) => { const ok = passoOk(ctx, x.id), rag = raggiungibile(ctx, x.id); return `<button type="button" class="dr-passo ${cr.passo === x.id ? 'sel' : ''} ${ok && rag && x.id !== 'fine' ? 'fatto' : ''}" data-az="dr-cr-passo" data-id="${x.id}" ${rag ? '' : 'disabled'}><i><b>${ok && rag && x.id !== 'fine' && cr.passo !== x.id ? '✓' : i + 1}</b></i><span>${x.nome}</span></button>`; }).join('');
     const corpo = { stirpe: passoStirpe, classe: passoClasse, background: passoBackground, car: passoCar, abilita: passoAbilita, magia: passoMagia, equip: passoEquip, aspetto: passoAspetto, fine: passoFine }[cr.passo](ctx);
     const i = vis.findIndex((x) => x.id === cr.passo);
     const piede = `<div class="dr-cr-piede">${i > 0 ? `<button type="button" class="dr-bt" data-az="dr-cr-passo" data-id="${vis[i - 1].id}">← ${vis[i - 1].nome}</button>` : '<span></span>'}
