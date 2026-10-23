@@ -18,7 +18,7 @@
     ranger: ['des', 'sag', 'cos', 'for', 'int', 'car'], stregone: ['car', 'cos', 'des', 'sag', 'int', 'for'], warlock: ['car', 'cos', 'des', 'sag', 'int', 'for'],
   };
   const AUMENTI = [4, 8, 12, 16, 19];
-  const IC_BG = { accolito: '🕯️', criminale: '🗝️', eroe: '🌾', nobile: '👑', sapiente: '📚', soldato: '🎖️', vagabondo: '🐀', eremita: '🏔️', marinaio: '⚓', artista: '🎭', ciarlatano: '🃏', forestiero: '🏕️' };
+  const IC_BG = { tecnicoStazione: '🔧', personaleSanitario: '🩺', forzeOrdine: '🚔', ricercatore: '🔬', giornalista: '📰', paziente: '🩻', sommozzatore: '🤿', accolito: '🕯️', criminale: '🗝️', eroe: '🌾', nobile: '👑', sapiente: '📚', soldato: '🎖️', vagabondo: '🐀', eremita: '🏔️', marinaio: '⚓', artista: '🎭', ciarlatano: '🃏', forestiero: '🏕️' };
   const SCUOLE = { abiurazione: '🛡️', ammaliamento: '💫', divinazione: '👁️', evocazione: '🌀', illusione: '🎭', invocazione: '🔥', necromanzia: '💀', trasmutazione: '⚗️' };
   const NOMI_ASP = { pelle: 'Pelle', capelli: 'Capelli', occhi: 'Occhi', mantello: 'Mantello', pettinatura: 'Pettinatura', barba: 'Barba', viso: 'Viso', segni: 'Segni particolari', corna: 'Corna' };
   // l'aspetto tipico di ogni stirpe (per le carte e come partenza quando la si sceglie)
@@ -41,7 +41,11 @@
   // ---------- i conti (come in regole.js) ----------
   function stato(ctx) {
     const ui = ctx.ui;
-    if (!ui.cr) ui.cr = { passo: 'stirpe', s: { metodo: 'standard', genere: caso(['m', 'f']), equip: 0, aspetto: {} }, sel: null, sugVisto: 0, tiriVisti: 0 };
+    if (!ui.cr) {
+      // nelle ambientazioni horror si è solo umani: si parte dalla classe
+      const tema = ctx.partita.catalogo && ctx.partita.catalogo.tema, genere = caso(['m', 'f']);
+      ui.cr = { passo: tema ? 'classe' : 'stirpe', s: { metodo: 'standard', genere, equip: 0, aspetto: tema ? aspettoStirpe('umano', genere) : {}, ...(tema ? { stirpe: 'umano' } : {}) }, sel: null, sugVisto: 0, tiriVisti: 0 };
+    }
     return ui.cr;
   }
   function valoriMetodo(p, s) { return s.metodo === 'dadi' ? (p.tirati || null) : [15, 14, 13, 12, 10, 8]; }
@@ -49,7 +53,8 @@
     const v = valoriMetodo(p, s);
     if (s.metodo === 'punti') { s.base = { for: 8, des: 8, cos: 8, int: 8, sag: 8, car: 8 }; return; }
     if (!v) { s.base = null; return; }
-    const ord = PRIORITA[s.classe] || PRIORITA.guerriero, val = v.slice().sort((a, b) => b - a);
+    const cl = p.catalogo && p.catalogo.classi[s.classe];
+    const ord = PRIORITA[s.classe] || (cl && PRIORITA[cl.base]) || PRIORITA.guerriero, val = v.slice().sort((a, b) => b - a);
     s.base = {}; ord.forEach((k, i) => { s.base[k] = val[i]; });
   }
   function nAumenti(K, s, L) { const cl = K.classi[s.classe]; return cl ? [...AUMENTI, ...(cl.aumentiExtra || [])].filter((l) => l <= L).length : 0; }
@@ -134,7 +139,7 @@
       default: return true;
     }
   }
-  const passiVisibili = (ctx) => PASSI.filter((x) => x.id !== 'magia' || !ctx.partita.catalogo.classi[stato(ctx).s.classe] || serveMagia(ctx.partita.catalogo, stato(ctx).s, ctx.partita.livelloIniziale));
+  const passiVisibili = (ctx) => PASSI.filter((x) => !(x.id === 'stirpe' && ctx.partita.catalogo.tema)).filter((x) => x.id !== 'magia' || !ctx.partita.catalogo.classi[stato(ctx).s.classe] || serveMagia(ctx.partita.catalogo, stato(ctx).s, ctx.partita.livelloIniziale));
   // si può andare a un passaggio se tutti quelli prima sono a posto
   function raggiungibile(ctx, id) { for (const x of passiVisibili(ctx)) { if (x.id === id) return true; if (!passoOk(ctx, x.id)) return false; } return false; }
   function scelteFinali(ctx) {
@@ -169,14 +174,14 @@
       const col = A().COLORE_CLASSE[id] || ['#888', '#444'];
       const magia = c.magia ? `<small class="dr-magia-tag">✨ ${c.magia.tipo === 'pieno' ? 'incantatore' : c.magia.tipo === 'patto' ? 'magia del patto' : 'mezzo incantatore'}</small>` : '';
       return `<button type="button" class="dr-carta dr-carta-classe ${s.classe === id ? 'sel' : ''}" data-az="dr-cr-classe" data-id="${id}" style="--c1:${col[0]};--c2:${col[1]}">
-        <span class="dr-stemma">${A().emblema(id, '#f4e6c0', 46)}</span><span class="dr-carta-corpo"><b>${esc(c.nome)}</b>
+        <span class="dr-stemma">${c.icona ? `<i class="dr-stemma-ic">${c.icona}</i>` : A().emblema(id, '#f4e6c0', 46)}</span><span class="dr-carta-corpo"><b>${esc(c.nome)}</b>
         <small class="dr-bonus">d${c.dado} · ${c.principale.map((k) => K.caratteristiche[k].nome).join(' o ')}</small><span class="dr-carta-desc">${esc(c.desc)}</span>${magia}</span></button>`;
     }).join('');
     let dettaglio = '';
     const c = K.classi[s.classe];
     if (c) {
       const priv = [...c.privilegi, ...c.sottoclasse.privilegi].filter((x) => x.l <= Math.max(L, 3)).sort((a, b) => a.l - b.l);
-      dettaglio = `<div class="dr-riquadro dr-dettaglio"><h3>${A().emblema(s.classe, 'currentColor', 22)} ${esc(c.nome)} — ${esc(c.sottoclasse.nome)}</h3>
+      dettaglio = `<div class="dr-riquadro dr-dettaglio"><h3>${c.icona ? esc(c.icona) : A().emblema(s.classe, 'currentColor', 22)} ${esc(c.nome)} — ${esc(c.sottoclasse.nome)}</h3>
         <p class="dr-righe"><span>🎲 Dado vita <b>d${c.dado}</b></span><span>🛡️ Tiri salvezza <b>${c.salvezze.map((k) => K.caratteristiche[k].nome).join(', ')}</b></span><span>🥋 Armature <b>${c.armature.length ? c.armature.join(', ') : 'nessuna'}</b></span><span>⚔️ Armi <b>${c.armi.join(', ')}</b></span></p>
         <ul class="dr-privilegi">${priv.map((x) => `<li class="${x.l > L ? 'dopo' : ''}"><b>${x.l}° ${esc(x.nome)}</b> ${esc(x.desc)}</li>`).join('')}</ul></div>`;
     }

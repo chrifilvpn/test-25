@@ -31,7 +31,10 @@ P.danneggia = function (c, quanti, tipo, opz = {}) {
   const subiti = R.applicaDanno(c.ref, quanti, tipo, opz);
   if (quanti > 0) this.ultimoDannoRound = this.round;
   if (c.ref.pf <= 0) { c.ref.pf = 1; c.ref.morto = false; }
-  if (tipo === 'fuoco' && tratto(c, 'temeFuoco')) this.scaccia(c, 'odia il fuoco');
+  if (tipo === 'fuoco' && tratto(c, 'temeFuoco')) this.fuocoSulCacciatore = true;
+  // se ha imparato che usate il fuoco, a volte non scappa (cb.fuocoImparato: 0-1, dalla mente della creatura)
+  if (tipo === 'fuoco' && tratto(c, 'temeFuoco') && Math.random() < 0.6 * (this.fuocoImparato || 0)) this.evento({ tipo: 'nota', testo: `🧠 ${c.ref.nome} si scansa dalle fiamme… e resta.` });
+  else if (tipo === 'fuoco' && tratto(c, 'temeFuoco')) this.scaccia(c, 'odia il fuoco');
   else if (c.ref.pf <= c.ref.pfMax * 0.4) this.scaccia(c, 'è ferita e si ritira');
   return subiti;
 };

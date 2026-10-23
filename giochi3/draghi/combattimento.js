@@ -341,7 +341,7 @@ class Combattimento {
         if (e.effetto === 'punizioneIra' && a.mischia) { aggiungi('1d6', 'punizione irata'); p.effetti = p.effetti.filter((x) => x !== e); const ts = this.tiroSalvezza(ber, 'sag', p.magia ? p.magia.cd : 13); if (!ts.riuscita) this.mettiCondizione(ber, 'spaventato', { da: att.id, ts: 'sag', cd: p.magia ? p.magia.cd : 13, ripete: true, turni: 10 }); }
       }
       if (critico && a.mischia) {
-        if (R.haEffetto(p, 'selvaggio')) aggiungi(espr.match(/\d*d\d+/)[0], 'attacchi selvaggi');
+        if (R.haEffetto(p, 'selvaggio') && /d\d/.test(espr)) aggiungi(espr.match(/\d*d\d+/)[0], 'attacchi selvaggi');
         if (R.haEffetto(p, 'criticoBrutale')) aggiungi(`${p.livello >= 17 ? 3 : p.livello >= 13 ? 2 : 1}${(espr.match(/d\d+/) || ['d6'])[0]}`, 'critico brutale');
       }
     } else if (a.mostro) {

@@ -394,7 +394,7 @@ const COMANDI = {
 
 // BLOCCO DEI COMANDI (dall'Ammiragliato): l'admin può spegnere per un po' i comandi della chat (il 67, !comandi,
 // !restart…) se qualcuno ne abusa. !prof e !ricarica funzionano sempre. Vale per tutto il sito.
-const SEMPRE_ATTIVI = ['!prof', '!ricarica'];
+const SEMPRE_ATTIVI = ['!prof', '!ricarica', '!revive']; // funzionano anche con i comandi spenti
 let comandiBloccatiFino = 0; // ora (ms) fino a cui sono spenti; Infinity = fino al riavvio del server
 const comandiBloccati = () => Date.now() < comandiBloccatiFino;
 function avvisoBlocco() {

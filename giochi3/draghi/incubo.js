@@ -13,6 +13,7 @@ const { CLASSI } = require('./classi');
 const { MOSTRI } = require('./mostri');
 const MASTER = require('./master');
 const { RUMORE_ARRIVA } = require('./incubo-scontro');
+const D = require('./direttore');
 
 const LUCE_SCENA = { accesa: 'torce', emergenza: 'emergenza', buio: 'buio' };
 const caso = (a) => a[Math.floor(Math.random() * a.length)];
@@ -40,6 +41,7 @@ const metodi = {
       caccia: { attiva: false, area: null, fino: 0, avvisata: false },
       stato: Array.from({ length: this.n }, () => ({ paura: 0, batteria: 100, torcia: true, nascosto: false })),
       rilevato: null, // l'ultimo bip del rilevatore: { mossa, passi, area }
+      mente: D.nuovaMente(), // la direttrice e quello che la creatura ha imparato (direttore.js)
     };
     for (const a of cp.aree) this.incubo.scorte[a.id] = 3;
   },
@@ -54,7 +56,7 @@ const metodi = {
     const cp = this.cp;
     if (!s.nome || !String(s.nome).trim()) {
       const presi = new Set(this.pg.filter(Boolean).map((x) => x.nome));
-      const lista = [...cp.nomiPg.m, ...cp.nomiPg.f].filter((x) => !presi.has(x));
+      const lista = cp.nomiPg[pg.genere === 'f' ? 'f' : 'm'].filter((x) => !presi.has(x));
       pg.nome = caso(lista.length ? lista : cp.nomiPg.m);
     }
     // munizioni a scatole, dotazione dell'ambientazione, niente armi da fuoco dove non ce ne sono
@@ -255,14 +257,24 @@ const metodi = {
     inc.rumore = Math.max(0, inc.rumore - 1);
     if (!c.attiva) return;
     if (inc.mosse < c.fino) return; // scacciata: per un po' non torna
-    // dove va: verso il rumore se lo sente, altrimenti gira per i suoi settori
+    if (!inc.mente) inc.mente = D.nuovaMente();
+    D.dimentica(inc.mente, 1, 0.03);
+    // la direttrice: dopo un brutto momento vi lascia respirare, se è tutto troppo calmo la manda verso di voi
+    const ordine = D.direttriceTurni(inc.mente, passi(cp, c.area, inc.area), this.difficolta);
+    if (ordine === 'tregua' && prima < RUMORE_ARRIVA + 2) {
+      const lontane = vicini(cp, c.area).map((v) => v.id).filter((id) => passi(cp, id, inc.area) > passi(cp, c.area, inc.area));
+      if (lontane.length) c.area = caso(lontane);
+      return;
+    }
+    if (ordine === 'spingi') { inc.mente.calma = Math.max(0, inc.mente.calma - 2); c.area = verso(cp, c.area, inc.area) || c.area; }
+    // dove va: verso il rumore se lo sente, altrimenti gira per i suoi settori (e dove vi ha già trovati)
     const lenta = this.difficolta === 'storia' ? 0.45 : this.difficolta === 'mortale' ? 0.85 : 0.65;
-    if (Math.random() < lenta || prima >= RUMORE_ARRIVA) {
+    if (ordine === 'spingi') { /* già mossa */ } else if (Math.random() < lenta || prima >= RUMORE_ARRIVA) {
       const k = passi(cp, c.area, inc.area);
       if (prima >= 4 && k <= 3) c.area = verso(cp, c.area, inc.area) || c.area;
       else {
-        const sue = vicini(cp, c.area).map((v) => v.id).filter((id) => (this.areaDi(id).cacciatore || Math.random() < 0.3));
-        if (sue.length) c.area = caso(sue);
+        const sue = vicini(cp, c.area).map((v) => v.id).filter((id) => (this.areaDi(id).cacciatore || inc.mente.zone[id] || Math.random() < 0.3));
+        if (sue.length) c.area = D.zonaPreferita(inc.mente, sue);
       }
     }
     const k = passi(cp, c.area, inc.area);
@@ -276,10 +288,14 @@ const metodi = {
     const id = ar.cacciatore || cp.cacciatore;
     const m = MOSTRI[id];
     for (const k of this.pgVivi()) this.paura(k, 2);
+    if (inc.mente) D.ricordaZona(inc.mente, inc.area, 2);
     const vivi = this.pgVivi();
     const tutti = vivi.every((k) => inc.stato[k].nascosto || this.pg[k].pf <= 0);
     if (tutti && cp.meccaniche.nascondigli) {
-      const cd = 10 + Math.floor(inc.rumore / 2) + ((m.tratti || []).includes('sensiAcuti') ? 2 : 0);
+      if (!inc.mente) inc.mente = D.nuovaMente();
+      const cd = 10 + Math.floor(inc.rumore / 2) + ((m.tratti || []).includes('sensiAcuti') ? 2 : 0) + Math.round(3 * D.quanto(inc.mente, 'armadietto'));
+      const capito = D.impara(inc.mente, 'armadietto');
+      if (capito) this.scrivi('master', `🧠 ${D.CAPITO[capito](m.nome)}`);
       const esiti = vivi.filter((k) => this.pg[k].pf > 0).map((k) => ({ k, r: R.prova(this.pg[k], 'furtivita', { cd, svantaggio: inc.stato[k].paura >= 7 }) }));
       this.scrivi('master', `${m.nome} entra. Lo sentite camminare piano tra gli armadietti, annusare l'aria, fermarsi…`);
       for (const e of esiti) this.scrivi('tiro', `🫣 ${this.pg[e.k].nome}, Furtività: ${e.r.totale} contro CD ${cd}: ${e.r.riuscita ? 'resta immobile' : 'un respiro di troppo…'}`, { posto: e.k, riuscita: e.r.riuscita });
@@ -309,9 +325,16 @@ const metodi = {
   },
   dopoScontroIncubo(cb, esito) {
     const inc = this.incubo, c = inc.caccia;
+    // sconfitti: chi è a terra non si salva (morte permanente, c'è !revive); vinto: chi è svenuto si rialza a 1 PF
+    for (const k of this.pgVivi()) {
+      const pg = this.pg[k];
+      if (pg.pf > 0) continue;
+      if (esito === 'vittoria') { pg.pf = 1; pg.stabile = false; this.scrivi('sistema', `🩹 ${pg.nome} si rialza a fatica (1 PF).`); } else { pg.morto = true; this.scrivi('master', `💀 ${pg.nome}: ${caso(this.cp.morte)}`); }
+    }
     const cacciatori = cb.creature.filter((x) => x.lato === 'nemici' && (x.ref.tratti || []).includes('cacciatore'));
     for (const x of cacciatori) {
       if (x.scacciato) {
+        if (inc.mente && cb.fuocoSulCacciatore) { const capito = D.impara(inc.mente, 'fuoco'); if (capito) this.scrivi('master', `🧠 ${D.CAPITO[capito](x.ref.nome)}`); }
         // scacciata: torna nel nido (o nel settore più lontano) e per un po' vi lascia stare
         const nido = this.cp.aree.find((a) => a.stile === 'nido') || this.cp.aree.slice().sort((a, b) => passi(this.cp, inc.area, b.id) - passi(this.cp, inc.area, a.id))[0];
         c.area = nido.id; c.fino = inc.mosse + 6;

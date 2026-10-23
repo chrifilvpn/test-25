@@ -12,7 +12,12 @@
     barbaro: ['#7a2a1a', '#3a1208'], bardo: ['#7a3a7a', '#2e1430'], chierico: ['#c8a84a', '#5a4410'], druido: ['#3a6a2a', '#16300e'],
     guerriero: ['#6a6a7a', '#24242e'], ladro: ['#3a3a4a', '#121218'], mago: ['#2a3a8a', '#0e1440'], monaco: ['#c87a2a', '#5a2e08'],
     paladino: ['#d0b060', '#5a4a1a'], ranger: ['#4a6a3a', '#1a2a12'], stregone: ['#a03030', '#3a0a0a'], warlock: ['#4a2a6a', '#14081e'],
+    // le classi delle ambientazioni horror
+    sicurezza: ['#3a4a5a', '#10161e'], ingegnere: ['#b07a20', '#3a2408'], medico: ['#d8e0e0', '#4a5a5a'], tecnico: ['#2a6a6a', '#0a2222'], sommozzatore: ['#c8a020', '#3a3008'],
+    ricercatore: ['#8a8a9a', '#2a2a34'], giornalista: ['#6a4a3a', '#24160e'], infermiere: ['#a0c8c0', '#2a4a44'], guardia: ['#2a3a2a', '#0e140e'], fuggiasco: ['#9a9a8a', '#34342a'],
   };
+  // i vestiti delle classi horror si disegnano come quelli di una classe fantasy che gli somiglia
+  const VESTE_COME = { sicurezza: 'guerriero', ingegnere: 'ranger', medico: 'ladro', tecnico: 'ladro', sommozzatore: 'guerriero', ricercatore: 'ladro', giornalista: 'ranger', infermiere: 'ladro', guardia: 'guerriero', fuggiasco: 'monaco' };
   const DRAGO_COL = { rosso: '#b8302a', oro: '#d8a83a', ottone: '#c8a050', blu: '#3060b0', bronzo: '#a87030', nero: '#3a3a3a', rame: '#b86a3a', bianco: '#d8e0e8', argento: '#a8b0c0', verde: '#3a8a4a' };
 
   // ---------- EMBLEMI DELLE CLASSI (tracciati in un quadrato 0..100) ----------
@@ -37,15 +42,15 @@
   function ritratto(p, { cornice = true, sfondo = true } = {}) {
     const a = (p && p.aspetto) || {};
     const id = uid();
-    const st = p.stirpe || 'umano', cl = p.classe || 'guerriero';
+    const st = p.stirpe || 'umano', clc = COLORE_CLASSE[p.classe] ? p.classe : 'guerriero', cl = VESTE_COME[clc] || clc;
     const drago = st === 'dragonide';
     let pelle = a.pelle || '#e0b090';
     if (drago) pelle = DRAGO_COL[p.discendenza] || '#7a8a3a';
     const pelleS = scurisci(pelle, 0.78), pelleSS = scurisci(pelle, 0.6);
     const cap = a.capelli || '#4a2e1a', capS = scurisci(cap, 0.65);
     const occhi = a.occhi || '#3a2a1a';
-    const mant = a.mantello || COLORE_CLASSE[cl][0], mantS = scurisci(mant, 0.55);
-    const [c1, c2] = COLORE_CLASSE[cl] || COLORE_CLASSE.guerriero;
+    const mant = a.mantello || COLORE_CLASSE[clc][0], mantS = scurisci(mant, 0.55);
+    const [c1, c2] = COLORE_CLASSE[clc];
     const viso = a.viso || 'ovale';
     const pett = drago ? 'calvo' : (a.pettinatura || 'corti');
     const barba = drago ? 'nessuna' : (a.barba || 'nessuna');

@@ -207,6 +207,7 @@ class Draghi {
       if (this.cp) this.scelteIncubo(s);
       if (s.metodo === 'dadi') s.tirati = this.tirati[p] ? this.tirati[p].valori : null;
       try { this.suggerite[p] = { n: (this.suggerite[p] ? this.suggerite[p].n : 0) + 1, scelte: R.completaScelte(s) }; } catch (err) { return { errore: 'Non riesco a scegliere: prova a cambiare qualcosa' }; }
+      if (this.cp && !s.nome) { const nomi = this.cp.nomiPg[this.suggerite[p].scelte.genere === 'f' ? 'f' : 'm'] || this.cp.nomiPg.m; this.suggerite[p].scelte.nome = nomi[Math.floor(Math.random() * nomi.length)]; }
       return { ok: true };
     }
     if (a.tipo === 'rifai') { if (!this.pg[p]) return { errore: 'Non hai ancora un personaggio' }; this.pg[p] = null; return { ok: true }; }
@@ -458,7 +459,7 @@ class Draghi {
     this.combattimento = new Combattimento({ scena, gruppo, nemici, sorpresa: def.sorpresa === 'gruppo' || def.sorpresa === 'nemici' ? def.sorpresa : null, livelloIA: this.livelloIA() });
     // il trucco segreto: il prossimo d20 (attacco, tiro salvezza, prova) del personaggio di chi l'ha attivato è un 20
     this.combattimento.venti = (c) => { const k = this.pg.indexOf(c.ref); return k >= 0 && T.consuma(this, k); };
-    if (this.cp) { this.combattimento.horror = true; this.combattimento.rumore = this.incubo.rumore; }
+    if (this.cp) { this.combattimento.horror = true; this.combattimento.rumore = this.incubo.rumore; this.combattimento.fuocoImparato = this.incubo.mente ? this.incubo.mente.abitudini.fuoco : 0; }
     this.metaCombattimento = { nemici: nemici.map((m) => m.nome), inizio: Date.now() };
     this.scenaVista = scena;
     this.fase = 'combattimento';
@@ -591,7 +592,7 @@ class Draghi {
       if (c) { c.fuggito = false; c.x = c.x; }
     }
     this.scrivi('sistema', `✨ !revive: ${morti.map((k) => this.pg[k].nome).join(', ')} ${morti.length > 1 ? 'tornano' : 'torna'} in vita con tutti i punti ferita.`);
-    if (this.fase === 'caduti') { this.fase = 'avventura'; this.cadutiDa = null; }
+    if (this.fase === 'caduti') { this.fase = this.reale ? 'reale' : 'avventura'; this.cadutiDa = null; }
     if (this.reale) this.reale.revive(morti);
     return morti.length;
   }
@@ -614,6 +615,7 @@ class Draghi {
     const mio = this.pg[p] || null;
     return {
       gioco: this.id, n: this.n, fase: this.fase, host: this.host, bot: this.bot.map(Boolean), ambientazione: this.ambientazione, pazza: this.pazza, difficolta: this.difficolta, livelloIniziale: this.livelloIniziale,
+      nomiClasse: this.cp ? Object.fromEntries(this.cp.classi.map((k) => [k, CLASSI[k].nome])) : null,
       modalita: this.modalita, incubo: this.cp && this.fase !== 'creazione' ? this.vistaIncubo(p) : this.cp ? { id: this.cp.id, nome: this.cp.nome, icona: this.cp.icona, sottotitolo: this.cp.sottotitolo } : null,
       reale: this.reale ? this.reale.vistaFissa(p) : null,
       iaAttiva: !!(this.chiave && this.fetch), attesaIA: this.attesaIA, attesaLibera: !!this.attesaLibera, erroreIA: this.erroreIA, idea: this.idea,
@@ -661,7 +663,7 @@ function catalogo(tema = null) {
   const inc = {};
   for (const [id, x] of Object.entries(INCANTESIMI)) inc[id] = { nome: x.nome, liv: x.liv, scuola: x.scuola, classi: x.classiIds, tempo: x.tempo, gittata: x.gittata, durata: x.durata, conc: !!x.conc, rituale: !!x.rituale, desc: x.desc };
   CATALOGO[tema] = {
-    caratteristiche: B.CARATTERISTICHE, ordine: B.ORDINE_CAR, abilita: B.ABILITA, stirpi: tema ? { umano: B.STIRPI.umano } : B.STIRPI, discendenze: B.DISCENDENZE,
+    caratteristiche: B.CARATTERISTICHE, ordine: B.ORDINE_CAR, abilita: B.ABILITA, stirpi: tema ? { umano: { ...B.STIRPI.umano, nomi: H.CAMPAGNE[tema].nomiPg || B.STIRPI.umano.nomi } } : B.STIRPI, discendenze: B.DISCENDENZE,
     background: Object.fromEntries(Object.entries(B.BACKGROUND).filter(([, x]) => delTema(x))),
     classi, incantesimi: inc, stili: STILI, suppliche: SUPPLICHE, aspetto: R.ASPETTO, costoPunti: R.COSTO_PUNTI, standard: R.STANDARD, lingue: B.LINGUE, tema,
   };

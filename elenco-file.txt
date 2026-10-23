@@ -188,11 +188,17 @@ giochi3/draghi.js
 giochi3/draghi/base.js
 giochi3/draghi/classi.js
 giochi3/draghi/combattimento.js
+giochi3/draghi/direttore.js
+giochi3/draghi/horror.js
 giochi3/draghi/incantesimi.js
+giochi3/draghi/incubo-scontro.js
+giochi3/draghi/incubo.js
 giochi3/draghi/mappe.js
 giochi3/draghi/master.js
 giochi3/draghi/mostri.js
 giochi3/draghi/regole.js
+giochi3/draghi/stazione.js
+giochi3/draghi/tempo-reale.js
 giochi3/forza3d.js
 giochi3/freecell.js
 giochi3/hex.js
@@ -400,6 +406,7 @@ public/js/giochi3/damaint.js
 public/js/giochi3/draghi-arte.js
 public/js/giochi3/draghi-campo.js
 public/js/giochi3/draghi-crea.js
+public/js/giochi3/draghi-incubo.js
 public/js/giochi3/draghi-mappe.js
 public/js/giochi3/draghi.css
 public/js/giochi3/draghi.js
@@ -488,6 +495,7 @@ test/giochi3/chiamata.js
 test/giochi3/conquista.js
 test/giochi3/cruciverba.js
 test/giochi3/damaint.js
+test/giochi3/draghi-horror.js
 test/giochi3/draghi.js
 test/giochi3/forza3d.js
 test/giochi3/freecell.js
