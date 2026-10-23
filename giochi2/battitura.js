@@ -119,7 +119,7 @@ class Battitura extends Arena {
     return tutti || tardi || this.tempoRound > 300;
   }
   fineRound() {
-    // punti: il primo n, il secondo n − 1, …; chi non arriva 0 (con il trucco !win banana i punti del testo valgono doppio)
+    // punti: il primo n, il secondo n − 1, …; chi non arriva 0 (con il trucco !win + parola segreta i punti del testo valgono doppio)
     this.g.forEach((g, p) => {
       const doppi = T.consuma(this, p) ? 2 : 1;
       if (g.pos !== null) this.punti[p] += (this.n - g.pos + 1) * doppi;

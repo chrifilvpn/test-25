@@ -111,7 +111,7 @@ class Campo {
     return { ok: true };
   }
 
-  // !win banana: una casella sicura da scoprire (meglio se vicina a quelle già aperte e senza mine intorno)
+  // !win + parola segreta: una casella sicura da scoprire (meglio se vicina a quelle già aperte e senza mine intorno)
   suggerimentoWin() {
     if (!this.mine) return null; // prima del primo clic è tutto sicuro
     let meglio = -1, voto = -1;

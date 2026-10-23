@@ -169,7 +169,7 @@ class Cruciverba extends SfidaRompicapo {
     return { errore: 'Mossa non valida' };
   }
 
-  // !win banana: le parole giuste delle prime definizioni non ancora risolte
+  // !win + parola segreta: le parole giuste delle prime definizioni non ancora risolte
   suggerimentoWin(posto) {
     const t = this.tavole[posto];
     if (this.finita || !t || t.fatto != null || t.ritirato) return null;

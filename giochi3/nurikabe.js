@@ -89,7 +89,7 @@ class Nurikabe extends SfidaRompicapo {
     return { errore: 'Mossa non valida' };
   }
 
-  // !win banana: una casella sbagliata da sistemare, altrimenti qualche casella di mare ancora da colorare
+  // !win + parola segreta: una casella sbagliata da sistemare, altrimenti qualche casella di mare ancora da colorare
   suggerimentoWin(posto) {
     const t = this.tavole[posto];
     if (this.finita || !t || t.fatto != null || t.ritirato) return null;

@@ -6,7 +6,7 @@
 // Il computer calcola i tiri di sponda (simula i rimbalzi), schiva i proiettili in arrivo e trova la strada nel labirinto.
 const { Arena } = require('../giochi/arena');
 const T = require('../giochi/trucco');
-// !win banana: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
+// !win + parola segreta: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
 function aggiornaWin(g, dt) {
   const w = g.winOn || (g.winOn = {}), tw = g.winT || (g.winT = {});
   for (let p = 0; p < g.n; p++) {
@@ -181,7 +181,7 @@ class Carri extends Arena {
     this.cambiato = true;
   }
   colpito(e, b) {
-    if (this.winOn && this.winOn[e.id]) return; // !win banana: il colpo rimbalza sulla corazza
+    if (this.winOn && this.winOn[e.id]) return; // !win + parola segreta: il colpo rimbalza sulla corazza
     if (e.scudo > 0) { e.scudo = 0; this.botto([2, Math.round(e.x), Math.round(e.y)]); this.annuncia(e.id, 'para un colpo con lo scudo 🛡️', 'lo scudo ti ha salvato 🛡️'); return; }
     e.vivo = false; e.da = b.di;
     this.botto([1, Math.round(e.x), Math.round(e.y)]);

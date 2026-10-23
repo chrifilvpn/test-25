@@ -1,4 +1,4 @@
-// IL TRUCCO SEGRETO (!win banana): in ogni gioco, con il posto 0 che lo attiva, la partita tra computer va avanti
+// IL TRUCCO SEGRETO (!win + parola segreta): in ogni gioco, con il posto 0 che lo attiva, la partita tra computer va avanti
 // senza errori e il trucco fa effetto (la fortuna lo spegne usandolo, oppure arriva un suggerimento segreto).
 // I controlli precisi di ogni gioco (blackjack servito, numero della roulette…) sono in test/trucco/*.js.
 const assert = require('assert');
@@ -50,5 +50,5 @@ const cartella = path.join(__dirname, 'trucco');
 if (fs.existsSync(cartella)) for (const f of fs.readdirSync(cartella).filter((x) => x.endsWith('.js')).sort()) require(path.join(cartella, f));
 if (process.env.TRUCCO_ELENCO) console.log('senza effetto:', senza.join(' '));
 assert.deepStrictEqual(senza, [], `!win non fa niente in: ${senza.join(', ')}`);
-console.log(`✓ Trucco segreto (!win banana): ${provati} giochi provati con i computer, in tutti ha effetto (${veroNow() - t0} ms)`);
+console.log(`✓ Trucco segreto (!win + parola segreta): ${provati} giochi provati con i computer, in tutti ha effetto (${veroNow() - t0} ms)`);
 module.exports = { prova };

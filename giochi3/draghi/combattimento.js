@@ -51,7 +51,7 @@ class Combattimento {
     this.iniziaTurno();
   }
   c(id) { return this.creature.find((x) => x.id === id); }
-  // il trucco segreto (!win banana): draghi.js mette in this.venti una funzione che dice (e spegne) se il prossimo
+  // il trucco segreto (!win + parola segreta): draghi.js mette in this.venti una funzione che dice (e spegne) se il prossimo
   // d20 di quel personaggio è un 20 naturale
   ventiPer(c) { return !!(c && c.pg && this.venti && this.venti(c)); }
   get attivo() { return this.c(this.ordine[this.indice]); }

@@ -111,7 +111,7 @@ class Picross extends SfidaRompicapo {
     return { errore: 'Mossa non valida' };
   }
 
-  // !win banana: il nome del disegno e la riga con più caselle da sistemare, blocco per blocco con il suo colore
+  // !win + parola segreta: il nome del disegno e la riga con più caselle da sistemare, blocco per blocco con il suo colore
   suggerimentoWin(posto) {
     const t = this.tavole[posto];
     if (this.finita || !t || t.fatto != null || t.ritirato) return null;

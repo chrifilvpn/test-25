@@ -68,7 +68,7 @@ class CaselleBombe {
     return { ok: true };
   }
 
-  // !win banana: nel tuo turno, qualche casella sicura (senza bomba) ancora coperta
+  // !win + parola segreta: nel tuo turno, qualche casella sicura (senza bomba) ancora coperta
   suggerimentoWin(posto) {
     if (this.finita || this.inAttesa || posto !== this.turno) return null;
     const sicure = [];

@@ -71,7 +71,7 @@ class Biglie {
     this.inAttesa = true; this.pausaMs = PAUSA;
     return { ok: true };
   }
-  // !win banana: quando tocchi a te scommettere, quante biglie ha in pugno l'avversario
+  // !win + parola segreta: quando tocchi a te scommettere, quante biglie ha in pugno l'avversario
   suggerimentoWin(posto) {
     if (this.finita || this.inAttesa || this.fase !== 'scommetti' || this.turno !== posto || this.inPugno === null) return null;
     return `💡 Ne ha ${this.inPugno} in pugno: ${this.inPugno % 2 ? 'DISPARI' : 'PARI'}`;

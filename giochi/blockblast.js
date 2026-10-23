@@ -188,7 +188,7 @@ class BlockBlast {
     if (this.vittoria === 'resistenza' ? vivi.length <= 1 : vivi.length === 0) this.chiudi();
   }
 
-  // !win banana: la mossa migliore (quella del computer difficile), quando puoi giocare
+  // !win + parola segreta: la mossa migliore (quella del computer difficile), quando puoi giocare
   suggerimentoWin(posto) {
     if (this.finita || this.inPausa || (this.modo !== 'sfida' && posto !== this.turno)) return null;
     const b = this.planciaDi(posto);

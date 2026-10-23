@@ -5,7 +5,7 @@
 // centrocampo e attacco. Col tasto azione gli omini ruotano e calciano la pallina se è lì davanti.
 const { Arena } = require('../giochi/arena');
 const T = require('../giochi/trucco');
-// !win banana: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
+// !win + parola segreta: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
 function aggiornaWin(g, dt) {
   const w = g.winOn || (g.winOn = {}), tw = g.winT || (g.winT = {});
   for (let p = 0; p < g.n; p++) {
@@ -154,7 +154,7 @@ class Calcetto extends Arena {
           b.vx = (lato / l) * V_TIRO; b.vy = (dir / l) * V_TIRO;
           b.y = a.y + dir * (R_OMINO + R_PALLA + 3);
           if (this.winOn[a.chi]) {
-            // !win banana: il tiro parte forte verso l'angolo della porta lontano dal portiere
+            // !win + parola segreta: il tiro parte forte verso l'angolo della porta lontano dal portiere
             const port = this.aste.find((q) => q.sq !== a.sq && q.ruolo === 'portiere'), px = port.base[0] + port.s;
             const tx = W / 2 + (px > W / 2 ? -1 : 1) * (PORTA / 2 - R_PALLA - 10), ty = dir < 0 ? -40 : H + 40;
             const dx2 = tx - b.x, dy2 = ty - b.y, l2 = Math.hypot(dx2, dy2) || 1;

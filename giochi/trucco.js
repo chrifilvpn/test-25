@@ -1,4 +1,4 @@
-// IL TRUCCO SEGRETO: chi scrive in chat "!win banana" (al tavolo, durante una partita) non manda nessun messaggio e
+// IL TRUCCO SEGRETO: chi scrive in chat "!win + parola segreta" (al tavolo, durante una partita) non manda nessun messaggio e
 // nessuno viene avvisato: nella prossima mano / giro / round la fortuna gira dalla sua parte, oppure gli compare per
 // qualche secondo un suggerimento segreto (la mossa migliore, la parola giusta, chi è l'alieno…) che poi sparisce.
 //
@@ -12,8 +12,17 @@
 // - In qualsiasi momento il gioco può mandare un messaggio segreto con `T.sussurra(this, posto, testo)`.
 // - `trucco(posto)` (facoltativo) viene chiamato subito quando il comando arriva, per gli effetti immediati.
 
-const COMANDO = /^!win\s+banana$/i;
-const eComando = (testo) => COMANDO.test(String(testo || '').trim());
+// La parola segreta NON è nel codice: si legge da TRUCCO_PAROLA (variabile d'ambiente su Render, come GEMINI_API_KEY).
+// Senza la variabile il trucco è spento. Maiuscole, accenti e spazi non contano: "!win  Parola" vale come "!win parola".
+const semplice = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, ' ');
+const parola = () => semplice(process.env.TRUCCO_PAROLA);
+const attivo = () => parola().length > 0;
+function eComando(testo) {
+  const p = parola();
+  if (!p) return false;
+  const m = /^!win\s+(.+)$/.exec(semplice(testo));
+  return !!m && m[1] === p;
+}
 
 function arma(g, posto) { g._win = g._win || {}; g._win[posto] = true; }
 const armato = (g, posto) => !!(g && g._win && g._win[posto]);
@@ -48,4 +57,4 @@ function inCima(mazzo, condizione, { inizio = false } = {}) {
 // sceglie tra le carte quella col punteggio più alto secondo la funzione data
 function migliore(lista, punteggio) { let best = null, bv = -Infinity; for (const x of lista) { const v = punteggio(x); if (v > bv) { bv = v; best = x; } } return best; }
 
-module.exports = { eComando, arma, armato, consuma, sussurra, prendiSussurri, controllaSuggerimenti, inCima, migliore };
+module.exports = { eComando, attivo, arma, armato, consuma, sussurra, prendiSussurri, controllaSuggerimenti, inCima, migliore };

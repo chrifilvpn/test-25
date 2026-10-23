@@ -7,7 +7,7 @@
 // del compagno non fanno male (le proprie sì); il round lo vince la squadra che ha ancora qualcuno in piedi.
 const { Arena } = require('../giochi/arena');
 const Trucco = require('../giochi/trucco'); // (T qui è il lato delle caselle)
-// !win banana: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
+// !win + parola segreta: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
 function aggiornaWin(g, dt) {
   const w = g.winOn || (g.winOn = {}), tw = g.winT || (g.winT = {});
   for (let p = 0; p < g.n; p++) {

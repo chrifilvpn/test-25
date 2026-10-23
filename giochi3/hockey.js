@@ -6,7 +6,7 @@
 // in parità si va ai supplementari col gol d'oro.
 const { Arena } = require('../giochi/arena');
 const T = require('../giochi/trucco');
-// !win banana: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
+// !win + parola segreta: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
 function aggiornaWin(g, dt) {
   const w = g.winOn || (g.winOn = {}), tw = g.winT || (g.winT = {});
   for (let p = 0; p < g.n; p++) {
@@ -286,7 +286,7 @@ class Hockey extends Arena {
       for (const q of this.portieri) {
         const dx = d.x - q.x, dy = d.y - q.y, dist = Math.hypot(dx, dy);
         if (dist >= R_PORTIERE + R_DISCO) continue;
-        if (this.tiro && this.winOn[this.tiro.k] && this.tempoRound - this.tiro.t < 1.5 && this.squadra(this.tiro.k) !== q.sq) continue; // !win banana: il tiro entra
+        if (this.tiro && this.winOn[this.tiro.k] && this.tempoRound - this.tiro.t < 1.5 && this.squadra(this.tiro.k) !== q.sq) continue; // !win + parola segreta: il tiro entra
         const v = Math.hypot(d.vx, d.vy);
         const nx = dx / (dist || 1), ny = dy / (dist || 1);
         d.x = q.x + nx * (R_PORTIERE + R_DISCO); d.y = q.y + ny * (R_PORTIERE + R_DISCO);

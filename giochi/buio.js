@@ -8,7 +8,7 @@
 // ogni 6 s (con il Cercatore più veloce del 15%).
 const { Arena, casuale } = require('./arena');
 const T = require('./trucco');
-// !win banana: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
+// !win + parola segreta: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
 function aggiornaWin(g, dt) {
   const w = g.winOn || (g.winOn = {}), tw = g.winT || (g.winT = {});
   for (let p = 0; p < g.n; p++) {

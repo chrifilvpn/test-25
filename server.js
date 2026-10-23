@@ -52,6 +52,8 @@ else if (process.env.ADMIN_COMANDO.trim().length < 20) console.warn('[avviso] AD
 // fantasIA: la chiave sta solo su Render (GEMINI_API_KEY), mai nel codice; GEMINI_MODELLO facoltativo
 const fantasia = new FantasIA({ chiave: process.env.GEMINI_API_KEY, modello: process.env.GEMINI_MODELLO });
 console.log(fantasia.attiva ? '[fantasIA] accesa (100 domande al giorno per tutto il sito)' : '[fantasIA] spenta: su Render manca GEMINI_API_KEY');
+// trucco segreto: la parola sta solo su Render (TRUCCO_PAROLA), mai nel codice; senza, il trucco è spento
+console.log(TRUCCO.attivo() ? '[trucco] acceso' : '[trucco] spento: su Render manca TRUCCO_PAROLA');
 if (process.env.GUARDIA !== 'attiva') console.log('[guardia] modalità prova: i ban vengono solo scritti nel log (GUARDIA=attiva per applicarli)');
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/js/scala-regole.js', (_q, r) => r.sendFile(path.join(__dirname, 'giochi', 'scala-regole.js')));
@@ -217,7 +219,7 @@ function aggiorna(s) {
   gestisciTick(s);
 }
 
-// IL TRUCCO SEGRETO (!win banana): i suggerimenti e i messaggi segreti del gioco vanno solo a chi li ha chiesti
+// IL TRUCCO SEGRETO (!win + parola segreta): i suggerimenti e i messaggi segreti del gioco vanno solo a chi li ha chiesti
 function inviaSussurri(s) {
   const g = s.partita;
   if (!g) return;

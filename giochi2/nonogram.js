@@ -239,7 +239,7 @@ class Nonogram {
     return { ok: true };
   }
 
-  // !win banana: il disegno e la riga con più caselle da sistemare (quali colorare); prima uno sbaglio, se c'è
+  // !win + parola segreta: il disegno e la riga con più caselle da sistemare (quali colorare); prima uno sbaglio, se c'è
   suggerimentoWin() {
     const L = this.lato;
     const dove = (i) => `riga ${Math.floor(i / L) + 1}, colonna ${(i % L) + 1}`;

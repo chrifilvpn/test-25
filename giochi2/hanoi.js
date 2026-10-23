@@ -78,7 +78,7 @@ class Hanoi extends SfidaRompicapo {
     return { ok: true };
   }
 
-  // !win banana: le prossime mosse giuste (la strategia ottima da dove sei)
+  // !win + parola segreta: le prossime mosse giuste (la strategia ottima da dove sei)
   suggerimentoWin(posto) {
     const t = this.tavole[posto];
     if (this.finita || !t || t.fatto != null || t.ritirato) return null;
