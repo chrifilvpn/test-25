@@ -27,6 +27,7 @@ function vinceCon(celle, i) {
 }
 
 const ANN = require('./annulla');
+const { ora } = require('./orologio'); // orologio vero (nel sito) o finto (nei test)
 
 class Forza4 {
   constructor({ n, primo = 0, bot = [] }) {
@@ -164,7 +165,7 @@ class Motore {
     if (this.liberi === 0) return 0;
     for (const c of ORDINE) if (this.vinceIn(c, chi)) return VINCE + prof;
     if (prof === 0) return valuta(this.b, chi);
-    if ((++this.nodi & 1023) === 0 && Date.now() > this.fino) this.stop = true;
+    if ((++this.nodi & 1023) === 0 && ora(5) > this.fino) this.stop = true;
     if (this.stop) return 0;
     // mosse obbligate: se l'avversario minaccia di vincere, devo bloccare
     const minacce = ORDINE.filter((c) => this.vinceIn(c, 1 - chi));
@@ -204,7 +205,7 @@ class Motore {
 function classifica(celle, chi, profMax, ms) {
   if (process.env.TEST_VELOCE) ms = Math.min(ms, 25);
   const m = new Motore(celle);
-  m.fino = Date.now() + ms;
+  m.fino = ora() + ms;
   m.stop = false;
   const colonne = ORDINE.filter((c) => m.h[c] < RIG);
   let migliore = colonne.map((c) => ({ c, v: 0 }));

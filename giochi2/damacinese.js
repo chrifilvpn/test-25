@@ -6,6 +6,7 @@
 //
 // Coordinate cubiche (q, r, s) con q + r + s = 0: la stella sono le buche con tutte le coordinate ≥ -4 (triangolo)
 // oppure tutte ≤ 4 (triangolo rovesciato). Le punte: q > 4, s < -4, r > 4, q < -4, s > 4, r < -4 (in giro).
+const { ora } = require('../giochi/orologio'); // orologio vero (nel sito) o finto (nei test)
 const CELLE = [];
 for (let q = -8; q <= 8; q++) for (let r = -8; r <= 8; r++) {
   const s = -q - r;
@@ -176,10 +177,10 @@ function bot(g, p, livello) {
   lista.sort((a, b) => b.v - a.v);
   if (livello === 'medio') return az(lista[0].m);
   // difficile: guarda anche la sua mossa dopo (le "scale" di salti che si preparano), sulle 14 mosse migliori
-  const ms = Date.now() + (process.env.TEST_VELOCE ? 15 : 200);
+  const ms = ora() + (process.env.TEST_VELOCE ? 15 : 200);
   let best = lista[0], bv = -Infinity;
   for (const x of lista.slice(0, 14)) {
-    if (Date.now() > ms) break;
+    if (ora(0.03) > ms) break;
     const v = prova(x.m, () => {
       let b = -Infinity;
       for (const m2 of mosseDi(occ, p)) { const w = prova(m2, () => valutaPosto(occ, p, g.meta[p])); if (w > b) b = w; }

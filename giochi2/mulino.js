@@ -4,6 +4,7 @@
 // all'avversario (non una che sta in un mulino, se ce ne sono altre). Perde chi resta con 2 pedine o non può muovere.
 // Le celle contengono null oppure il posto (0 o 1) del proprietario.
 const ANN = require('../giochi/annulla');
+const { ora } = require('../giochi/orologio'); // orologio vero (nel sito) o finto (nei test)
 
 // punti numerati riga per riga; coordinate su una griglia 7×7 (servono al disegno)
 const COORD = [
@@ -325,7 +326,7 @@ class Motore {
     return s;
   }
   negamax(chi, prof, alfa, beta, ply) {
-    if ((++this.nodi & 511) === 0 && Date.now() > this.fino) this.stop = true;
+    if ((++this.nodi & 511) === 0 && ora(0.6) > this.fino) this.stop = true;
     if (this.stop) return 0;
     if (this.bloccato(chi)) return -VINCE + ply;
     if (prof <= 0) return this.valuta(chi);
@@ -372,7 +373,7 @@ class Motore {
 function classifica(celle, mano, volo, chi, profMax, ms, soloTogli = false, pieno = false) {
   if (process.env.TEST_VELOCE) ms = Math.min(ms, 4);
   const m = new Motore(celle, mano, volo);
-  m.fino = Date.now() + ms;
+  m.fino = ora() + ms;
   // se si deve solo togliere (mulino già fatto), le mosse sono "togli t" (da = a = -1)
   let mosse = soloTogli ? m.togliibili(chi).map((t) => [-2, -2, t]) : m.mosse(chi);
   const fai = (x) => { if (x[0] === -2) { m.b[x[2]] = -1; m.n[1 - chi]--; } else m.fai(x, chi); };

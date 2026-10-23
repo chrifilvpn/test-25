@@ -5,6 +5,7 @@
 //
 // Tavola interna: array di (N+2)² con il bordo; 0 vuoto, 1 nero, 2 bianco, 3 bordo. Le catene si tengono con liste
 // circolari e "pseudo-libertà" (il conto delle adiacenze vuote), come nei programmi di go veloci.
+const { ora } = require('../giochi/orologio'); // orologio vero (nel sito) o finto (nei test)
 
 class Tavola {
   constructor(N) {
@@ -154,7 +155,7 @@ class Nodo {
   }
 }
 function mcts(tav, col, ms, komi, maxPlayout = Infinity) {
-  const fino = Date.now() + ms;
+  const fino = ora() + ms;
   const radice = new Nodo(-1, 3 - col, null);
   const N = tav.N;
   const maxM = N * N * 2;
@@ -165,7 +166,7 @@ function mcts(tav, col, ms, komi, maxPlayout = Infinity) {
     for (let i = 0; i < t.c.length; i++) if (t.c[i] === 0 && !t.occhio(i, c) && t.legale(i, c)) nodo.figli.push(new Nodo(i, c, nodo));
     nodo.figli.push(new Nodo(-1, c, nodo)); // passo
   };
-  while ((giri & 15 || Date.now() < fino) && giri < maxPlayout) {
+  while ((giri & 15 || ora(0.9) < fino) && giri < maxPlayout) {
     giri++;
     const t = tav.copia();
     let nodo = radice, c = col, passi = 0;

@@ -2,6 +2,7 @@
 // La pedina muove e cattura solo in avanti e non può catturare la dama; la dama muove di una casella in ogni direzione.
 // Presa obbligatoria con le priorità del regolamento italiano.
 const { casuale } = require('./carte');
+const { ora } = require('./orologio'); // orologio vero (nel sito) o finto (nei test)
 
 const scura = (r, c) => (r + c) % 2 === 0; // l'angolo in basso a destra (7,7) è scuro
 const dentro = (r, c) => r >= 0 && r < 8 && c >= 0 && c < 8;
@@ -209,7 +210,7 @@ function negamax(b, l, prof, alfa, beta, ctx) {
   // le catture si guardano sempre fino in fondo (niente "orizzonte" a metà scambio)
   if (prof <= 0 && !mosse[0].presi.length) return valuta(b, l);
   if (prof < -6) return valuta(b, l);
-  if ((++ctx.nodi & 511) === 0 && Date.now() > ctx.fino) ctx.stop = true;
+  if ((++ctx.nodi & 511) === 0 && ora(1.5) > ctx.fino) ctx.stop = true;
   if (ctx.stop) return 0;
   let best = -Infinity;
   for (const m of mosse) {
@@ -224,7 +225,7 @@ function negamax(b, l, prof, alfa, beta, ctx) {
 function classifica(b, l, profMax, ms) {
   if (process.env.TEST_VELOCE) ms = Math.min(ms, 25);
   const mosse = mosseLegali(b, l);
-  const ctx = { nodi: 0, fino: Date.now() + ms, stop: false };
+  const ctx = { nodi: 0, fino: ora() + ms, stop: false };
   let lista = mosse.map((m) => ({ m, v: 0 }));
   for (let prof = 1; prof <= profMax; prof++) {
     const giro = [];

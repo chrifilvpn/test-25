@@ -3,6 +3,7 @@
 // passa; la partita finisce quando nessuno dei due può più muovere. Vince chi ha più pedine.
 // Le celle contengono null oppure il posto (0 o 1) del proprietario.
 const ANN = require('../giochi/annulla');
+const { ora } = require('../giochi/orologio'); // orologio vero (nel sito) o finto (nei test)
 
 const L = 8;
 const DIREZIONI = [[-1, -1], [-1, 0], [-1, 1], [0, -1], [0, 1], [1, -1], [1, 0], [1, 1]];
@@ -184,7 +185,7 @@ class Motore {
     return pos + 40 * angoli + mob * 1.2 + 12 * stab + pedine;
   }
   negamax(chi, prof, alfa, beta, passato = false) {
-    if ((++this.nodi & 127) === 0 && Date.now() > this.fino) this.stop = true;
+    if ((++this.nodi & 127) === 0 && ora(0.3) > this.fino) this.stop = true;
     if (this.stop) return 0;
     const mie = this.mosse(chi);
     if (!mie.length) {
@@ -213,7 +214,7 @@ class Motore {
 function classifica(celle, chi, profMax, ms) {
   if (process.env.TEST_VELOCE) ms = Math.min(ms, 2); // nei test le partite devono essere tante e veloci
   const m = new Motore(celle);
-  m.fino = Date.now() + ms;
+  m.fino = ora() + ms;
   const mosse = m.mosse(chi).sort((a, b) => PESI[b] - PESI[a]);
   let migliore = mosse.map((i) => ({ i, v: PESI[i] }));
   const vuote = m.vuote();

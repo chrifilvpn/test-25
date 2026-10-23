@@ -1,6 +1,11 @@
 // Test delle regole e migliaia di partite tra computer, controllando che nessuna carta sparisca.
 const assert = require('assert');
 process.env.TEST_VELOCE = '1'; // i computer pensano pochi millisecondi, così i test restano veloci
+// LA FORTUNA DEI TEST È FISSATA: i numeri "a caso" sono sempre gli stessi (generatore con un seme fisso), e nei test i
+// computer che pensano a tempo usano un orologio finto (giochi/orologio.js). Così le partite tra computer escono sempre
+// uguali: i controlli tipo "il difficile batte il medio" non falliscono più per una serie sfortunata, ma se un computer
+// peggiora davvero le sue partite cambiano e il test se ne accorge.
+{ let seme = 20261023; Math.random = () => { seme = (seme * 16807) % 2147483647; return (seme - 1) / 2147483646; }; }
 const { GIOCHI } = require('../giochi');
 const { valuta } = require('../giochi/scala-regole');
 const { _test: S } = require('../giochi/scopa');
