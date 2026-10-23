@@ -188,7 +188,7 @@ function generaStazione(cp, seme) {
     if (!grotta) metti(ar, 't', ['uffici', 'laboratorio'].includes(ar.stile) ? 8 : 4, { muro: false });
     if (ar.stile === 'industriale') metti(ar, ':', 8, { muro: false });
     for (const p of metti(ar, 'c', grotta ? 3 : 4)) contenitori.push({ ...p, area: ar.id, oggetti: [], aperto: false });
-    if (!grotta) for (const p of metti(ar, 'k', 1)) terminali.push({ ...p, area: ar.id, testo: ar.eventi[Math.floor(r() * ar.eventi.length)] });
+    if (!grotta) for (const p of metti(ar, 'k', 1)) { const testi = ar.documenti && ar.documenti.length ? ar.documenti : ar.eventi; terminali.push({ ...p, area: ar.id, testo: testi[Math.floor(r() * testi.length)] }); }
     for (const p of metti(ar, 'v', 3, { muro: false })) grate.push({ ...p, area: ar.id });
     for (const ob of cp.obiettivi.filter((o) => o.area === ar.id && o.fai !== 'raggiungi')) { const [p] = metti(ar, 'o', 1); if (p) punti.push({ ...p, area: ar.id, obiettivo: ob.id, nome: ob.cosa }); }
   }

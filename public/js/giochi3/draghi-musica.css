@@ -1,0 +1,6 @@
+/* DRAGHI E SEGRETE: il pulsante della musica (🎵), in un angolo del tavolo */
+.dr-musica { position: absolute; z-index: 40; top: .35rem; right: .35rem; width: 2rem; height: 2rem; padding: 0; border-radius: 50%; border: 1px solid rgba(216, 178, 90, .45); background: rgba(20, 14, 8, .72); color: #f3d58a; font-size: .95rem; line-height: 1; cursor: pointer; box-shadow: 0 2px 6px rgba(0, 0, 0, .45); }
+.dr-musica:hover { background: rgba(50, 36, 18, .9); }
+.dr-musica.spenta { opacity: .55; filter: grayscale(.8); }
+.dr-musica.in-riga { position: static; flex: none; align-self: center; width: 1.8rem; height: 1.8rem; font-size: .85rem; box-shadow: none; }
+.dr-musica-riga { display: flex; align-items: center; gap: .35rem; flex: none; }
