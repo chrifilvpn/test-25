@@ -496,6 +496,7 @@ test/giochi3/conquista.js
 test/giochi3/cruciverba.js
 test/giochi3/damaint.js
 test/giochi3/draghi-horror.js
+test/giochi3/draghi-stessopc.js
 test/giochi3/draghi.js
 test/giochi3/forza3d.js
 test/giochi3/freecell.js

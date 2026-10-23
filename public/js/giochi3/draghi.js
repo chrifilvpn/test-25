@@ -22,7 +22,41 @@
   let nomiTema = {};
   const NC = new Proxy(NOMI_CLASSE, { get: (o, k) => o[k] || nomiTema[k] || String(k) });
   const mioPg = (ctx) => ctx.partita.pg[ctx.mio] || null;
-  const sonoHost = (ctx) => ctx.partita.host === ctx.mio && !ctx.stato.spettatore;
+  const sonoHost = (ctx) => (ctx.partita.host === ctx.mio || ctx.locale) && !ctx.stato.spettatore;
+
+  // ---------- in più sullo stesso computer: ci si passa il computer ----------
+  // Il gioco aspetta la mossa di uno dei posti "locali": il browser fa finta di essere lui (ctx.mio, le mosse partono
+  // con "per") e prima mostra il sipario «passate il computer a…», così nessuno vede scheda e scelte degli altri.
+  // Ognuno ha i suoi pezzi di ctx.ui (la creazione a metà, le selezioni), ma il testo che si sta scrivendo è uno solo.
+  const UI_LOC = {};
+  const condiviso = (k) => typeof k === 'string' && (k.startsWith('t_') || k === 'fuoco' || k === 'drVisto' || k === 'drChi');
+  function chiTocca(p) {
+    const L = p.locali;
+    if (p.fase === 'creazione') return L.find((k) => !p.pg[k]);
+    if (p.fase === 'avventura' && !p.attesaIA) return L.find((k) => p.pg[k] && !p.pg[k].morto && p.dichiarazioni[k] == null);
+    if (p.fase === 'prove') return L.find((k) => p.prove.some((x) => x.posto === k && !x.esito));
+    if (p.fase === 'combattimento' && p.combattimento) return L.find((k) => p.pg[k] && p.pg[k].uid === p.combattimento.attivo);
+    return undefined;
+  }
+  function locale(ctx) {
+    const p = ctx.partita;
+    if (ctx.locale || !p || !p.locali || p.locali.length < 2 || ctx.stato.spettatore || ctx.mio !== p.host || p.fase === 'reale') return ctx;
+    const ui = ctx.ui, ora = chiTocca(p);
+    if (ora != null) ui.drChi = ora; else if (!p.locali.includes(ui.drChi)) ui.drChi = p.locali[0];
+    const k = ui.drChi;
+    if (!UI_LOC[k]) UI_LOC[k] = new Proxy({}, { get: (o, x) => (condiviso(x) || !(x in o) ? ui[x] : o[x]), set: (o, x, v) => { if (condiviso(x)) ui[x] = v; else o[x] = v; return true; }, has: (o, x) => x in o || x in ui });
+    const partita = { ...p, ...((p.perPosto || {})[k] || {}) };
+    return Object.create(ctx, { base: { value: ctx }, locale: { value: true }, mio: { value: k }, partita: { value: partita }, ui: { value: UI_LOC[k] }, invia: { value: (a) => ctx.invia({ ...a, per: k }) } });
+  }
+  const nomeLocale = (p, k) => (p.pg[k] ? p.pg[k].nome : `Giocatore ${p.locali.indexOf(k) + 1}`);
+  function sipario(ctx) {
+    const p = ctx.partita, k = ctx.mio;
+    if (!ctx.locale || ctx.ui.drVisto === k || chiTocca(p) !== k) return '';
+    const cosa = p.fase === 'creazione' ? 'crea il tuo personaggio' : p.fase === 'prove' ? 'tira i tuoi dadi' : p.fase === 'combattimento' ? 'è il tuo turno di combattimento' : 'scrivi cosa fa il tuo personaggio';
+    return `<div class="dr-sipario"><div class="dr-sip-box"><span class="dr-sip-ic">🔄</span><h2>Tocca a ${esc(nomeLocale(p, k))}</h2><p>Passate il computer a <b>${esc(nomeLocale(p, k))}</b>: ${cosa}. Gli altri non guardino!</p>
+      <button type="button" class="dr-bt dr-bt-oro dr-bt-grande" data-az="dr-sipario" data-id="${k}">Sono ${esc(nomeLocale(p, k))}: gioco</button>
+      <small>Siete in ${p.locali.length} sullo stesso computer: ${p.locali.map((x) => esc(nomeLocale(p, x))).join(' · ')}</small></div></div>`;
+  }
 
   // ---------- testo del master: paragrafi, dialoghi, grassetti, nomi dei personaggi ----------
   function formatta(testo, p) {
@@ -241,6 +275,9 @@
       const cr = document.querySelector('#panno .dr-cr-corpo'); if (cr) ui.drScorriCrea = { passo: cr.dataset.passo, top: cr.scrollTop };
     },
     panno(ctx) {
+      ctx = locale(ctx);
+      const tenda = sipario(ctx);
+      if (tenda) return `<div class="dr dr-fase-sipario dr-amb-${esc(ctx.partita.ambientazione || 'classica')}">${tenda}</div>`;
       const p = ctx.partita, ui = ctx.ui, tel = telefono();
       nomiTema = p.nomiClasse || {};
       if (!p.catalogo && p.fase === 'creazione') return '<div class="dr"><p class="dr-vuoto">Caricamento…</p></div>';
@@ -273,6 +310,8 @@
       return `<div class="dr ${scena} ${cb ? 'dr-in-cb' : ''} dr-tab-${tab} dr-atm-${esc(p.atmosfera || 'calma')}">${gruppo(ctx)}${centro}${lato(ctx, schede)}<nav class="dr-nav">${nav}</nav>${scheda1}</div>`;
     },
     dopo(ctx) {
+      ctx = locale(ctx);
+      if (sipario(ctx)) return;
       const p = ctx.partita, ui = ctx.ui;
       CB().dopo(ctx);
       IN().dopo(ctx);
@@ -303,7 +342,9 @@
       if (p.evento && p.evento.forte && primaVolta(ui, `dr-ev-${p.evento.id}`)) suono([[523, 0.1], [659, 0.1], [784, 0.1], [1047, 0.2]], { tipo: 'triangle', volume: 0.05 });
     },
     stato(ctx) {
+      ctx = locale(ctx);
       const p = ctx.partita;
+      if (sipario(ctx)) return `🔄 Tocca a ${nomeLocale(p, ctx.mio)}`;
       if (p.finita) return null;
       if (p.fase === 'creazione') return mioPg(ctx) ? 'Personaggio pronto' : 'Crea il tuo personaggio';
       if (p.attesaIA) return 'Il master scrive…';
@@ -319,7 +360,9 @@
     punteggio() { return ''; },
     infoPosto(ctx, posto) { const pg = ctx.partita.pg[posto]; return pg ? `${esc(pg.nome)} · ${pg.pf}/${pg.pfMax} PF` : 'crea il personaggio'; },
     clic(ctx, el) {
+      ctx = locale(ctx);
       const az = el.dataset.az, id = el.dataset.id, ui = ctx.ui, p = ctx.partita;
+      if (az === 'dr-sipario') { const base = ctx.base.ui; base.drVisto = Number(id); for (const x of Object.keys(base)) if (x.startsWith('t_')) base[x] = null; base.fuoco = null; return ctx.ridisegna(); }
       if (az.startsWith('dr-cr-')) return CR().clic(ctx, el);
       if (az.startsWith('dr-cb-')) return CB().clic(ctx, el);
       if (az.startsWith('dr-in-') || az.startsWith('dr-re-')) return IN().clic(ctx, el);

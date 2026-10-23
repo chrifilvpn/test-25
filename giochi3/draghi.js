@@ -38,6 +38,12 @@ class Draghi {
     // le ambientazioni horror (horror.js): una campagna a settori, a turni o in tempo reale (incubo.js, tempo-reale.js)
     this.cp = H.CAMPAGNE[this.ambientazione] || null;
     this.modalita = this.cp && opzioni.modalita === 'reale' ? 'reale' : 'turni';
+    // in più sullo stesso computer (solo a turni): chi ha aperto il tavolo gioca anche i posti dei primi compagni del
+    // computer, passandosi il computer (le sue mosse arrivano con "per": il posto di chi sta giocando)
+    const stessoPc = this.modalita === 'turni' ? Math.max(1, Math.min(n, Number(opzioni.stessoPc) || 1)) : 1;
+    this.locali = [this.host];
+    for (let i = 0; i < n && this.locali.length < stessoPc; i++) if (this.bot[i] && i !== this.host) { this.locali.push(i); this.bot[i] = null; }
+    if (this.locali.length < 2) this.locali = [];
     this.pazza = opzioni.pazza === true || opzioni.pazza === 'true';
     this.livelloIniziale = [1, 3, 5].includes(Number(opzioni.livello)) ? Number(opzioni.livello) : 1;
     this.difficolta = ['storia', 'normale', 'mortale'].includes(opzioni.difficolta) ? opzioni.difficolta : 'normale';
@@ -95,7 +101,11 @@ class Draghi {
   umano(p) { return !this.bot[p]; }
 
   // ---------- chi deve agire (per il server) ----------
-  attesi() {
+  // chi ha aperto il tavolo (o chi gioca dal suo stesso computer)
+  eHost(p) { return p === this.host || this.locali.includes(p); }
+  // chi deve muovere: i posti sullo stesso computer non li muove mai il computer
+  attesi() { return this.attesiTutti().filter((i) => i === this.host || !this.locali.includes(i)); }
+  attesiTutti() {
     if (this.finita || this.attesaIA) return [];
     if (this.fase === 'creazione') return this.pg.map((p, i) => (p ? -1 : i)).filter((i) => i >= 0);
     if (this.fase === 'avventura') return this.pgVivi().filter((i) => this.umano(i) && this.dichiarazioni[i] == null);
@@ -156,8 +166,9 @@ class Draghi {
   azione(p, a) {
     if (this.finita) return { errore: 'La campagna è finita' };
     if (!a || typeof a.tipo !== 'string') return { errore: 'Mossa non valida' };
+    if (a.per != null && p === this.host && this.locali.includes(Number(a.per))) p = Number(a.per);
     if (a.tipo === 'termina') {
-      if (p !== this.host) return { errore: 'Può chiudere la campagna solo chi ha aperto il tavolo' };
+      if (!this.eHost(p)) return { errore: 'Può chiudere la campagna solo chi ha aperto il tavolo' };
       this.chiudi('Il tavolo chiude la campagna.');
       return { ok: true };
     }
@@ -180,7 +191,7 @@ class Draghi {
       this.tirati[p] = { valori: R.tiraCaratteristiche(), volte: (this.tirati[p] ? this.tirati[p].volte : 0) + 1 };
       return { ok: true };
     }
-    if (a.tipo === 'idea') { if (p !== this.host) return { errore: 'L\'idea la scrive chi ha aperto il tavolo' }; this.idea = String(a.testo || '').slice(0, 2000); return { ok: true }; }
+    if (a.tipo === 'idea') { if (!this.eHost(p)) return { errore: 'L\'idea la scrive chi ha aperto il tavolo' }; this.idea = String(a.testo || '').slice(0, 2000); return { ok: true }; }
     if (a.tipo === 'crea') {
       let s = a.scelte && typeof a.scelte === 'object' ? { ...a.scelte } : {};
       s.livello = this.livelloIniziale;
@@ -212,7 +223,7 @@ class Draghi {
     }
     if (a.tipo === 'rifai') { if (!this.pg[p]) return { errore: 'Non hai ancora un personaggio' }; this.pg[p] = null; return { ok: true }; }
     if (a.tipo === 'inizia') {
-      if (p !== this.host) return { errore: 'Fa partire chi ha aperto il tavolo' };
+      if (!this.eHost(p)) return { errore: 'Fa partire chi ha aperto il tavolo' };
       // chi non ha finito il personaggio: il computer lo completa
       for (let i = 0; i < this.n; i++) if (!this.pg[i]) this.azioneCreazione(i, { tipo: 'crea', casuale: true, scelte: {} });
       if (this.fase === 'creazione') this.iniziaAvventura();
@@ -249,13 +260,13 @@ class Draghi {
       this.dichiarazioni[p] = testo;
       if (testo) this.scrivi('azione', testo, { posto: p, chi: pg.nome });
       if (!this.primaDichiarazione) this.primaDichiarazione = Date.now();
-      if (!this.attesi().length) this.mandaDichiarazioni();
+      if (!this.attesiTutti().length) this.mandaDichiarazioni();
       return { ok: true };
     }
     if (a.tipo === 'cambia') { if (this.dichiarazioni[p] == null) return { errore: 'Non hai ancora scritto niente' }; delete this.dichiarazioni[p]; return { ok: true }; }
     if (a.tipo === 'manda') {
       // chi ha aperto il tavolo può mandare al master senza aspettare gli altri
-      if (p !== this.host && Object.keys(this.dichiarazioni).length === 0) return { errore: 'Scrivi prima cosa fai' };
+      if (!this.eHost(p) && Object.keys(this.dichiarazioni).length === 0) return { errore: 'Scrivi prima cosa fai' };
       if (!Object.values(this.dichiarazioni).some((x) => x)) return { errore: 'Nessuno ha scritto niente' };
       this.mandaDichiarazioni();
       return { ok: true };
@@ -618,6 +629,8 @@ class Draghi {
       nomiClasse: this.cp ? Object.fromEntries(this.cp.classi.map((k) => [k, CLASSI[k].nome])) : null,
       modalita: this.modalita, incubo: this.cp && this.fase !== 'creazione' ? this.vistaIncubo(p) : this.cp ? { id: this.cp.id, nome: this.cp.nome, icona: this.cp.icona, sottotitolo: this.cp.sottotitolo } : null,
       reale: this.reale ? this.reale.vistaFissa(p) : null,
+      // stesso computer: quello che cambia da un giocatore all'altro (il browser mostra quello di chi ha il computer)
+      locali: this.locali, perPosto: p === this.host && this.locali.length ? Object.fromEntries(this.locali.map((k) => [k, { suggerite: this.suggerite[k], tirati: this.tirati[k] ? this.tirati[k].valori : null, tiriFatti: this.tirati[k] ? this.tirati[k].volte : 0, mioPg: this.pg[k] ? this.pg[k].uid : null, mioId: this.pg[k] ? this.pg[k].uid : null }])) : null,
       iaAttiva: !!(this.chiave && this.fetch), attesaIA: this.attesaIA, attesaLibera: !!this.attesaLibera, erroreIA: this.erroreIA, idea: this.idea,
       suggerite: this.suggerite[p], tirati: this.tirati[p] ? this.tirati[p].valori : null, tiriFatti: this.tirati[p] ? this.tirati[p].volte : 0,
       pg: this.pg, mioPg: mio ? mio.uid : null,
@@ -697,6 +710,7 @@ module.exports = {
     alias: ['draghi e segrete', 'gioco di ruolo', 'gdr', 'dungeons', 'dungeon', 'dragons', 'd&d', 'dnd', 'master', 'avventura', 'fantasy', 'rpg'],
     opzioni: [
       { id: 'ambientazione', nome: 'Ambientazione', valori: ['classica', 'oscura', 'pirati', 'citta', 'selvaggia', 'caso', 'sevastopol', 'pathos', 'manicomio'], etichette: ['Fantasy classico', 'Oscura e horror', 'Mari e pirati', 'Intrighi in città', 'Terre selvagge', 'A sorpresa (fantasy)', '🛰️ Stazione Sevastopol (Alien: Isolation)', '🌊 Base PATHOS-II (SOMA)', '🏚️ Manicomio Mount Massive (Outlast)'], predefinito: 'classica' },
+      { id: 'stessoPc', nome: 'Sullo stesso computer (a turni)', valori: [1, 2, 3, 4, 5, 6], etichette: ['Ognuno col suo dispositivo', 'In 2: ci si passa il computer', 'In 3: ci si passa il computer', 'In 4: ci si passa il computer', 'In 5: ci si passa il computer', 'In 6: ci si passa il computer'], predefinito: 1 },
       { id: 'modalita', nome: 'Come si gioca (ambientazioni horror)', valori: ['turni', 'reale'], etichette: ['A turni, col master (classico)', '⏱️ In tempo reale: mappa enorme vista dall\'alto'], predefinito: 'turni' },
       { id: 'pazza', nome: '🤪 Modalità pazza (il master fa ridere)', valori: [false, true], etichette: ['No', 'Sì'], predefinito: false, casella: true },
       { id: 'livello', nome: 'Livello iniziale', valori: [1, 3, 5], etichette: ['1° livello (dall\'inizio)', '3° livello', '5° livello'], predefinito: 1 },

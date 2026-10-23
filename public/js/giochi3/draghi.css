@@ -1023,3 +1023,13 @@
   .dr .dr-re-scrivi { top: 8px; bottom: auto; width: auto; right: 150px; }
   .dr .dr-re-scrivi input { font-size: 16px; padding: .35rem .5rem; }
 }
+
+/* ---------- stesso computer: il sipario tra un giocatore e l'altro ---------- */
+.dr.dr-fase-sipario { display: grid; place-items: center; grid-template-columns: minmax(0, 1fr); }
+.dr .dr-sipario { width: min(520px, 100%); padding: 1rem; }
+.dr .dr-sip-box { display: flex; flex-direction: column; align-items: center; gap: .8rem; text-align: center; padding: 2rem 1.4rem; border-radius: 14px; border: 1px solid var(--dr-bordo); background: linear-gradient(#2a1e14, #1a120b); box-shadow: 0 10px 40px rgba(0, 0, 0, .6), inset 0 0 0 1px rgba(216, 178, 90, .15); }
+.dr .dr-sip-ic { font-size: 3rem; animation: dr-sip-gira 3s linear infinite; }
+@keyframes dr-sip-gira { to { transform: rotate(360deg); } }
+.dr .dr-sip-box h2 { font-size: 1.6rem; color: var(--dr-oro2); }
+.dr .dr-sip-box p { margin: 0; line-height: 1.45; }
+.dr .dr-sip-box small { opacity: .65; }

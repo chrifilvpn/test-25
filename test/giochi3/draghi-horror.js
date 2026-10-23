@@ -56,13 +56,15 @@ function nuova(amb, opz = {}) {
     for (let k = 0; k < 5; k++) { await aspetta(); g.controllaTempo(); }
     let giri = 0, revive = 0;
     while (!g.finita && giri++ < 900) {
+      // gioca il primo ancora vivo (con la morte permanente il posto 0 può restare a guardare)
+      const io = Math.max(0, g.pg.findIndex((x) => x && !x.morto));
       if (g.fase === 'avventura' && !g.attesaIA) {
-        const v = g.vista(0).incubo;
-        if (v.obiettivo && v.obiettivo.qui) g.azione(0, { tipo: 'incubo', az: 'obiettivo' });
+        const v = g.vista(io).incubo;
+        if (v.obiettivo && v.obiettivo.qui) g.azione(io, { tipo: 'incubo', az: 'obiettivo' });
         else {
           const meta = g.cp.obiettivi[g.incubo.obiettivo].area;
           const strade = v.strade.filter((s) => !s.chiuso).sort((a, b) => INC.passi(g.cp, a.id, meta) - INC.passi(g.cp, b.id, meta));
-          if (Math.random() < 0.2) g.azione(0, { tipo: 'incubo', az: 'cerca' }); else g.azione(0, { tipo: 'incubo', az: 'vai', area: strade[0] && strade[0].id });
+          if (Math.random() < 0.2) g.azione(io, { tipo: 'incubo', az: 'cerca' }); else g.azione(io, { tipo: 'incubo', az: 'vai', area: strade[0] && strade[0].id });
         }
       } else if (g.fase === 'prove') { for (const x of g.prove.filter((q) => !q.esito)) g.azione(x.posto, { tipo: 'tira', id: x.id }); } else if (g.fase === 'combattimento') { const att = g.attesi(); if (att.length) g.azione(att[0], { tipo: 'autoTurno' }); g.prossimaMossaMostro = 0; } else if (g.fase === 'caduti') { assert.ok(g.azione(0, { tipo: 'incubo', az: 'cerca' }).errore, 'da morti non si gioca'); assert.ok(g.revive() > 0); revive++; assert.strictEqual(g.fase, 'avventura'); assert.ok(g.pg.every((p) => !p.morto && p.pf === p.pfMax), '!revive: tutti vivi a punti ferita pieni'); }
       for (let k = 0; k < 3; k++) { await aspetta(); g.controllaTempo(); }
@@ -110,6 +112,7 @@ function nuova(amb, opz = {}) {
         if (!p.azione && meta) { if (Math.hypot(meta.x - p.x, meta.y - p.y) < 1.4) d.usa = ++seq; else { const v = R.verso(p, meta); d.mx = v.x; d.my = v.y; } }
         g.input(0, d);
       }
+      if (g.fase === 'reale' && g.pg[0].morto) { assert.ok(g.revive() > 0); rev++; } // morto solo il giocatore: !revive
       if (g.fase === 'caduti') { morti++; assert.ok(g.revive() > 0); rev++; assert.strictEqual(g.fase, 'reale', '!revive torna al tempo reale'); }
       const a = Date.now(); g.tick(ora); const v = g.vistaTick(0); maxMs = Math.max(maxMs, Date.now() - a);
       if (v.blip) blip++;
