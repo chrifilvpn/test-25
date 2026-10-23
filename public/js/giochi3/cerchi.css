@@ -1,0 +1,13 @@
+/* CERCHI A TEMPO: campo notturno a tutta larghezza */
+.ce { width: min(64rem, 100%); margin: 0 auto; display: grid; justify-items: center; gap: .5rem; padding: .2rem 0 1rem; }
+.ce-barra { font-size: .95rem; color: var(--tenue); }
+.ce-box { width: 100%; justify-self: stretch; display: grid; justify-items: center; }
+.ce-tela { display: block; border-radius: 16px; box-shadow: 0 12px 30px rgba(0, 0, 0, .5), 0 0 0 3px #2b2650; user-select: none; -webkit-user-select: none; cursor: crosshair; }
+.ce-classifica { margin: 0; padding: 0; list-style: none; display: grid; gap: .25rem; min-width: 15rem; }
+.ce-classifica li { display: flex; gap: .5rem; padding: .3rem .7rem; border-radius: 10px; background: rgba(255, 255, 255, .08); }
+.ce-classifica li span { margin-left: auto; font-variant-numeric: tabular-nums; }
+.ce-classifica li.io { background: rgba(184, 166, 255, .25); }
+.ce-record { text-align: center; }
+.ce-record ol { margin: .3rem 0 0; padding-left: 1.2rem; text-align: left; }
+.ce-record li.nuovo { font-weight: 700; color: #ffd166; }
+.ce-gira { margin: 0; font-size: .85rem; color: var(--tenue); text-align: center; }
