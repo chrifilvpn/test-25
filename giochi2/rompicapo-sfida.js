@@ -4,6 +4,7 @@
 // puzzle e lo risolvono ognuno sulla propria copia, nello stesso momento; vince chi finisce prima (o come dice il
 // gioco). I computer li fa muovere la partita stessa (scadenza/controllaTempo), ognuno col suo ritmo, così finiscono
 // in un tempo che dipende dal livello e non aspettano le mosse degli altri.
+const { ora: adesso } = require('../giochi/orologio'); // orologio vero (nel sito) o finto (nei test)
 const VELOCE = !!process.env.TEST_VELOCE;
 const PUNTI_POSTO = [10, 7, 5, 4, 3, 2, 1, 1];
 
@@ -16,7 +17,7 @@ class SfidaRompicapo {
     this.sfida = n > 1;
     this.pausaBoss = n === 1; // da soli la partita aspetta chi apre le dispense; in sfida no
     this.limiteMs = limiteMs;
-    this.inizio = Date.now();
+    this.inizio = adesso();
     this.tempoFermo = 0; this.fermoDal = null; this.inPausa = false;
     this.arrivi = [];
     this.menti = {};
@@ -26,17 +27,17 @@ class SfidaRompicapo {
 
   // da chiamare alla fine del costruttore del gioco, quando le tavole esistono già
   avvia() {
-    this.prossimaBot = this.botLiv.map((l, p) => (l ? Date.now() + this.ritmoBot(p, l, true) : null));
+    this.prossimaBot = this.botLiv.map((l, p) => (l ? adesso() + this.ritmoBot(p, l, true) : null));
   }
 
   annuncia(posto, testo, testoIo, forte = false) { this.evento = { id: ++this.nEv, posto, testo, testoIo, forte }; }
   // millisecondi di gioco (senza le pause delle dispense)
-  cronometro() { const ora = this.fineMs != null ? this.fineMs : Date.now(); return ora - this.inizio - this.tempoFermo - (this.fermoDal ? ora - this.fermoDal : 0); }
+  cronometro() { const ora = this.fineMs != null ? this.fineMs : adesso(); return ora - this.inizio - this.tempoFermo - (this.fermoDal ? ora - this.fermoDal : 0); }
   impostaPausa(si) {
     if (si === this.inPausa || this.finita) return;
-    if (si) this.fermoDal = Date.now();
+    if (si) this.fermoDal = adesso();
     else if (this.fermoDal) {
-      const d = Date.now() - this.fermoDal;
+      const d = adesso() - this.fermoDal;
       this.tempoFermo += d; this.fermoDal = null;
       // i computer (non ci sono da soli, ma per sicurezza) ripartono da dove erano
       if (this.prossimaBot) this.prossimaBot = this.prossimaBot.map((x) => (x == null ? x : x + d));
@@ -59,7 +60,7 @@ class SfidaRompicapo {
   }
   controllaTempo() {
     if (this.finita || this.inPausa) return false;
-    const ora = Date.now();
+    const ora = adesso();
     let cambiato = false;
     for (let p = 0; p < this.n && !this.finita; p++) {
       const t = this.tavole[p];
@@ -67,7 +68,7 @@ class SfidaRompicapo {
       let r;
       try { r = this.azione(p, this.mossaBot(p, this.botLiv[p])); } catch (e) { r = { errore: e.message }; }
       if (r.errore) this.menti[p] = null; // ricomincia a pensare da capo
-      this.prossimaBot[p] = Date.now() + this.ritmoBot(p, this.botLiv[p], false);
+      this.prossimaBot[p] = adesso() + this.ritmoBot(p, this.botLiv[p], false);
       cambiato = true;
     }
     if (!this.finita && this.sfida && this.cronometro() >= this.limiteMs) {
@@ -82,7 +83,7 @@ class SfidaRompicapo {
     if (!this.tavole[p]) return;
     this.botLiv[p] = livello || 'medio';
     this.menti[p] = null;
-    this.prossimaBot[p] = Date.now() + this.ritmoBot(p, this.botLiv[p], true);
+    this.prossimaBot[p] = adesso() + this.ritmoBot(p, this.botLiv[p], true);
   }
   // chi è via a lungo nella sfida si ritira (dopo 4 richiami di fila, circa 100 secondi); da soli la partita aspetta
   salta(p) {
@@ -146,7 +147,7 @@ class SfidaRompicapo {
   ordineArrivo() { return this.arrivi.slice(); }
   chiudi() {
     if (this.finita) return;
-    this.fineMs = Date.now();
+    this.fineMs = adesso();
     if (this.fermoDal) { this.tempoFermo += this.fineMs - this.fermoDal; this.fermoDal = null; }
     this.finita = true;
     if (!this.sfida) {

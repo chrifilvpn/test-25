@@ -2,6 +2,7 @@
 // ripetizione, materiale insufficiente), orologio opzionale, proposta di patta e abbandono.
 // Scacchiera: Int8Array(64), casella = riga*8 + colonna, riga 0 = ottava traversa (in alto).
 // Pezzi: 1 pedone, 2 cavallo, 3 alfiere, 4 torre, 5 donna, 6 re; positivi Bianco, negativi Nero.
+const { ora } = require('./orologio'); // orologio vero (nel sito) o finto (nei test)
 const P = 1, N = 2, B = 3, R = 4, Q = 5, K = 6;
 const VALORE = [0, 100, 320, 330, 500, 900, 0];
 const LETTERE = 'abcdefgh';
@@ -382,7 +383,7 @@ function quiete(s, alfa, beta, ctx, prof = 0) {
   return alfa;
 }
 function negamax(s, prof, alfa, beta, ctx, dist) {
-  if ((++ctx.nodi & 1023) === 0 && Date.now() > ctx.fino) ctx.stop = true;
+  if ((++ctx.nodi & 1023) === 0 && ora(5) > ctx.fino) ctx.stop = true;
   if (ctx.stop) return 0;
   if (s.mezze >= 100) return 0;
   if (prof <= 0) return quiete(s, alfa, beta, ctx);
@@ -405,7 +406,7 @@ function negamax(s, prof, alfa, beta, ctx, dist) {
 function classifica(g, profMax, ms, pieno = false) {
   if (process.env.TEST_VELOCE) ms = Math.min(ms, 25);
   const s = g.s;
-  const ctx = { nodi: 0, fino: Date.now() + ms, stop: false };
+  const ctx = { nodi: 0, fino: ora() + ms, stop: false };
   let lista = ordina(s, g.legaliOra).map((m) => ({ m, v: 0 }));
   for (let prof = 1; prof <= profMax; prof++) {
     const giro = [];

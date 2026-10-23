@@ -64,6 +64,7 @@ giochi/morra.js
 giochi/nascondino.js
 giochi/navale-regole.js
 giochi/numero.js
+giochi/orologio.js
 giochi/paintball.js
 giochi/palloncini.js
 giochi/pallone.js
@@ -431,6 +432,7 @@ server.js
 sfida.js
 sicurezza.js
 test/browser.js
+test/fortuna.js
 test/giochi2.js
 test/giochi2/affari.js
 test/giochi2/anagrammi.js

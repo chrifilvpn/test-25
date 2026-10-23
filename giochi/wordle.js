@@ -1,5 +1,6 @@
 // WORDLE in italiano: indovina la parola segreta in 6 tentativi. Lunghezza da 4 a 8 lettere (o a caso).
 // Da soli, oppure in scontro: tutti cercano la STESSA parola, ognuno sul suo schermo, senza vedere i tentativi degli altri.
+const { ora } = require('./orologio'); // orologio vero (nel sito) o finto (nei test)
 const ELENCO = `casa cane mare sole luna vino pane nave rosa vita anno mano naso orto ramo lago dito lupo topo gufo pera mela uovo sale riso foca orso seta
 lana moto auto arco nodo muro tela vaso sera zero dado neve fumo onda voce idea aria arte dama faro fata fico gola lima meta nido olio pino polo remo rete riva
 sugo tazza torre vela zona erba cena cuoco miele succo gatto libro fiore piano sedia porta tempo verde bosco campo carta festa fuoco gioco lampo latte mondo
@@ -73,7 +74,7 @@ class Wordle {
     this.segreta = elenco[Math.floor(Math.random() * elenco.length)];
     this.righe = Array.from({ length: n }, () => []); // { parola, esito }
     this.fatto = new Array(n).fill(null);               // null = gioca ancora, { vinto, tentativi, ms }
-    this.inizio = Date.now();
+    this.inizio = ora();
     this.pausaBoss = n === 1; // da soli: con le dispense aperte la partita aspetta
     this.turno = null;
     this.inAttesa = false;
@@ -107,7 +108,7 @@ class Wordle {
     this.righe[p].push({ parola: w, esito });
     const vinto = w === this.segreta;
     if (vinto || this.righe[p].length >= TENTATIVI) {
-      this.fatto[p] = { vinto, tentativi: this.righe[p].length, ms: Date.now() - this.inizio };
+      this.fatto[p] = { vinto, tentativi: this.righe[p].length, ms: ora() - this.inizio };
       if (this.n > 1) this.annuncia(p, vinto ? `ha indovinato in ${this.righe[p].length}!` : 'ha finito i tentativi', vinto ? `indovinata in ${this.righe[p].length}! 🎉` : 'tentativi finiti…', vinto);
       if (!this.attesi().length) this.chiudi();
     }
@@ -117,7 +118,7 @@ class Wordle {
   // assente o sulle dispense per troppo tempo: nello scontro rinuncia (con un solo giocatore la partita aspetta)
   salta(p) {
     if (this.finita || this.fatto[p]) return;
-    this.fatto[p] = { vinto: false, tentativi: this.righe[p].length, ms: Date.now() - this.inizio, ritirato: true };
+    this.fatto[p] = { vinto: false, tentativi: this.righe[p].length, ms: ora() - this.inizio, ritirato: true };
     if (!this.attesi().length) this.chiudi();
   }
 

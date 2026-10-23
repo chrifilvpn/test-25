@@ -4,6 +4,7 @@
 // Se la pedina avversaria è accanto si salta; se dietro c'è un muro (o il bordo) si va di lato in diagonale.
 // Caselle numerate r*9+c (riga 0 in alto). Muri: indice o*64 + r*8 + c, con o = 0 orizzontale e o = 1 verticale;
 // il muro (r, c) sta sull'incrocio tra le caselle (r, c), (r, c+1), (r+1, c), (r+1, c+1).
+const { ora } = require('../giochi/orologio'); // orologio vero (nel sito) o finto (nei test)
 const L = 9;
 const MAX_MOSSE = 150; // mosse a testa: oltre, vince chi è più vicino all'arrivo
 
@@ -324,7 +325,7 @@ class Motore {
     else { this.muri[m[1]] = 0; this.rimasti[chi]++; }
   }
   negamax(chi, prof, alfa, beta, ply) {
-    if ((++this.nodi & 63) === 0 && Date.now() > this.fino) this.stop = true;
+    if ((++this.nodi & 63) === 0 && ora(1) > this.fino) this.stop = true;
     if (this.stop) return 0;
     if (prof <= 0) return this.valuta(chi);
     const mosse = this.mosse(chi, prof >= 2 ? 6 : 4);
@@ -347,7 +348,7 @@ class Motore {
 function cercaDue(g, chi, profMax, ms) {
   if (process.env.TEST_VELOCE) ms = Math.min(ms, 8);
   const m = new Motore(g);
-  m.fino = Date.now() + ms;
+  m.fino = ora() + ms;
   let lista = m.mosse(chi, 14).map((x) => ({ m: x, v: 0 }));
   // arrivo subito: si vince
   const vinci = lista.find((x) => x.m[0] === 0 && ARRIVO[m.lati[chi]](x.m[1]));
@@ -389,7 +390,7 @@ function valutaMolti(muri, pos, lati, rimasti, chi, turnoDopo, n) {
 }
 function cercaMolti(g, chi, ms, profondo) {
   if (process.env.TEST_VELOCE) ms = Math.min(ms, 8);
-  const fino = Date.now() + ms;
+  const fino = ora() + ms;
   const muri = g.bitMuri(), pos = g.pos.slice(), lati = g.lati, rimasti = g.rimasti.slice(), n = g.n;
   const prossimo = (chi + 1) % n;
   const mosse = destinazioni(muri, pos, chi).map((i) => [0, i]);
@@ -422,7 +423,7 @@ function cercaMolti(g, chi, ms, profondo) {
   if (!profondo) return lista;
   // le mosse migliori si controllano contro la risposta migliore dell'avversario più vicino all'arrivo
   for (const x of lista.slice(0, 10)) {
-    if (Date.now() > fino) break;
+    if (ora(1) > fino) break;
     x.v2 = prova(x.m, () => {
       const d = pos.map((p, k) => distanza(muri, lati[k], p));
       let nemico = -1;

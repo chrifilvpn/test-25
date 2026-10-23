@@ -1,6 +1,11 @@
 // Test delle regole e migliaia di partite tra computer, controllando che nessuna carta sparisca.
 const assert = require('assert');
 process.env.TEST_VELOCE = '1'; // i computer pensano pochi millisecondi, così i test restano veloci
+// LA FORTUNA DEI TEST È FISSATA (vedi test/fortuna.js): le partite tra computer escono sempre uguali, così i controlli
+// tipo "il difficile batte il medio" non falliscono per una serie sfortunata; se un computer peggiora davvero, le sue
+// partite cambiano e il test se ne accorge.
+const { fissa } = require('./fortuna');
+fissa('simula');
 const { GIOCHI } = require('../giochi');
 const { valuta } = require('../giochi/scala-regole');
 const { _test: S } = require('../giochi/scopa');
@@ -14,6 +19,7 @@ const C = (id) => {
 const Cs = (s) => s.split(' ').map(C);
 
 // ---- scala 40: combinazioni ----
+fissa('scala 40: combinazioni');
 assert.strictEqual(valuta(Cs('5c 6c 7c')).punti, 18);
 assert.strictEqual(valuta(Cs('1c 2c 3c')).punti, 6);
 assert.strictEqual(valuta(Cs('12c 13c 1c')).punti, 31);
@@ -32,6 +38,7 @@ assert.strictEqual(valuta(Cs('9f X2 9p')).punti, 27);
 assert.strictEqual(valuta(Cs('11p 12p 13p')).punti, 30);
 
 // ---- scopa: prese ----
+fissa('scopa: prese');
 const ids = (x) => JSON.stringify(x.map((o) => [...o].sort()).sort());
 assert.strictEqual(ids(S.presePossibili(C('7c'), Cs('7q 3c 4f'), false)), ids([['7q']]), 'la presa singola è obbligatoria');
 assert.strictEqual(ids(S.presePossibili(C('7c'), Cs('3c 4f 2q 5p'), false)), ids([['3c', '4f'], ['2q', '5p']]));
@@ -51,6 +58,7 @@ assert.strictEqual(S.presePossibili(C('13c'), Cs('6c 4f'), false, true).length, 
 assert.strictEqual(ids(S.presePossibili(C('13c'), Cs('1c 4f 2q'), false, true)), ids([['1c', '4f']]));
 
 // ---- briscola: prese ----
+fissa('briscola: prese');
 assert.strictEqual(B.vincitoreDi([{ posto: 0, carta: C('2c') }, { posto: 1, carta: C('1c') }], 'q'), 1);
 assert.strictEqual(B.vincitoreDi([{ posto: 0, carta: C('1c') }, { posto: 1, carta: C('2q') }], 'q'), 1);
 assert.strictEqual(B.vincitoreDi([{ posto: 0, carta: C('4c') }, { posto: 1, carta: C('1f') }], 'q'), 0);
@@ -58,6 +66,7 @@ assert.strictEqual(B.vincitoreDi([{ posto: 0, carta: C('13c') }, { posto: 1, car
 console.log('✓ regole di base');
 
 // ---- partite complete tra computer ----
+fissa('partite complete tra computer');
 const LIVELLI = ['facile', 'medio', 'difficile'];
 function totaleCarte(g) {
   switch (g.id) {
@@ -73,6 +82,7 @@ const quante = { briscola: 1500, scopa: 250, scopone: 150, rubamazzo: 1500, scal
 for (const [id, mod] of Object.entries(GIOCHI)) {
   if (!quante[id]) continue; // giochi solo tra persone: hanno i loro controlli più sotto
   for (const n of mod.meta.giocatori) {
+    fissa(`${id} in ${n}`);
     let errori = 0;
     let sblocchi = 0;
     let vittorie = [0, 0, 0];
@@ -111,6 +121,7 @@ for (const [id, mod] of Object.entries(GIOCHI)) {
 }
 
 // ---- tris: regole ----
+fissa('tris: regole');
 {
   const T = GIOCHI.tris;
   const g = T.crea({ n: 2, primo: 0, opzioni: { variante: 'classico' } });
@@ -135,6 +146,7 @@ for (const [id, mod] of Object.entries(GIOCHI)) {
 }
 
 // ---- forza 4: regole ----
+fissa('forza 4: regole');
 {
   const F = GIOCHI.forza4;
   const g = F.crea({ n: 2, primo: 0 });
@@ -153,6 +165,7 @@ for (const [id, mod] of Object.entries(GIOCHI)) {
 }
 
 // ---- battaglia navale: regole ----
+fissa('battaglia navale: regole');
 {
   const B = GIOCHI.battaglia;
   const NR = require('../giochi/navale-regole');
@@ -189,6 +202,7 @@ for (const [id, mod] of Object.entries(GIOCHI)) {
 }
 
 // ---- dama: regole di presa ----
+fissa('dama: regole di presa');
 {
   const { mosseLegali } = GIOCHI.dama._test;
   const vuota = () => new Array(64).fill(null);
@@ -207,6 +221,7 @@ for (const [id, mod] of Object.entries(GIOCHI)) {
 }
 
 // ---- scacchi: generatore di mosse (perft) e regole speciali ----
+fissa('scacchi: generatore di mosse (perft) e regole speciali');
 {
   const S = GIOCHI.scacchi._test;
   const MAP = { p: 1, n: 2, b: 3, r: 4, q: 5, k: 6 };
@@ -261,6 +276,7 @@ for (const [id, mod] of Object.entries(GIOCHI)) {
 }
 
 // ---- impiccato (solo persone) ----
+fissa('impiccato (solo persone)');
 {
   const I = GIOCHI.impiccato;
   assert.ok(I.meta.soloPersone && !I.bot, 'niente computer');
@@ -292,6 +308,7 @@ for (const [id, mod] of Object.entries(GIOCHI)) {
 }
 
 // ---- sasso carta forbice ----
+fissa('sasso carta forbice');
 {
   const M = GIOCHI.morra;
   const { vince } = M._test;
@@ -320,6 +337,7 @@ for (const [id, mod] of Object.entries(GIOCHI)) {
 }
 
 // ---- indovina il numero ----
+fissa('indovina il numero');
 {
   const Nm = GIOCHI.numero;
   let max = 0;
@@ -337,6 +355,7 @@ for (const [id, mod] of Object.entries(GIOCHI)) {
 }
 
 // ---- giochi da casinò: tante mani tra computer, fiche mai negative ----
+fissa('giochi da casinò: tante mani tra computer, fiche mai negative');
 {
   for (const id of ['blackjack', 'baccarat', 'higherlower']) {
     const mod = GIOCHI[id];
@@ -404,6 +423,7 @@ for (const [id, mod] of Object.entries(GIOCHI)) {
 }
 
 // ---- poker: le fiche non si creano e non spariscono mai ----
+fissa('poker: le fiche non si creano e non spariscono mai');
 {
   const PM = require('../giochi/poker-motore');
   const C = (x) => x.split(' ').map((t) => ({ id: t, rango: { A: 1, K: 13, Q: 12, J: 11, T: 10 }[t[0]] || +t[0], seme: t[1] }));
@@ -454,6 +474,7 @@ for (const [id, mod] of Object.entries(GIOCHI)) {
 }
 
 // ---- UNO: accumulo e UNO dimenticato ----
+fissa('UNO: accumulo e UNO dimenticato');
 {
   const U = GIOCHI.uno;
   const g = U.crea({ n: 3, primo: 0 });
@@ -493,6 +514,7 @@ for (const [id, mod] of Object.entries(GIOCHI)) {
 }
 
 // ---- campo minato ----
+fissa('campo minato');
 {
   const M = GIOCHI.campo;
   for (let k = 0; k < 200; k++) {
@@ -534,9 +556,10 @@ for (const [id, mod] of Object.entries(GIOCHI)) {
 }
 
 // ---- giochi nuovi: impostore, coccodrillo, block blast, peppa tencia, fast west ----
-require('./nuovi');
-require('./serate');
-require('./migliorie3');
-require('./giochi2');
-require('./novita');
-require('./trucco');
+fissa('giochi nuovi: impostore, coccodrillo, block blast, peppa tencia, fast west');
+fissa('nuovi'); require('./nuovi');
+fissa('serate'); require('./serate');
+fissa('migliorie3'); require('./migliorie3');
+fissa('giochi2'); require('./giochi2');
+fissa('novita'); require('./novita');
+fissa('trucco'); require('./trucco');
