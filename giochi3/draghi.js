@@ -492,7 +492,7 @@ class Draghi {
     this.combattimento = new Combattimento({ scena, gruppo, nemici, sorpresa: def.sorpresa === 'gruppo' || def.sorpresa === 'nemici' ? def.sorpresa : null, livelloIA: this.livelloIA() });
     // il trucco segreto: il prossimo d20 (attacco, tiro salvezza, prova) del personaggio di chi l'ha attivato è un 20
     this.combattimento.venti = (c) => { const k = this.pg.indexOf(c.ref); return k >= 0 && T.consuma(this, k); };
-    if (this.cp) { this.combattimento.horror = true; this.combattimento.rumore = this.incubo.rumore; this.combattimento.fuocoImparato = this.incubo.mente ? this.incubo.mente.abitudini.fuoco : 0; }
+    if (this.cp) { this.combattimento.horror = true; this.combattimento.rumore = this.incubo.rumore; this.combattimento.fuocoImparato = this.incubo.mente ? this.incubo.mente.abitudini.fuoco : 0; this.combattimento.senzaArmi = !this.cp.armi; }
     this.metaCombattimento = { nemici: nemici.map((m) => m.nome), inizio: Date.now() };
     this.scenaVista = scena;
     this.fase = 'combattimento';
@@ -601,8 +601,8 @@ class Draghi {
       R.ricalcola(pg);
     }
     const nemici = cb.creature.filter((c) => c.lato === 'nemici');
-    const riassunto = `${esito === 'vittoria' ? 'VITTORIA' : 'SCONFITTA'} dopo ${cb.round} round. Nemici: ${nemici.map((c) => `${c.ref.nome} (${c.ref.morto ? 'ucciso' : c.fuggito ? 'fuggito' : `${c.ref.pf}/${c.ref.pfMax} PF`})`).join(', ')}. Personaggi: ${this.pg.filter(Boolean).map((p) => `${p.nome} ${p.morto ? 'MORTO' : p.pf <= 0 ? 'svenuto a 0 PF' : `${p.pf}/${p.pfMax} PF`}`).join(', ')}.`;
-    this.scrivi('sistema', esito === 'vittoria' ? `🏆 Vittoria! (${cb.round} round)` : '💀 Il gruppo è stato sconfitto…');
+    const riassunto = `${esito === 'vittoria' ? 'VITTORIA' : esito === 'fuga' ? 'FUGA (il gruppo è scappato)' : 'SCONFITTA'} dopo ${cb.round} round. Nemici: ${nemici.map((c) => `${c.ref.nome} (${c.ref.morto ? 'ucciso' : c.fuggito ? 'fuggito' : `${c.ref.pf}/${c.ref.pfMax} PF`})`).join(', ')}. Personaggi: ${this.pg.filter(Boolean).map((p) => `${p.nome} ${p.morto ? 'MORTO' : p.pf <= 0 ? 'svenuto a 0 PF' : `${p.pf}/${p.pfMax} PF`}`).join(', ')}.`;
+    this.scrivi('sistema', esito === 'vittoria' ? `🏆 Vittoria! (${cb.round} round)` : esito === 'fuga' ? '🏃 Siete scappati.' : '💀 Il gruppo è stato sconfitto…');
     this.combattimento = null; this.liberaDM = null; this.attesaLibera = false;
     this.fase = 'avventura';
     this.atmosfera = 'calma';

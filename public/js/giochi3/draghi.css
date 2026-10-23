@@ -1034,6 +1034,13 @@
 .dr .dr-sip-box p { margin: 0; line-height: 1.45; }
 .dr .dr-sip-box small { opacity: .65; }
 
+/* la scelta morale (SOMA): a turni nel pannello, in tempo reale sopra la mappa */
+.dr .dr-in-scelta p { margin: 0 0 8px; line-height: 1.4; }
+.dr .dr-re-scelta { position: absolute; left: 50%; top: 18%; transform: translateX(-50%); width: min(520px, calc(100% - 32px)); padding: 14px 16px; background: rgba(8, 18, 28, .92); border: 1px solid #5fa8c8; border-radius: 10px; color: #e8f4f8; z-index: 5; display: grid; gap: 8px; }
+.dr .dr-re-scelta p { margin: 0; line-height: 1.4; font-size: 14px; }
+.dr .dr-re-scelta button { padding: 8px 10px; border-radius: 8px; border: 1px solid #5fa8c8; background: #12324a; color: #fff; font: inherit; cursor: pointer; text-align: left; }
+.dr .dr-re-scelta button:hover { background: #1c4a6a; }
+
 /* ---------- il master umano: il cappello nella compagnia (la sua schermata è in draghi-master.css) ---------- */
 .dr .dr-cr-compagnia li .dr-cr-dm { margin-left: auto; flex: none; padding: .18rem .5rem; font-size: .74rem; }
 .dr .dr-cr-compagnia li span.dr-cr-dm { display: inline-block; }

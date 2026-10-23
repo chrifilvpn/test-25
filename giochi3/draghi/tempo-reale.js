@@ -34,6 +34,8 @@ const RAGGIO = 0.34;
 const CADUTO_MS = 20000; // a terra: 20 secondi per farsi rialzare
 const LUCE_VISTA = { accesa: 13, emergenza: 9, buio: 3.2 };
 const caso = (a) => a[Math.floor(Math.random() * a.length)];
+// prima che arrivi: qualcosa si muove sopra di voi
+const PRESAGI = ['🔊 Un colpo sordo nel soffitto. Poi un altro, più lontano. Qualcosa corre nei condotti.', '🔊 Una grata vibra da sola. Dentro il condotto, un respiro che non è vostro.', '🔊 Un rumore di metallo graffiato sopra le vostre teste. Si ferma. Ascolta.'];
 const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const angolo = (a, b) => Math.atan2(b.y - a.y, b.x - a.x);
@@ -62,6 +64,8 @@ class TempoReale {
     const inc = g.incubo;
     if (!inc.mente) inc.mente = D.nuovaMente();
     this.mente = inc.mente; this.ordine = 'libera';
+    // in tempo reale la creatura non aspetta gli obiettivi: arriva dopo poco (prima si sente nei condotti)
+    this.risveglio = g.difficolta === 'storia' ? 50 : g.difficolta === 'mortale' ? 15 : 25;
     // i personaggi alla partenza
     this.gioc = g.pg.map((pg, posto) => {
       const p = this.cellaLibera(m.partenza.x + (posto % 3) - 1, m.partenza.y + Math.floor(posto / 3));
@@ -165,7 +169,10 @@ class TempoReale {
   svegliaCreatura() {
     if (this.creatura) return;
     const ref = R.mostroDa({ id: this.cp.cacciatore });
-    this.creatura = { id: 'creatura', ref, x: 0, y: 0, a: 0, fuori: false, stato: 'condotti', fino: this.t + 8, meta: null, cd: 0, vel: tileVel(ref), cercati: new Set(), grata: null, scacciata: 0 };
+    // la prima volta esce vicino a voi: un indizio preciso della direttrice
+    const vivi = this.gioc.filter((p) => !this.g.pg[p.posto].morto), v = vivi[0] || this.gioc[0];
+    this.mente.indizio = { x: v.x, y: v.y, fino: this.t + 16, errore: 4 };
+    this.creatura = { id: 'creatura', ref, x: 0, y: 0, a: 0, fuori: false, stato: 'condotti', fino: this.t + 5, meta: null, cd: 0, vel: tileVel(ref), cercati: new Set(), grata: null, scacciata: 0 };
     this.avvisa(caso(this.cp.arrivo), 'master');
   }
   // la creatura esce da una grata (vicino a dove vuole andare)
@@ -177,19 +184,19 @@ class TempoReale {
     if (!sc) { c.fino = this.t + 4; return; }
     const p = this.cellaLibera(sc.x, sc.y);
     c.x = p.x + 0.5; c.y = p.y + 0.5; c.fuori = true; c.grata = sc;
-    c.stato = 'giro'; c.fino = this.t + 22 + Math.random() * 20; c.meta = { x: verso.x, y: verso.y }; c.cercati.clear();
+    c.stato = 'giro'; c.fino = this.t + 32 + Math.random() * 22; c.meta = { x: verso.x, y: verso.y }; c.cercati.clear();
     this.rumore(c.x, c.y, 7, 0.8, 'creatura');
     this.effetto({ tipo: 'grata', x: c.x, y: c.y });
   }
   rientra() {
     const c = this.creatura;
-    c.fuori = false; c.stato = 'condotti'; c.fino = this.t + (c.scacciata > this.t ? c.scacciata - this.t : 10 + Math.random() * 14); c.meta = null;
+    c.fuori = false; c.stato = 'condotti'; c.fino = this.t + (c.scacciata > this.t ? c.scacciata - this.t : 4 + Math.random() * 6); c.meta = null;
     this.effetto({ tipo: 'grata', x: c.x, y: c.y });
   }
   scaccia(perche) {
     const c = this.creatura;
     if (!c || !c.fuori || c.stato === 'fuga') return;
-    c.stato = 'fuga'; c.scacciata = this.t + (35 + Math.random() * 20) * (1 - 0.4 * this.sa('fuoco')); this.mente.tensione = 30; this.mente.calma = 0;
+    c.stato = 'fuga'; c.scacciata = this.t + (18 + Math.random() * 10) * (1 - 0.4 * this.sa('fuoco')); this.mente.tensione = 30; this.mente.calma = 0;
     const grata = this.mappa.grate.map((q) => ({ q, d: Math.hypot(q.x + 0.5 - c.x, q.y + 0.5 - c.y) })).sort((a, b) => a.d - b.d)[0];
     c.meta = grata ? { x: grata.q.x + 0.5, y: grata.q.y + 0.5 } : null;
     c.ref.pf = c.ref.pfMax;
@@ -221,6 +228,7 @@ class TempoReale {
     if (!colpito) { this.avvisa(`${n.ref.nome} attacca ${pg.nome} con ${a.nome}: ${t.valore + a.bonus} contro CA ${pg.ca}, mancato.`, 'tiro', p.posto); return; }
     const q = R.tira(a.danno, { critico: t.valore === 20 }).totale;
     this.danno(p, q, a.tipo, `${n.ref.nome} (${a.nome})`);
+    if ((n.ref.tratti || []).includes('tagliaDita') && pg.pf > 0 && Math.random() < 0.5) { const t = H.tagliaDito(pg); if (t) { R.ricalcola(pg); this.avvisa(t, 'pericolo', p.posto); this.versione++; } }
   }
   danno(p, q, tipo, da) {
     const pg = this.g.pg[p.posto];
@@ -255,7 +263,8 @@ class TempoReale {
     for (const p of this.gioc) this.passoPg(p);
     for (const l of this.lanci.splice(0)) if (l.arriva > this.t) this.lanci.push(l); else this.atterra(l);
     for (const n of this.nemici) if (!n.via) this.passoNemico(n);
-    if (this.creatura) { this.dirigi(); this.passoCreatura(); } else if (g.incubo.caccia.attiva) this.svegliaCreatura();
+    if (this.creatura) { this.dirigi(); this.passoCreatura(); } else if (g.incubo.caccia.attiva || this.t > this.risveglio) { g.incubo.caccia.attiva = true; this.svegliaCreatura(); }
+    else if (this.t > this.risveglio * 0.4 && !this.presagio) { this.presagio = true; this.avvisa(caso(PRESAGI), 'master'); this.rumore(this.gioc[0].x + 6, this.gioc[0].y - 4, 9, 1.2, 'creatura'); }
     // il fuoco brucia chi ci passa
     for (const f of this.fuochi) {
       for (const n of [...this.nemici.filter((x) => !x.via), ...(this.creatura && this.creatura.fuori ? [this.creatura] : [])]) if (dist(n, f) < f.r && !(f.colpiti.has(n.id))) { f.colpiti.add(n.id); this.feriscinemico(n, R.tira('2d6').totale, 'fuoco', null); }
@@ -268,6 +277,7 @@ class TempoReale {
       const ob = g.obiettivoOra;
       if (ob && ob.fai === 'raggiungi' && ob.area === ar.id) this.obiettivo(p);
     }
+    if (this.cp.filmare && Math.round(this.t / DT) % 10 === 0) this.filma();
     const pr = this.gioc.find((p) => !g.pg[p.posto].morto) || this.gioc[0];
     g.incubo.area = this.areaIn(pr).id;
     return this.versione !== v0 || g.finita || g.fase !== 'reale';
@@ -283,7 +293,9 @@ class TempoReale {
       else if (this.t >= p.azione.fino) { const a = p.azione; p.azione = null; a.fatto(); }
     }
     if (p.armadietto) return;
-    const vel = p.ril ? VEL.rilevatore : p.acc ? VEL.accucciato : p.corre ? VEL.corre : VEL.cammina;
+    const fondo = this.areaIn(p).stile === 'fondale';
+    if (fondo) p.corre = false; // sul fondale non si corre
+    const vel = (p.ril ? VEL.rilevatore : p.acc ? VEL.accucciato : p.corre ? VEL.corre : VEL.cammina) * (fondo ? 0.65 : 1);
     const l = Math.hypot(p.mx, p.my);
     if (l > 0.1) {
       const k = Math.min(1, l);
@@ -298,6 +310,7 @@ class TempoReale {
       st.batteria = Math.max(0, st.batteria - DT * (this.cp.id === 'manicomio' ? 0.6 : 0.3));
       if (!st.batteria) { st.torcia = false; this.avvisa('🪫 Batterie finite: la luce si spegne.', 'sistema', p.posto); this.versione++; }
     }
+    if (ar.pressione && !g.chiaviDelGruppo().has(ar.pressione) && this.t > (p.pressione || 0)) { p.pressione = this.t + 4; this.avvisa('🌊 La pressione schiaccia la tuta: serve quella rinforzata!', 'pericolo', p.posto); this.danno(p, R.tira('1d6').totale, 'contundente', 'la pressione'); }
     // la paura: al buio sale piano, alla luce scende
     if (Math.random() < DT / 6) g.paura(p.posto, ar.luce === 'buio' && !(st.torcia && st.batteria > 0) ? 1 : ar.luce === 'accesa' ? -1 : 0);
     // il rilevatore fa bip
@@ -349,6 +362,7 @@ class TempoReale {
     if (n.stordito > this.t) return;
     const vivi = this.gioc.filter((p) => !this.g.pg[p.posto].morto && this.g.pg[p.posto].pf > 0);
     const visto = vivi.filter((p) => this.vedePg(n, p, { lontano: 9 })).sort((a, b) => dist(a, n) - dist(b, n))[0];
+    if (visto && n.ref.tratti.includes('pacifico') && !n.provocato) { if (dist(n, visto) < 5 && this.t > (n.parla || 0)) { n.parla = this.t + 12; this.avvisa(`🤖 ${caso(H.FRASI_ROBOT)}`, 'master', visto.posto); } n.a = angolo(n, visto); return; }
     if (visto) { n.stato = 'insegue'; n.meta = { x: visto.x, y: visto.y }; n.perso = this.t + 5; }
     else if (n.stato === 'insegue' && this.t > n.perso) n.stato = 'giro';
     if (n.stato === 'giro') {
@@ -410,7 +424,9 @@ class TempoReale {
         c.condotto = { x: g2.x + 0.5, y: g2.y + 0.5, fino: this.t + 3 + Math.random() * 3, verso: zona };
       }
       if (tregua) { c.fino = Math.max(c.fino, this.t + 2); }
-      const d = dist(c, c.condotto) || 1; const v = Math.min(d, 4 * DT);
+      const d = dist(c, c.condotto) || 1; const v = Math.min(d, 7 * DT);
+      // si sente passare sopra di voi
+      if (!tregua && this.t > (c.tonfo || 0) && vivi.some((p) => dist(p, c) < 14)) { c.tonfo = this.t + 2 + Math.random() * 3; this.rumore(c.x, c.y, 8, 0.9, 'creatura'); }
       if (c.x === 0 && c.y === 0) { c.x = c.condotto.x; c.y = c.condotto.y; }
       c.x += (c.condotto.x - c.x) / d * v; c.y += (c.condotto.y - c.y) / d * v;
       const lenta = g.difficolta === 'storia' ? 1.6 : g.difficolta === 'mortale' ? 0.7 : 1;
@@ -424,10 +440,11 @@ class TempoReale {
     }
     // torna alla grata (fine del giro o tregua della direttrice): se vede qualcuno però insegue
     if (c.stato === 'rientro' && (!c.meta || this.vaiVerso(c, c.meta, velBase * 0.8) || this.t > c.fino)) { this.rientra(); return; }
+    if (c.stato === 'rientro' && c.trascina > this.t) return; // si porta via il corpo: non guarda nessuno
     // vede qualcuno?
     const visto = vivi.filter((p) => g.pg[p.posto].pf > 0 && this.vedePg(c, p, { cono: 1.05, lontano: 14 })).sort((a, b) => dist(a, c) - dist(b, c))[0];
     if (visto) {
-      if (c.stato !== 'caccia') { this.avvisa(`⚠️ ${c.ref.nome} vi ha visti!`, 'master'); for (const p of vivi) if (dist(p, c) < 15) g.paura(p.posto, 2); this.rumore(c.x, c.y, 10, 0.8, 'creatura'); this.effetto({ tipo: 'urlo', x: c.x, y: c.y }); }
+      if (c.stato !== 'caccia') { c.ruggito = this.t + 0.8; this.avvisa(`⚠️ ${c.ref.nome} vi ha visti!`, 'master'); for (const p of vivi) if (dist(p, c) < 15) g.paura(p.posto, 2); this.rumore(c.x, c.y, 10, 0.8, 'creatura'); this.effetto({ tipo: 'urlo', x: c.x, y: c.y }); }
       c.stato = 'caccia'; c.meta = { x: visto.x, y: visto.y }; c.perso = this.t + 4; c.preda = visto.posto; D.ricordaZona(this.mente, this.areaIn(visto).id, DT * 2);
     }
     if (c.stato === 'caccia') {
@@ -437,7 +454,9 @@ class TempoReale {
       if (preda && preda.corre && visto === preda) this.impara('corsa', DT * 0.5);
       const vicino = vivi.filter((p) => g.pg[p.posto].pf > 0 && !p.armadietto && dist(p, c) < 0.95)[0];
       if (vicino && c.cd <= 0) { this.uccide(c, vicino); return; }
-      this.vaiVerso(c, c.meta, velBase * (1.25 + 0.12 * this.sa('corsa')));
+      if (c.ruggito > this.t) { c.a = angolo(c, c.meta); return; } // si ferma un attimo a ruggire: il tempo di girarsi e correre
+      // in caccia è più veloce di chi corre: bisogna rompere la linea di vista e nascondersi
+      this.vaiVerso(c, c.meta, Math.max(velBase * 1.25, VEL.corre * (g.difficolta === 'storia' ? 0.92 : g.difficolta === 'mortale' ? 1.12 : 1.05)) * (1 + 0.08 * this.sa('corsa')));
       return;
     }
     // sente qualcosa? (chi corre o cammina al buio lo sente meglio, se ha imparato che lo fate)
@@ -455,7 +474,7 @@ class TempoReale {
       // ogni tanto si ferma ad ascoltare (gira la testa, non cammina)
       const ascolta = c.ascolta > this.t;
       if (ascolta) c.a += DT * 1.4 * (c.verso || 1);
-      const arrivato = !ascolta && (!c.meta || this.vaiVerso(c, c.meta, velBase * (c.stato === 'indaga' ? 0.95 : 0.7)));
+      const arrivato = !ascolta && (!c.meta || this.vaiVerso(c, c.meta, velBase * (c.stato === 'indaga' ? 1.15 : 0.85)));
       if (arrivato && Math.random() < 0.4) { c.ascolta = this.t + 1.5 + Math.random() * 2; c.verso = Math.random() < 0.5 ? -1 : 1; }
       // fruga negli armadietti vicini (una volta ciascuno)
       for (const p of vivi) if (p.armadietto && dist(p, c) < 1.9 + 1.5 * this.sa('armadietto') && !c.cercati.has(p.posto)) {
@@ -477,7 +496,7 @@ class TempoReale {
       // pattuglia: non sa dove siete. Va verso l'indizio della direttrice o nelle zone dove vi ha già trovati
       if (!c.meta || dist(c, c.meta) < 1) { const ind = this.ordine === 'indizio' && this.mente.indizio; c.meta = ind ? this.vicinoLibero(ind, ind.errore) : this.vicinoLibero(this.zonaDiCaccia(), 7); }
       if (this.ordine === 'tregua' && c.fino > this.t + 3) c.fino = this.t + 3;
-      this.vaiVerso(c, c.meta, velBase * 0.55);
+      this.vaiVerso(c, c.meta, velBase * 0.8);
     }
     if (this.t > c.fino && c.stato !== 'caccia') { // torna nei condotti dalla grata più vicina
       const gr = this.vicinoA(c, ['v'], 3);
@@ -506,6 +525,8 @@ class TempoReale {
     const ts = R.salvezza(pg, 'des', { cd: g.difficolta === 'mortale' ? 20 : 17, venti: T.consuma(g, p.posto) });
     if (ts.riuscita) { this.avvisa(`😮‍💨 ${pg.nome} si divincola all'ultimo! (tiro salvezza su Destrezza ${ts.totale})`, 'tiro', p.posto); this.danno(p, R.tira('2d10').totale, 'taglio', c.ref.nome); c.cd = 1.5; return; }
     this.muore(p, caso(this.cp.morte));
+    // si porta via il corpo nei condotti: gli altri hanno un momento per scappare
+    if (c === this.creatura) { const q = this.mappa.grate.map((x) => ({ x: x.x + 0.5, y: x.y + 0.5, d: Math.hypot(x.x - c.x, x.y - c.y) })).sort((a, b) => a.d - b.d)[0]; if (q) { c.stato = 'rientro'; c.meta = { x: q.x, y: q.y }; c.fino = this.t + 12; c.trascina = this.t + 7; } }
   }
   feriscinemico(n, q, tipo, p) {
     if (n === this.creatura) {
@@ -521,7 +542,7 @@ class TempoReale {
     }
     const sub = R.applicaDanno(n.ref, q, tipo, {});
     this.effetto({ tipo: 'sangue', x: n.x, y: n.y, olio: n.androide });
-    if (p) { n.stato = 'insegue'; n.meta = { x: p.x, y: p.y }; n.perso = this.t + 5; }
+    if (p) { n.provocato = true; n.stato = 'insegue'; n.meta = { x: p.x, y: p.y }; n.perso = this.t + 5; }
     if (n.ref.pf <= 0) {
       n.via = true;
       this.avvisa(`☠️ ${n.ref.nome} è a terra.`, 'tiro');
@@ -535,6 +556,7 @@ class TempoReale {
   attacca(p) {
     const g = this.g, pg = g.pg[p.posto];
     if (p.cd > 0 || p.armadietto || pg.pf <= 0) return;
+    if (!this.cp.armi) { p.cd = 1.5; this.avvisa('✋ Qui non hai armi: scappa, nasconditi o distraili con il rumore.', 'sistema', p.posto); return; }
     const lista = this.armi(pg);
     const a = lista[Math.min(p.arma, lista.length - 1)];
     if (!a) return;
@@ -635,7 +657,7 @@ class TempoReale {
       } };
       return;
     }
-    if (ch === 'k') { const term = this.mappa.terminali.find((q) => q.x === cosa.cx && q.y === cosa.cy); this.letti.add(i); this.salvataggio = { x: p.x, y: p.y }; this.avvisa(`🖥️ ${term ? term.testo : 'Il terminale è morto.'}`, 'master', p.posto); this.avvisa('💾 Posizione registrata al terminale: con !revive si riparte da qui.', 'sistema', p.posto); this.versione++; return; }
+    if (ch === 'k') { const term = this.mappa.terminali.find((q) => q.x === cosa.cx && q.y === cosa.cy); this.letti.add(i); this.salvataggio = { x: p.x, y: p.y }; this.avvisa(`${this.cp.filmare ? '📄' : '🖥️'} ${term ? term.testo : 'Il terminale è morto.'}`, 'master', p.posto); if (term && !g.incubo.documenti.includes(term.testo)) g.incubo.documenti.push(term.testo); this.avvisa('💾 Posizione registrata al terminale: con !revive si riparte da qui.', 'sistema', p.posto); this.versione++; return; }
     if (ch === 'o') {
       const pt = this.mappa.punti.find((q) => q.x === cosa.cx && q.y === cosa.cy);
       const ob = g.obiettivoOra;
@@ -663,11 +685,31 @@ class TempoReale {
   obiettivo(p) {
     const g = this.g, ob = g.obiettivoOra;
     if (!ob) return;
+    if (g.completaObiettivo(p.posto) === 'scelta') { this.avvisa(`❓ ${ob.scelta.domanda}`, 'master'); this.versione++; return; }
     this.avvisa(`✅ ${ob.titolo}`, 'master');
-    g.completaObiettivo(p.posto);
     if (!g.finita) { const nuovo = g.obiettivoOra; if (nuovo) this.avvisa(`🎯 ${nuovo.titolo}: ${nuovo.testo}`); }
     if (g.incubo.caccia.attiva && !this.creatura) this.svegliaCreatura();
     this.versione++;
+  }
+  // Outlast: con la videocamera accesa si filma da soli chi si vede per la prima volta (e ogni settore nuovo)
+  filma() {
+    const g = this.g, inc = g.incubo;
+    for (const p of this.gioc) {
+      const st = inc.stato[p.posto];
+      if (g.pg[p.posto].morto || !(st.torcia && st.batteria > 0) || p.armadietto) continue;
+      const c = this.creatura;
+      for (const e of [...this.nemici.filter((n) => !n.via), ...(c && c.fuori ? [c] : [])]) {
+        const id = e.ref.id || e.ref.nome;
+        if (inc.filmati.includes(id) || dist(e, p) > 12 || !this.visibile(p, e)) continue;
+        inc.filmati.push(id);
+        const forte = e === c;
+        this.avvisa(`🎥 ${g.pg[p.posto].nome} filma ${e.ref.nome}${forte ? ', con le mani che tremano' : ''}. (${inc.filmati.length} filmati)`, 'sistema', p.posto);
+        g.daiPx(Math.round((forte ? 60 : 20) * g.livelloMedio()), 'un filmato');
+        if (forte) g.paura(p.posto, 2);
+      }
+      const ar = this.areaIn(p);
+      if (!inc.filmati.includes(ar.id)) { inc.filmati.push(ar.id); g.daiPx(Math.round(10 * g.livelloMedio()), 'un filmato'); }
+    }
   }
   costruisci(p, id) {
     const g = this.g, pg = g.pg[p.posto];
@@ -711,6 +753,15 @@ class TempoReale {
   azione(p, a) {
     if (a && a.tipo === 'input') { this.input(p, a.dati || {}); return { ok: true }; }
     if (a && a.tipo === 'scrivi') return this.scrivi(this.gioc[p], a.testo);
+    if (a && a.tipo === 'scegli') {
+      const g = this.g, ob = g.obiettivoOra, o = ob && ob.scelta && ob.scelta.opzioni[Number(a.i)];
+      const r = g.scegli(p, a.i);
+      if (r.errore) return r;
+      this.avvisa(`${o.esito}`, 'master'); this.avvisa(`✅ ${ob.titolo}`, 'master');
+      if (!g.finita) { const nuovo = g.obiettivoOra; if (nuovo) this.avvisa(`🎯 ${nuovo.titolo}: ${nuovo.testo}`); }
+      this.versione++;
+      return r;
+    }
     return { errore: 'In tempo reale si gioca con la tastiera o il joystick' };
   }
 
@@ -839,7 +890,10 @@ Racconta l'esito in 1-3 frasi brevi, in italiano, al presente (i PNG parlano tra
       bat: Math.round(st.batteria), paura: st.paura, cd: +p.cd.toFixed(2),
       porte: this.porteAperte(occhi),
       msg: this.messaggi.filter((m) => m.posto == null || m.posto === posto).slice(-6).map((m) => ({ n: m.n, testo: m.testo, tipo: m.tipo })),
+      scelta: (() => { const ob = g.obiettivoOra; return g.incubo.sceltaAperta && ob && ob.scelta ? { domanda: ob.scelta.domanda, opzioni: ob.scelta.opzioni.map((o) => o.testo) } : null; })(),
       allarme: !!(c && c.fuori && c.stato === 'caccia' && dist(c, occhi) < 16),
+      inseguito: !!(c && c.fuori && c.stato === 'caccia' && c.preda === occhi.posto),
+      vicina: !c || (c.x === 0 && c.y === 0) || c.scacciata > this.t ? 0 : c.fuori ? (dist(c, occhi) < 8 ? 3 : dist(c, occhi) < 15 ? 2 : dist(c, occhi) < 24 ? 1 : 0) : dist(c, occhi) < 10 ? 1 : 0,
     };
   }
   porteAperte(p) { // le porte vicine aperte (per disegnarle)
@@ -855,7 +909,7 @@ Racconta l'esito in 1-3 frasi brevi, in italiano, al presente (i PNG parlano tra
       aree: this.cp.aree.map((a) => ({ id: a.id, nome: a.nome, gx: a.gx, gy: a.gy, luce: a.luce, stile: a.stile, visitata: g.incubo.visitate.includes(a.id) })),
       aperti: [...this.aperti], letti: [...this.letti],
       punto: (() => { const p = this.puntoObiettivo(); return p ? [p.x, p.y] : null; })(),
-      armi: pg ? this.armi(pg).map((a) => ({ nome: a.nome, mischia: a.mischia, munizioni: a.munizioni, danno: a.danno, colpire: a.colpire })) : [],
+      armi: pg && this.cp.armi ? this.armi(pg).map((a) => ({ nome: a.nome, mischia: a.mischia, munizioni: a.munizioni, danno: a.danno, colpire: a.colpire })) : [],
       creaturaSveglia: !!this.creatura, nomeCreatura: MOSTRI[this.cp.cacciatore].nome,
     };
   }
