@@ -2,10 +2,11 @@
 // una alla volta sul telefono con la barra in basso. Il racconto è una pergamena: il master in corsivo con il
 // capolettera, le azioni dei personaggi come fumetti col ritratto, i tiri con il d20. Sotto si scrive cosa si fa (o si
 // tirano i dadi chiesti dal master). Il mondo: la mappa a pergamena con i luoghi scoperti, le missioni, i personaggi
-// incontrati e il diario. La scheda completa di ogni personaggio si apre toccandolo.
+// incontrati e il diario. La scheda completa di ogni personaggio si apre toccandolo. Chi fa il master al posto dell'IA
+// ha la sua schermata (draghi-master.js).
 (() => {
   const { esc, suono, primaVolta, trascorso } = window.Nuovi;
-  const A = () => window.DraghiArte, MP = () => window.DraghiMappe, CR = () => window.DraghiCrea, CB = () => window.DraghiCampo, IN = () => window.DraghiIncubo, MU = () => window.DraghiMusica;
+  const A = () => window.DraghiArte, MP = () => window.DraghiMappe, CR = () => window.DraghiCrea, CB = () => window.DraghiCampo, IN = () => window.DraghiIncubo, DM = () => window.DraghiMaster, MU = () => window.DraghiMusica;
   const ATMOSFERA = { calma: ['🌙', 'Calma'], tensione: ['⚠️', 'Tensione'], battaglia: ['⚔️', 'Battaglia'], mistero: ['🔮', 'Mistero'], festa: ['🎉', 'Festa'], orrore: ['💀', 'Orrore'], viaggio: ['🧭', 'In viaggio'] };
   const AMBIENTI = { classica: 'Fantasy classico', oscura: 'Oscura e horror', pirati: 'Mari e pirati', citta: 'Intrighi in città', selvaggia: 'Terre selvagge' };
   const NOMI_CAR = { for: 'Forza', des: 'Destrezza', cos: 'Costituzione', int: 'Intelligenza', sag: 'Saggezza', car: 'Carisma' };
@@ -23,6 +24,9 @@
   const NC = new Proxy(NOMI_CLASSE, { get: (o, k) => o[k] || nomiTema[k] || String(k) });
   const mioPg = (ctx) => ctx.partita.pg[ctx.mio] || null;
   const sonoHost = (ctx) => (ctx.partita.host === ctx.mio || ctx.locale) && !ctx.stato.spettatore;
+  // chi dà i comandi del tavolo: chi l'ha aperto e il master umano
+  const comanda = (ctx) => sonoHost(ctx) || DM().sonoDm(ctx);
+  const nomeDm = (ctx) => (ctx.partita.dm != null ? ctx.nome(ctx.partita.dm) : '');
 
   // ---------- in più sullo stesso computer: ci si passa il computer ----------
   // Il gioco aspetta la mossa di uno dei posti "locali": il browser fa finta di essere lui (ctx.mio, le mosse partono
@@ -86,8 +90,8 @@
   function gruppo(ctx) {
     const p = ctx.partita;
     return `<div class="dr-gruppo"><h3 class="dr-titoletto">La compagnia</h3>${p.pg.map((pg, i) => (pg ? cartaPg(ctx, pg, i) : '')).join('')}
-      <div class="dr-info-tav"><span>${esc(AMBIENTI[p.ambientazione] || '')}</span>${p.pazza ? '<span title="Il master fa ridere">🤪 pazza</span>' : ''}<span>${{ normale: 'Normale', storia: 'Storia', mortale: 'Mortale' }[p.difficolta]}</span>${p.iaAttiva ? '<span title="Il master è un\'intelligenza artificiale">🧠 master IA</span>' : '<span title="Manca la chiave dell\'IA: racconta il master di riserva">📕 master di riserva</span>'}</div>
-      ${sonoHost(ctx) && !p.finita ? '<button type="button" class="dr-link dr-chiudi-camp" data-az="dr-termina">Chiudi la campagna</button>' : ''}</div>`;
+      <div class="dr-info-tav"><span>${esc(AMBIENTI[p.ambientazione] || '')}</span>${p.pazza ? '<span title="Il master fa ridere">🤪 pazza</span>' : ''}<span>${{ normale: 'Normale', storia: 'Storia', mortale: 'Mortale' }[p.difficolta]}</span>${p.dm != null ? `<span title="Il master è una persona${p.dmAuto ? ' (adesso lascia raccontare l\'IA)' : ''}">🎩 master: ${esc(nomeDm(ctx))}${p.dmAuto ? ' 🤖' : ''}</span>` : p.iaAttiva ? '<span title="Il master è un\'intelligenza artificiale">🧠 master IA</span>' : '<span title="Manca la chiave dell\'IA: racconta il master di riserva">📕 master di riserva</span>'}</div>
+      ${comanda(ctx) && !p.finita ? '<button type="button" class="dr-link dr-chiudi-camp" data-az="dr-termina">Chiudi la campagna</button>' : ''}</div>`;
   }
 
   // ---------- il racconto ----------
@@ -107,7 +111,7 @@
     const ultimo = ui.drUltimaVoce || 0;
     const voci = p.racconto.map((v) => voce(ctx, v, v.id > ultimo && trascorso(ctx.ui, `dr-v${v.id}`) < 1500)).join('');
     const vuoto = !p.racconto.length ? '<p class="dr-vuoto">La storia sta per cominciare…</p>' : '';
-    return `<div class="dr-storia ${soloLettura ? 'compatta' : ''}" data-scorri="storia">${vuoto}${voci}${p.attesaIA && !soloLettura ? '<div class="dr-voce dr-scrive"><span class="dr-piuma">🪶</span> Il master sta scrivendo<span class="dr-puntini"><i>.</i><i>.</i><i>.</i></span></div>' : ''}</div>`;
+    return `<div class="dr-storia ${soloLettura ? 'compatta' : ''}" data-scorri="storia">${vuoto}${voci}${p.attesaIA && !soloLettura && !(p.attesaDM && DM().sonoDm(ctx)) ? '<div class="dr-voce dr-scrive"><span class="dr-piuma">🪶</span> Il master sta scrivendo<span class="dr-puntini"><i>.</i><i>.</i><i>.</i></span></div>' : ''}</div>`;
   }
   function luogoAttuale(p) { return p.mondo && p.mondo.luoghi.find((l) => l.id === p.mondo.posizione); }
   function testaStoria(ctx) {
@@ -123,7 +127,7 @@
     if (p.finita) return '<div class="dr-sotto"><p class="dr-fine-camp">🏁 La campagna è finita. Grazie per aver giocato!</p></div>';
     if (ctx.stato.spettatore) return '<div class="dr-sotto"><p class="dr-nota">Stai guardando la partita.</p></div>';
     if (p.erroreIA && !p.attesaIA) return `<div class="dr-sotto"><div class="dr-errore">⚠️ Il master non risponde (${esc(p.erroreIA)}). Riprovo da solo tra poco… <button type="button" class="dr-bt" data-az="dr-riprova">↻ Riprova ora</button></div></div>`;
-    if (p.attesaIA) return '<div class="dr-sotto"><div class="dr-attende"><span class="dr-candela"></span>Il master sta pensando a cosa succede…</div></div>';
+    if (p.attesaIA) return `<div class="dr-sotto"><div class="dr-attende"><span class="dr-candela"></span>${p.attesaDM ? `🎩 ${esc(nomeDm(ctx))} sta preparando cosa succede…` : 'Il master sta pensando a cosa succede…'}</div></div>`;
     if (p.fase === 'prove') return prove(ctx);
     if (p.fase === 'caduti') return '<div class="dr-sotto"><p class="dr-fine-camp">💀 Siete tutti morti. Scrivete <b>!revive</b> in chat per tornare in vita con tutto quello che avevate (altrimenti la campagna si chiude tra 15 minuti).</p></div>';
     if (p.fase !== 'avventura') return '';
@@ -245,12 +249,16 @@
   // ---------- la creazione: chi è pronto e l'idea della campagna ----------
   function latoCreazione(ctx) {
     const p = ctx.partita;
-    const chi = p.pg.map((pg, i) => `<li class="${pg ? 'pronto' : ''}">${pg ? `<span class="dr-mini-ritr">${A().ritratto(pg, { cornice: false })}</span>` : `<span class="dr-mini-ritr vuoto">${p.bot[i] ? '🤖' : '✍️'}</span>`}<span><b>${pg ? esc(pg.nome) : p.bot[i] ? 'Compagno del computer' : esc(ctx.nome(i))}</b><small>${pg ? `${NOMI_STIRPE[pg.stirpe]} ${NC[pg.classe].toLowerCase()}` : p.bot[i] ? 'lo crea il computer' : 'sta creando il personaggio…'}</small></span></li>`).join('');
-    const idea = sonoHost(ctx)
+    // il master umano: chi ha aperto il tavolo lo sceglie col 🎩 (o uno si propone), non al computer né a chi gioca sul computer passato
+    const puoDm = (i) => p.modalita !== 'reale' && p.n > 1 && !p.bot[i] && !(p.locali || []).includes(i) && !ctx.stato.spettatore && (sonoHost(ctx) || (i === ctx.mio && p.dm == null));
+    const tastoDm = (i) => (i === p.dm ? (sonoHost(ctx) || i === ctx.mio ? `<button type="button" class="dr-chip sel dr-cr-dm" data-az="dr-dm-lascia" title="Non fa più il master: torna l'IA">🎩 master ✕</button>` : '<span class="dr-chip sel dr-cr-dm">🎩 master</span>') : puoDm(i) ? `<button type="button" class="dr-chip dr-cr-dm" data-az="dr-dm-scegli" data-id="${i}" title="${i === ctx.mio ? 'Faccio io il master al posto dell\'IA' : 'Fa il master al posto dell\'IA'}">🎩${i === ctx.mio && !sonoHost(ctx) ? ' Faccio io il master' : ''}</button>` : '');
+    const chi = p.pg.map((pg, i) => `<li class="${pg || i === p.dm ? 'pronto' : ''}">${pg ? `<span class="dr-mini-ritr">${A().ritratto(pg, { cornice: false })}</span>` : `<span class="dr-mini-ritr vuoto">${i === p.dm ? '🎩' : p.bot[i] ? '🤖' : '✍️'}</span>`}<span><b>${pg ? esc(pg.nome) : p.bot[i] ? 'Compagno del computer' : esc(ctx.nome(i))}</b><small>${i === p.dm ? 'il master' : pg ? `${NOMI_STIRPE[pg.stirpe]} ${NC[pg.classe].toLowerCase()}` : p.bot[i] ? 'lo crea il computer' : 'sta creando il personaggio…'}</small></span>${tastoDm(i)}</li>`).join('');
+    const spiega = p.dm == null && p.modalita !== 'reale' && p.n > 1 && sonoHost(ctx) ? '<p class="dr-nota">🎩 Volete un master in carne e ossa? Tocca il cappello accanto a chi lo farà: non crea il personaggio e l\'IA gli fa da consigliere.</p>' : '';
+    const idea = comanda(ctx)
       ? `<div class="dr-idea"><h4>💡 Idea per la campagna</h4><textarea data-tieni="idea" rows="4" maxlength="2000" placeholder="Facoltativa: un tema, un cattivo, un luogo… Es.: «Una città portuale dove spariscono i bambini e il culto della Marea Nera…». Vuota: inventa tutto il master.">${esc(ctx.ui.t_idea != null ? ctx.ui.t_idea : p.idea || '')}</textarea><button type="button" class="dr-bt" data-az="dr-idea">${p.idea ? '✓ Idea salvata · aggiorna' : 'Salva l\'idea'}</button></div>
         <button type="button" class="dr-bt dr-bt-oro dr-bt-grande dr-inizia" data-az="dr-inizia">⚔️ Inizia l'avventura</button><small class="dr-nota">Chi non ha finito il personaggio lo completa il computer.</small>`
       : `${p.idea ? `<div class="dr-idea"><h4>💡 L'idea della campagna</h4><p>${esc(p.idea)}</p></div>` : ''}<p class="dr-nota">L'avventura comincia quando ${esc(ctx.nome(p.host))} preme «Inizia» (o quando tutti hanno il personaggio).</p>`;
-    return `<div class="dr-cr-compagnia"><h4>La compagnia</h4><ul>${chi}</ul>${idea}</div>`;
+    return `<div class="dr-cr-compagnia"><h4>La compagnia</h4><ul>${chi}</ul>${spiega}${idea}</div>`;
   }
   function pronto(ctx) {
     const p = ctx.partita, pg = mioPg(ctx);
@@ -284,11 +292,13 @@
       const scheda1 = ui.drScheda ? scheda(ctx, ui.drScheda) : '';
       // lo scenario dello sfondo (sagome dell'ambientazione, modalità pazza)
       const scena = `dr-amb-${esc(p.ambientazione || 'classica')} ${p.pazza ? 'dr-pazza' : ''}`;
+      if (p.fase === 'creazione' && DM().sonoDm(ctx)) return `<div class="dr dr-dm dr-fase-pronti ${scena}">${DM().creazione(ctx, latoCreazione(ctx))}${scheda1}</div>`;
       if (p.fase === 'creazione') {
         if (mioPg(ctx) || ctx.stato.spettatore) return `<div class="dr dr-fase-pronti ${scena}">${mioPg(ctx) ? pronto(ctx) : latoCreazione(ctx)}${scheda1}</div>`;
         return `<div class="dr dr-fase-crea ${scena}">${CR().html(ctx, latoCreazione(ctx))}${scheda1}</div>`;
       }
       if (p.reale && (p.fase === 'reale' || p.fase === 'caduti')) return `${IN().realeHtml(ctx)}${scheda1}`;
+      if (DM().sonoDm(ctx)) return DM().panno(ctx, scena);
       const cb = p.combattimento;
       if (cb && ui.drCbVisto !== cb.scena.g.length + cb.scena.stile) { ui.drCbVisto = cb.scena.g.length + cb.scena.stile; ui.drTab = 'battaglia'; ui.drLato = 'turno'; }
       if (!cb && ui.drTab === 'battaglia') ui.drTab = 'storia';
@@ -316,6 +326,7 @@
       const p = ctx.partita, ui = ctx.ui;
       CB().dopo(ctx);
       IN().dopo(ctx);
+      if (DM().sonoDm(ctx)) DM().dopo(ctx);
       // scorrimento: il racconto resta in fondo se lo era (o se c'è una voce nuova del master)
       const ultimo = p.racconto.length ? p.racconto[p.racconto.length - 1].id : 0;
       const nuove = ultimo > (ui.drUltimaVoce || 0);
@@ -347,6 +358,7 @@
       const p = ctx.partita;
       if (sipario(ctx)) return `🔄 Tocca a ${nomeLocale(p, ctx.mio)}`;
       if (p.finita) return null;
+      if (DM().sonoDm(ctx)) return p.fase === 'creazione' ? '🎩 Sei il master' : DM().stato(ctx);
       if (p.fase === 'creazione') return mioPg(ctx) ? 'Personaggio pronto' : 'Crea il tuo personaggio';
       if (p.attesaIA) return 'Il master scrive…';
       if (p.fase === 'prove') return p.prove.some((x) => x.posto === ctx.mio && !x.esito) ? '🎲 Tira i dadi!' : 'Si tirano i dadi…';
@@ -359,7 +371,7 @@
     tick(ctx, d) { IN().tick(ctx, d); MU().tick(ctx, d); },
     statoAttesa() { return null; },
     punteggio() { return ''; },
-    infoPosto(ctx, posto) { const pg = ctx.partita.pg[posto]; return pg ? `${esc(pg.nome)} · ${pg.pf}/${pg.pfMax} PF` : 'crea il personaggio'; },
+    infoPosto(ctx, posto) { const pg = ctx.partita.pg[posto]; return pg ? `${esc(pg.nome)} · ${pg.pf}/${pg.pfMax} PF` : posto === ctx.partita.dm ? '🎩 il master' : 'crea il personaggio'; },
     clic(ctx, el) {
       ctx = locale(ctx);
       const az = el.dataset.az, id = el.dataset.id, ui = ctx.ui, p = ctx.partita;
@@ -367,6 +379,7 @@
       if (az.startsWith('dr-cr-')) return CR().clic(ctx, el);
       if (az.startsWith('dr-cb-')) return CB().clic(ctx, el);
       if (az.startsWith('dr-in-') || az.startsWith('dr-re-')) return IN().clic(ctx, el);
+      if (az.startsWith('dr-dm-')) return DM().clic(ctx, el);
       switch (az) {
         case 'dr-niente': return undefined;
         case 'dr-scheda': ui.drScheda = id; ui.t_note = null; return ctx.ridisegna();
@@ -414,4 +427,6 @@
   // Esc chiude la scheda
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { const x = document.querySelector('#panno .dr-scheda .dr-x'); if (x) x.click(); } });
   Object.assign(window.Tavoli, { draghi: tavolo });
+  // i pezzi del tavolo che usa anche la schermata del master (draghi-master.js)
+  window.DraghiTavolo = { formatta, gruppo, racconto, testaStoria, mappa, missioni, diario, scheda, telefono, NOMI_AB };
 })();
