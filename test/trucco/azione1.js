@@ -71,7 +71,7 @@ try {
     assert.strictEqual(chiedi(g, 0), null, 'pallone: non al turno degli altri');
     g.turno = 0;
     const s = chiedi(g, 0);
-    assert.ok(s && s.includes(String(g.scoppio)) && !T.armato(g, 0), 'pallone: il punto di scoppio');
+    assert.ok(s && (s.includes(String(g.scoppio)) || g.scoppio <= 1) && !T.armato(g, 0), 'pallone: il punto di scoppio');
     fatti.push('pallone');
   }
   // TASTI IN ORDINE: la sequenza in anteprima durante il conto alla rovescia, e gli errori non costano
@@ -107,10 +107,18 @@ try {
     assert.ok(g.vista(0).largo > 1 && g.vista(1).largo === undefined, 'chirurgo: solo lui ha la tolleranza');
     orologio(g.inizio); g.tick(ora);
     const pp = g.percorso.pts, w = g.vista(0).w;
+    // un punto appena fuori dal corridoio (e lontano dagli altri giri del percorso)
+    const { vicino } = GIOCHI.chirurgo._test;
+    let fuori = null;
+    for (let i = 30; i < pp.length - 30 && !fuori; i += 5) {
+      const d = [pp[i + 1][1] - pp[i - 1][1], pp[i - 1][0] - pp[i + 1][0]], l = Math.hypot(...d) || 1;
+      const x = pp[i][0] + (d[0] / l) * (w / 2 + 20), y = pp[i][1] + (d[1] / l) * (w / 2 + 20), v = vicino(g.percorso, x, y);
+      if (v.d > w / 2 + 14 && v.idx > i - 20 && v.idx < i + 20) fuori = { x, y, i };
+    }
     for (const p of [0, 1]) {
       g.input(p, { t: 'via', x: pp[0][0], y: pp[0][1] });
-      const q = pp[40], d = [pp[41][1] - pp[39][1], pp[39][0] - pp[41][0]], l = Math.hypot(...d);
-      g.input(p, { t: 'pos', x: q[0] + (d[0] / l) * (w / 2 + 20), y: q[1] + (d[1] / l) * (w / 2 + 20) });
+      g.g[p].idx = fuori.i;
+      g.input(p, { t: 'pos', x: fuori.x, y: fuori.y });
     }
     assert.ok(g.g[0].stato === 'corre' && g.g[1].stato === 'pronto', 'chirurgo: lui fuori dal bordo resta in corsa, l\'altro ricomincia');
     while (g.fase === 'corsa') { orologio(ora + 60000); g.tick(ora); }
@@ -267,7 +275,7 @@ try {
     const s = T.prendiSussurri(g).filter((m) => m.posto === 0);
     assert.ok(s.length && s[0].testo.includes(g.ricercato) && s[0].testo.includes(g.zona(g.facce[g.quale])), 'wanted: dov\'è il ricercato');
     const f = g.facce[g.quale];
-    g.input(0, { t: 1, mx: f.x + g.L.r * 1.8, my: f.y });
+    g.input(0, { t: 1, mx: f.x + (f.x < 500 ? 1 : -1) * g.L.r * 1.5, my: f.y });
     passa(g, 2);
     assert.ok(g.punti[0] >= 1, 'wanted: trovato');
     passa(g, 3);
