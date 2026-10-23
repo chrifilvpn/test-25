@@ -360,7 +360,12 @@
     mem.set('posti', scelto.posti);
     disegnaImpostazioni();
   });
-  $('#imp-opzioni').addEventListener('change', (e) => { if (e.target.dataset.opz) scelto.opzioni[e.target.dataset.opz] = valoreOpz(e.target); });
+  $('#imp-opzioni').addEventListener('change', (e) => {
+    if (!e.target.dataset.opz) return;
+    scelto.opzioni[e.target.dataset.opz] = valoreOpz(e.target);
+    // in più sullo stesso computer: i posti seguono il numero di giocatori
+    if (e.target.dataset.opz === 'stessoPc' && Number(scelto.opzioni.stessoPc) > scelto.posti) { scelto.posti = Number(scelto.opzioni.stessoPc); disegnaImpostazioni(); }
+  });
   $('#scelta-livello').addEventListener('click', (e) => {
     const b = e.target.closest('[data-livello]');
     if (!b) return;
