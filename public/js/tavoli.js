@@ -54,6 +54,11 @@ window.Tavoli = (() => {
     mano(ctx) {
       const p = ctx.partita;
       const attiva = p.turno === ctx.mio;
+      // al buio: solo dorsi, si sceglie la posizione (il server non dice nemmeno quali carte sono)
+      if (p.alBuio) {
+        const posto = ['prima', 'seconda', 'terza'];
+        return p.mano.map((c) => `<div class="carta retro ${attiva ? 'giocabile' : ''}" data-pos="${c.pos}" ${attiva ? `data-az="gioca" role="button" tabindex="0" aria-label="Gioca la ${posto[c.pos] || 'carta'} carta (coperta)"` : 'aria-label="Carta coperta"'}></div>`).join('');
+      }
       return ordinaBriscola(p.mano, p.briscola.seme).map((c) =>
         FB(c, `${c.seme === p.briscola.seme ? 'segnata' : ''} ${attiva ? 'giocabile' : ''}`,
           attiva ? `data-az="gioca" role="button" tabindex="0" aria-label="Gioca ${Carte.nome(c)}"` : '')).join('');
@@ -63,7 +68,9 @@ window.Tavoli = (() => {
       return plur(p.maniPrese[posto], 'mano presa', 'mani prese');
     },
     clic(ctx, el) {
-      if (el.dataset.az === 'gioca') { el.classList.add('via'); ctx.invia({ tipo: 'gioca', carta: el.dataset.id }); }
+      if (el.dataset.az !== 'gioca') return;
+      el.classList.add('via');
+      ctx.invia(el.dataset.pos != null ? { tipo: 'gioca', pos: Number(el.dataset.pos) } : { tipo: 'gioca', carta: el.dataset.id });
     },
   };
 

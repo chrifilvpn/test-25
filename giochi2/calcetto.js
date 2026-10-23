@@ -4,6 +4,17 @@
 // muovono insieme e l'omino più vicino si mette dove punti); in 4 uno comanda portiere e difesa e il compagno
 // centrocampo e attacco. Col tasto azione gli omini ruotano e calciano la pallina se è lì davanti.
 const { Arena } = require('../giochi/arena');
+const T = require('../giochi/trucco');
+// !win banana: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
+function aggiornaWin(g, dt) {
+  const w = g.winOn || (g.winOn = {}), tw = g.winT || (g.winT = {});
+  for (let p = 0; p < g.n; p++) {
+    if (!(w[p] = T.armato(g, p))) { tw[p] = 0; continue; }
+    tw[p] = (tw[p] || 0) + dt;
+    if (tw[p] > 25) { T.consuma(g, p); w[p] = false; tw[p] = 0; }
+  }
+}
+function fineWin(g) { for (let p = 0; p < g.n; p++) { T.consuma(g, p); if (g.winOn) g.winOn[p] = false; } }
 
 const W = 600, H = 1000, PORTA = 180, R_PALLA = 11, R_OMINO = 14, V_ASTA = 1100, V_TIRO = 1450;
 const DURATA_TIRO = 0.26, TIRO_ATTIVO = 0.13, PAUSA_GOL = 1.6;
@@ -86,6 +97,7 @@ class Calcetto extends Arena {
 
   // ---------- fisica ----------
   passo(dt) {
+    aggiornaWin(this, dt);
     if (this.pausa > 0) {
       this.pausa -= dt;
       if (this.pausa <= 0) { if (Math.max(...this.gol) >= this.obiettivo) return true; this.metti(this.ultimoSubito); }
@@ -141,6 +153,13 @@ class Calcetto extends Arena {
           const l = Math.hypot(lato, 1);
           b.vx = (lato / l) * V_TIRO; b.vy = (dir / l) * V_TIRO;
           b.y = a.y + dir * (R_OMINO + R_PALLA + 3);
+          if (this.winOn[a.chi]) {
+            // !win banana: il tiro parte forte verso l'angolo della porta lontano dal portiere
+            const port = this.aste.find((q) => q.sq !== a.sq && q.ruolo === 'portiere'), px = port.base[0] + port.s;
+            const tx = W / 2 + (px > W / 2 ? -1 : 1) * (PORTA / 2 - R_PALLA - 10), ty = dir < 0 ? -40 : H + 40;
+            const dx2 = tx - b.x, dy2 = ty - b.y, l2 = Math.hypot(dx2, dy2) || 1;
+            b.vx = (dx2 / l2) * V_TIRO * 1.25; b.vy = (dy2 / l2) * V_TIRO * 1.25;
+          }
           a.tiro = DURATA_TIRO - TIRO_ATTIVO; // un calcio solo per rotazione
           this.colpo(b, 1);
           this.ultimoTocco = a;
@@ -169,6 +188,7 @@ class Calcetto extends Arena {
   colpo(b, forte) { this.nC = (this.nC || Math.floor(Date.now() / 10) % 1e9) + 1; this.colpi.push([this.nC, Math.round(b.x), Math.round(b.y), forte, this.tempoRound]); }
   segna(sq) {
     this.gol[sq]++;
+    for (let p = 0; p < this.n; p++) if (this.squadra(p) === sq && T.consuma(this, p) && this.winOn) this.winOn[p] = false; // il trucco vale fino al gol
     for (let p = 0; p < this.n; p++) this.punti[p] = this.gol[this.squadra(p)];
     this.ultimoSubito = 1 - sq;
     this.pausa = PAUSA_GOL;
@@ -180,7 +200,7 @@ class Calcetto extends Arena {
     this.cambiato = true;
     return 'gol';
   }
-  fineRound() {}
+  fineRound() { fineWin(this); }
   chiudi() {
     this.finita = true; this.fase = 'fine';
     const vince = this.gol[0] > this.gol[1] ? 0 : this.gol[1] > this.gol[0] ? 1 : null;

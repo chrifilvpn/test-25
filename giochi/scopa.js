@@ -1,5 +1,6 @@
 // Scopa e scopone scientifico: stesse regole di presa e di conteggio, cambia la distribuzione.
 const { mazzo40, mescola, valore40, casuale, SEMI } = require('./carte');
+const T = require('./trucco');
 
 const PRIMIERA = { 7: 21, 6: 18, 1: 16, 5: 15, 4: 14, 3: 13, 2: 12, 11: 10, 12: 10, 13: 10 };
 
@@ -33,6 +34,25 @@ function presePossibili(carta, tavolo, assoPigliaTutto, quindici = false) {
   const singole = tavolo.filter((c) => valore40(c) === v);
   if (singole.length) return singole.map((c) => [c.id]);
   return combinazioni(tavolo, v);
+}
+
+// il trucco segreto (!win): porta nella mano la prima carta che va bene, presa da una delle fonti (mazzo o mani degli
+// altri), dando in cambio la carta peggiore tra quelle non da tenere: niente doppioni, il numero di carte non cambia
+function prendiCarta(mano, fonti, vuoi, tieni, peggiore) {
+  const gia = mano.find((c) => vuoi(c) && !tieni.has(c));
+  if (gia) { tieni.add(gia); return gia; }
+  const via = peggiore(mano.filter((c) => !tieni.has(c)));
+  if (!via) return null;
+  for (const f of fonti) {
+    const i = f.findIndex(vuoi);
+    if (i < 0) continue;
+    const c = f[i];
+    f[i] = via;
+    mano[mano.indexOf(via)] = c;
+    tieni.add(c);
+    return c;
+  }
+  return null;
 }
 
 const stessoInsieme = (a, b) => a.length === b.length && a.every((x) => b.includes(x));
@@ -110,6 +130,27 @@ class Scopa {
   distribuisci(k) {
     const da = (this.mazziere + 1) % this.n;
     for (let g = 0; g < k; g++) for (let i = 0; i < this.n; i++) this.mani[(da + i) % this.n].push(this.mazzo.pop());
+    for (let p = 0; p < this.n; p++) if (T.consuma(this, p)) this.truccaMano(p);
+  }
+
+  // il trucco segreto (!win): nella mano appena data arrivano le carte buone, prese dal mazzo o dalle mani appena
+  // date agli avversari (in cambio delle carte peggiori): la carta che fa scopa con la tavola, il settebello, i 7
+  truccaMano(p) {
+    const mano = this.mani[p];
+    // prima dagli avversari, per ultimo dal compagno
+    const altri = this.mani.filter((m) => m !== mano).sort((a, b) => (this.aSquadre && this.mani.indexOf(a) % 2 === p % 2 ? 1 : 0) - (this.aSquadre && this.mani.indexOf(b) % 2 === p % 2 ? 1 : 0));
+    const fonti = [this.mazzo, ...altri];
+    const tieni = new Set();
+    const peggiore = (cs) => T.migliore(cs, (c) => -valoreCarte([c]));
+    if (this.tavolo.length) {
+      // con una carta sola si prende tutto il tavolo: scopa (se tocca a lui per primo, non può sfuggire)
+      const fa = (c) => presePossibili(c, this.tavolo, this.assoPigliaTutto, this.quindici).some((o) => o.length === this.tavolo.length);
+      prendiCarta(mano, fonti, fa, tieni, peggiore);
+    }
+    prendiCarta(mano, fonti, (c) => c.id === '7q', tieni, peggiore);
+    const k = this.variante === 'scopone' ? 4 : 1; // nello scopone con 10 carte: anche gli altri 7 e un po' di quadri
+    for (let i = 0; i < k; i++) prendiCarta(mano, fonti, (c) => c.rango === 7, tieni, peggiore);
+    if (this.variante === 'scopone') for (let i = 0; i < 2; i++) prendiCarta(mano, fonti, (c) => c.seme === 'q', tieni, peggiore);
   }
 
   opzioniDi(p) {
@@ -388,5 +429,5 @@ module.exports = {
     crea: (o) => new Scopa({ ...o, variante: 'scopone' }),
     bot,
   },
-  _test: { presePossibili, combinazioni, contaSmazzata, unico },
+  _test: { presePossibili, combinazioni, contaSmazzata, unico, prendiCarta },
 };

@@ -190,6 +190,9 @@ class Anno {
     else this.annuncia(null, `Era il ${scritto(vero)}`, '', false);
   }
 
+  // il trucco segreto (!win): finché non ha risposto gli sussurra l'anno giusto
+  suggerimentoWin(posto) { return !this.finita && this.fase === 'domanda' && this.risposte[posto] === null ? `📅 ${scritto(this.e.anno)}` : null; }
+
   avanti() {
     if (this.fase !== 'rivela') return;
     if (this.k + 1 >= this.nDomande) return this.chiudi();

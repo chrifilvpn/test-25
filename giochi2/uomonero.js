@@ -126,6 +126,23 @@ class UomoNero {
     return { ok: true };
   }
 
+  // il trucco segreto (!win): al suo turno sa quale carta pescare (una che fa coppia) e dov'è l'uomo nero
+  suggerimentoWin(p) {
+    if (this.fase !== 'gioco' || this.turno !== p || this.finita) return null;
+    const da = this.daChi(p);
+    if (da == null) return null;
+    const sua = this.mani[da], mia = this.mani[p];
+    const n = (i) => `la ${i + 1}ª da sinistra`;
+    const u = sua.findIndex((c) => c.id === UOMO);
+    const buona = sua.findIndex((c) => mia.some((x) => chiave(x) === chiave(c)));
+    const pezzi = [];
+    if (buona >= 0) pezzi.push(`pesca ${n(buona)}: fa coppia`);
+    if (u >= 0) pezzi.push(`l'uomo nero è ${n(u)}`);
+    if (!pezzi.length) pezzi.push('nessuna fa coppia, ma l\'uomo nero non c\'è: pesca tranquillo');
+    const t = pezzi.join(' · ');
+    return `💡 ${t[0].toUpperCase()}${t.slice(1)}`;
+  }
+
   chiudiMano() {
     const rimasti = this.attivi();
     const perdente = rimasti.length ? rimasti[0] : this.mani.findIndex((m) => m.some((c) => c.id === UOMO));

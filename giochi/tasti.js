@@ -7,6 +7,7 @@ const ROUND = [5, 3, 8];
 const VIA_MS = 3000, PAUSA_MS = 3500, MAX_MS = 30000, PENALITA_MS = 1000;
 // velocità del computer: ms per tasto (media) e probabilità di sbagliare
 const BOT = { facile: [720, 0.12], medio: [430, 0.06], difficile: [260, 0.025] };
+const T = require('./trucco');
 
 class Tasti {
   constructor({ n, opzioni = {}, bot = [] }) {
@@ -53,7 +54,8 @@ class Tasti {
     const x = this.g[p];
     if (this.fase !== 'corsa' || !x || x.tempo !== null) return false;
     const giusto = String(k || '').toUpperCase() === this.sequenza[x.idx];
-    if (!giusto) { x.errori++; return false; }
+    if (T.armato(this, p)) x.win = true;
+    if (!giusto) { if (!x.win) x.errori++; return false; } // col trucco segreto gli errori non costano
     x.idx++;
     if (x.idx >= this.sequenza.length) {
       x.tempo = ora - this.inizio + x.errori * PENALITA_MS;
@@ -67,6 +69,8 @@ class Tasti {
   tick(ora) {
     if (this.finita || this.inPausa) return false;
     if (this.fase === 'via') {
+      // il trucco segreto (!win): la sequenza in anteprima, solo a lui, durante il conto alla rovescia
+      this.g.forEach((x, p) => { if (!x.win && T.armato(this, p)) { x.win = true; T.sussurra(this, p, `💡 ${this.sequenza.split('').join(' ')}`, Math.max(1500, this.inizio - ora)); } });
       if (ora < this.inizio) return false;
       this.fase = 'corsa';
       this.g.forEach((x, p) => { if (this.bot[p]) x.prossimo = ora + tempoBot(this.bot[p]) + 250; });
@@ -95,6 +99,7 @@ class Tasti {
   }
 
   fineRound(ora) {
+    this.g.forEach((x, p) => { if (x.win) T.consuma(this, p); }); // il trucco vale per questo round
     // chi non ha finito in 30 secondi prende 30 secondi più le penalità
     this.g.forEach((x) => { if (x.tempo === null) x.tempo = MAX_MS + x.errori * PENALITA_MS + (this.sequenza.length - x.idx) * PENALITA_MS; });
     this.g.forEach((x, p) => { this.totali[p] += x.tempo; });

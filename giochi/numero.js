@@ -58,6 +58,9 @@ class IndovinaNumero {
     return { ok: true };
   }
 
+  // il trucco segreto (!win): al suo turno gli sussurra il numero
+  suggerimentoWin(posto) { return !this.finita && this.turno === posto ? `🔢 È il ${this.segreto}` : null; }
+
   vista() {
     return {
       gioco: this.id, n: this.n, massimo: this.massimo, basso: this.basso, alto: this.alto,

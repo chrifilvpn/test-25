@@ -29,8 +29,10 @@ function tira(espr, { critico = false, massimo = false, minimoDue = false } = {}
   return { totale, dadi, bonus, espr: s };
 }
 const media = (espr) => { const s = String(espr || '0'); let t = 0; for (const m of s.matchAll(/([+-]?)(\d*)d(\d+)|([+-]?)(\d+)/g)) { if (m[3]) t += (m[1] === '-' ? -1 : 1) * (Number(m[2]) || 1) * (Number(m[3]) + 1) / 2; else if (m[5]) t += (m[4] === '-' ? -1 : 1) * Number(m[5]); } return Math.floor(t); };
-// il d20 con vantaggio/svantaggio (si annullano) e la fortuna halfling (un 1 si ritira)
-function d20({ vantaggio = false, svantaggio = false, fortunato = false } = {}) {
+// il d20 con vantaggio/svantaggio (si annullano) e la fortuna halfling (un 1 si ritira).
+// venti: il trucco segreto (!win banana) fa uscire un 20 naturale (con vantaggio l'altro dado è normale)
+function d20({ vantaggio = false, svantaggio = false, fortunato = false, venti = false } = {}) {
+  if (venti) { const modo = vantaggio && !svantaggio ? 'vantaggio' : svantaggio && !vantaggio ? 'svantaggio' : 'normale'; return { valore: 20, dadi: modo === 'normale' ? [20] : modo === 'vantaggio' ? [20, d(20)] : [20, 20], modo }; }
   const uno = () => { let v = d(20); if (fortunato && v === 1) v = d(20); return v; };
   if (vantaggio && !svantaggio) { const a = uno(), b = uno(); return { valore: Math.max(a, b), dadi: [a, b], modo: 'vantaggio' }; }
   if (svantaggio && !vantaggio) { const a = uno(), b = uno(); return { valore: Math.min(a, b), dadi: [a, b], modo: 'svantaggio' }; }
@@ -340,7 +342,7 @@ function prova(pg, tipo, opz = {}) {
   if (pg.effetti.some((e) => e.effetto === 'guida')) { const g = d(4); bonus += g; extra.push(`guida +${g}`); pg.effetti = pg.effetti.filter((e) => e.effetto !== 'guida'); }
   if (opz.ispirazione) { const g = tira(opz.ispirazione).totale; bonus += g; extra.push(`ispirazione +${g}`); }
   if (tipo === 'furtivita' && pg.effetti.some((e) => e.effetto === 'senzaTracce')) { bonus += 10; extra.push('senza tracce +10'); }
-  const t = d20({ vantaggio, svantaggio, fortunato: haEffetto(pg, 'fortunato') });
+  const t = d20({ vantaggio, svantaggio, fortunato: haEffetto(pg, 'fortunato'), venti: !!opz.venti });
   let valore = t.valore;
   if (ab && pg.livello >= 11 && pg.classe === 'ladro' && pg.abilita.includes(tipo)) valore = Math.max(10, valore); // dote affidabile
   const totale = valore + bonus + (opz.bonusExtra || 0);
@@ -369,7 +371,7 @@ function salvezza(pg, car, opz = {}) {
   }
   if ((pg.effetti || []).some((e) => e.effetto === 'resistenza')) pg.effetti = pg.effetti.filter((e) => e.effetto !== 'resistenza');
   if (opz.aura) { bonus += opz.aura; extra.push(`aura +${opz.aura}`); }
-  const t = d20({ vantaggio, svantaggio, fortunato: pg.stirpe ? haEffetto(pg, 'fortunato') : false });
+  const t = d20({ vantaggio, svantaggio, fortunato: pg.stirpe ? haEffetto(pg, 'fortunato') : false, venti: !!opz.venti });
   const totale = t.valore + bonus;
   return { chi: pg.nome, car, nomeTipo: `salvezza su ${B.CARATTERISTICHE[car].nome}`, d20: t, bonus, totale, cd: opz.cd || null, riuscita: opz.cd ? totale >= opz.cd : null, extra, naturale: t.valore };
 }
@@ -435,9 +437,9 @@ function cura(c, quanti) {
   return c.pf - prima;
 }
 // tiro contro la morte, all'inizio del turno di chi è a terra
-function tiroMorte(pg) {
+function tiroMorte(pg, { venti = false } = {}) {
   if (pg.morto || pg.pf > 0 || pg.stabile) return null;
-  const v = d(20);
+  const v = venti ? 20 : d(20);
   let esito;
   if (v === 20) { pg.pf = 1; pg.condizioni = pg.condizioni.filter((x) => x !== 'privo'); pg.morte = { successi: 0, fallimenti: 0 }; esito = 'si rialza'; }
   else if (v === 1) { pg.morte.fallimenti += 2; esito = 'due fallimenti'; }

@@ -5,6 +5,7 @@
 // Quando le tessere alzate sommano 6 o meno si può tirare un dado solo.
 const mescola = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const dado = () => 1 + Math.floor(Math.random() * 6);
+const T = require('./trucco');
 const PAUSA = 1800;
 
 // tutti i modi di fare "somma" con le tessere alzate della maschera (bit k = tessera k+1)
@@ -68,7 +69,9 @@ class ShutBox {
       if (this.fase !== 'tira') return { errore: 'Prima abbassa le tessere' };
       const uno = !!a.uno;
       if (uno && !this.possoUnDado) return { errore: 'Un dado solo si tira quando le tessere alzate fanno 6 o meno' };
-      this.dadi = uno ? [dado()] : [dado(), dado()];
+      // il trucco segreto (!win): da qui alla fine del turno i dadi danno sempre il tiro migliore
+      if (T.consuma(this, p)) this.truccato = p;
+      this.dadi = this.truccato === p ? this.dadiMigliori(uno) : uno ? [dado()] : [dado(), dado()];
       this.nTiri++;
       const s = this.dadi.reduce((x, y) => x + y, 0);
       if (!combinazioni(this.alzate, s, this.max).length) return this.fineTurno(`ha tirato ${s}: nessuna combinazione possibile`);
@@ -92,8 +95,20 @@ class ShutBox {
     }
     return { errore: 'Mossa non valida' };
   }
+  // i dadi che permettono di abbassare tessere lasciando la situazione migliore (meno punti attesi)
+  dadiMigliori(uno) {
+    let best = null, bv = Infinity;
+    const tiri = uno ? [1, 2, 3, 4, 5, 6].map((a) => [a]) : [].concat(...[1, 2, 3, 4, 5, 6].map((a) => [1, 2, 3, 4, 5, 6].map((b) => [a, b])));
+    for (const d of tiri) {
+      const cs = combinazioni(this.alzate, d.reduce((x, y) => x + y, 0), this.max);
+      const v = (cs.length ? Math.min(...cs.map((c) => atteso(this.max, this.alzate & ~c))) : 1000 + sommaDi(this.alzate)) + Math.random() * 0.01;
+      if (v < bv) { bv = v; best = d; }
+    }
+    return best;
+  }
   fineTurno(perche) {
     const p = this.turno, resto = sommaDi(this.alzate);
+    this.truccato = null; // il trucco vale un turno
     this.punti[p] += resto;
     (this.storico[this.round - 1] || (this.storico[this.round - 1] = new Array(this.n).fill(null)))[p] = resto;
     this.annuncia(p, `${perche}: prende ${resto} punti`, `${perche.replace('ha tirato', 'hai tirato')}: prendi ${resto} punti`);

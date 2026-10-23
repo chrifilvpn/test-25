@@ -121,6 +121,8 @@ class Omaha extends Texas {
     // l'ante: tutti quelli in mano mettono qualcosa nel piatto
     if (this.ante) for (let i = 0; i < this.n; i++) if (this.inMano[i]) this.metti(i, Math.min(this.ante, this.fiche[i]));
     if (this.puntataGiro) this.puntataGiro.fill(0);
+    // il trucco segreto (!win): la mano migliore del tavolo, con le regole dell'Omaha (vedi Texas.truccaMano)
+    this.truccaMano(4, (mano, tavola) => puntiOmaha(mano.map(num), tavola.map(num)));
     for (let giro = 0; giro < 4; giro++) for (let k = 1; k <= this.n; k++) {
       const i = (this.dealer + k) % this.n;
       if (this.inMano[i]) this.carte[i].push(this.pesca());

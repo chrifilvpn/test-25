@@ -2,6 +2,7 @@
 // Vince chi mette per primo tutte le 52 carte sulle basi; se nessuno ci riesce (tutti si arrendono o scade il
 // tempo) vince chi ne ha messe di più. Si può giocare anche da soli (con la classifica dei tempi migliori).
 const SEMI = ['c', 'q', 'f', 'p'];
+const { nomeCarta } = require('./carte');
 const ROSSO = { c: true, q: true };
 const LIMITI = [0, 10, 20, 30]; // minuti; 0 = senza limite
 const RECORD = []; // tempi migliori (in memoria, come le altre classifiche)
@@ -50,6 +51,25 @@ function suggerisci(t) {
   // 5) pescare (o rigirare gli scarti)
   if (t.tallone.length || t.scarti.length) return { pesca: true };
   return null;
+}
+
+// il trucco segreto (!win): la prossima mossa giusta detta a parole; se c'è da pescare, si sbircia nel tallone
+// quante carte servono per arrivare a una che si può giocare
+function consiglioWin(t) {
+  const x = suggerisci(t);
+  if (!x) return null;
+  const dove = (d) => (d.tipo === 'base' ? 'sulla base' : d.tipo === 'scarti' ? 'dagli scarti' : `colonna ${d.i + 1}`);
+  if (!x.pesca) {
+    const c = x.da.tipo === 'scarti' ? t.scarti[t.scarti.length - 1] : t.colonne[x.da.i][x.da.k];
+    return `💡 ${nomeCarta(c)} (${dove(x.da)}) → ${x.a.tipo === 'base' ? 'sulla base' : `colonna ${x.a.i + 1}`}`;
+  }
+  // pesca 1: escono dal fondo dell'array del tallone; finito il tallone si rigirano gli scarti
+  const prossime = [...t.tallone].reverse().concat(t.scarti);
+  const serve = (c) => t.basi.some((b) => puoSuBase(c, b)) || t.colonne.some((col) => puoSuColonna(c, col));
+  const k = prossime.findIndex(serve);
+  if (k < 0) return '💡 Nel tallone non c\'è niente che serva: sposta le carte nelle colonne';
+  const volte = k + 1 + (k >= t.tallone.length ? 1 : 0); // rigirare gli scarti conta come una pescata
+  return `💡 Pesca ${volte} ${volte > 1 ? 'volte' : 'volta'}${k >= t.tallone.length ? ' (rigirando gli scarti)' : ''}: arriva ${nomeCarta(prossime[k])}`;
 }
 
 class Solitario {
@@ -101,6 +121,8 @@ class Solitario {
     }
     return null;
   }
+
+  suggerimentoWin(p) { return this.stato[p] === 'gioca' && !this.inPausa ? consiglioWin(this.tavoli[p]) : null; }
 
   azione(p, a) {
     if (this.finita) return { errore: 'La partita è finita' };
@@ -274,5 +296,5 @@ module.exports = {
   },
   crea: (o) => new Solitario(o),
   bot: () => ({ tipo: 'arrenditi' }),
-  _test: { Solitario, distribuzione, puoSuBase, puoSuColonna, mazzo52 },
+  _test: { Solitario, distribuzione, puoSuBase, puoSuColonna, mazzo52, suggerisci, consiglioWin },
 };

@@ -26,6 +26,14 @@ VICINI.forEach((v) => v.sort((x, y) => x - y));
 const MULINI_DI = Array.from({ length: 24 }, () => []);
 MULINI.forEach((m) => m.forEach((i) => MULINI_DI[i].push(m)));
 
+// un punto a parole: il quadrato (esterno, di mezzo, interno) e dove sta sul quadrato
+function nomePunto(i) {
+  const [x, y] = COORD[i], dx = Math.sign(x - 3), dy = Math.sign(y - 3);
+  const q = ['', 'interno', 'di mezzo', 'esterno'][Math.max(Math.abs(x - 3), Math.abs(y - 3))];
+  const dove = `${dy < 0 ? 'in alto' : dy > 0 ? 'in basso' : 'al centro'} ${dx < 0 ? 'a sinistra' : dx > 0 ? 'a destra' : 'al centro'}`.replace('al centro al centro', 'al centro');
+  return `del quadrato ${q} ${dove}`;
+}
+
 const PEDINE = 9;
 const MAX_SENZA_MULINO = 100; // 50 mosse a testa senza mulini → patta
 
@@ -180,6 +188,15 @@ class Mulino {
       etichetta: 'punti', pareggio: vince === null, vincitori: vince === null ? [] : [vince],
     };
     return { ok: true };
+  }
+
+  // trucco segreto (!win): la mossa del computer difficile, con i punti descritti come li vede il giocatore
+  suggerimentoWin(p) {
+    if (this.finita || this.turno !== p) return null;
+    const a = bot(this, p, 'difficile');
+    if (a.tipo === 'togli') return `💡 Togli la pedina ${nomePunto(a.punto)}`;
+    if (a.tipo === 'metti') return `💡 Metti la pedina ${nomePunto(a.punto)}`;
+    return `💡 Sposta la pedina ${nomePunto(a.da)} → ${nomePunto(a.a)}`;
   }
 
   vista(p) {

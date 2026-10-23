@@ -122,6 +122,36 @@ class FastWest {
     this.annuncia(null, `Turno ${this.turnoN}: ${DIREZIONI[this.carta.dir].nome.toLowerCase()} · ${EVENTI[this.carta.evento].nome}`, '', false);
   }
 
+  // il trucco segreto (!win): quando mancano solo le sue carte, sa chi gli sparerà questo turno e cosa conviene giocare
+  suggerimentoWin(p) {
+    const io = this.g[p];
+    if (this.finita || this.fase !== 'scelta' || !io.vivo) return null;
+    const att = this.attesi();
+    if (att.length !== 1 || att[0] !== p) return null;
+    const ev = this.carta.evento;
+    const spari = [];
+    for (const q of this.vivi()) {
+      const sc = this.scelte[q];
+      if (q === p || !sc || !CARTE[tipoDi(sc.carta)].arma) continue;
+      let d = this.carta.dir;
+      if (sc.inverti && ['destra', 'sinistra'].includes(d)) d = d === 'destra' ? 'sinistra' : 'destra';
+      const bersagli = d === 'incrociata' ? [sc.bersaglio] : d === 'doppia' ? [this.vicino(q, 'destra'), this.vicino(q, 'sinistra')] : [this.vicino(q, d)];
+      if (bersagli.includes(p)) spari.push({ q, arma: tipoDi(sc.carta) });
+    }
+    const chi = (q) => (q === this.vicino(p, 'destra') ? 'chi hai a destra' : q === this.vicino(p, 'sinistra') ? 'chi hai a sinistra' : 'un altro pistolero');
+    const ho = (t) => io.mano.some((c) => tipoDi(c) === t);
+    if (!spari.length) {
+      const arma = ['dinamite', 'winchester', 'revolver'].find((t) => ho(t) && io.pallottole >= this.costo(p, t));
+      return `💡 Nessuno ti spara: ${arma ? `vai di ${CARTE[arma].nome}` : ho('ricarica') ? 'ricarica tranquillo' : 'stai sereno'}`;
+    }
+    const testo = spari.map((x) => `${chi(x.q)} (${CARTE[x.arma].nome})`).join(', ');
+    let consiglio;
+    if (spari.some((x) => x.arma === 'dinamite')) consiglio = ho('errore') && io.pallottole >= 2 ? 'Errore di calcolo' : ho('schivata') && io.pistolero === 'sciamana' && ev !== 'ravvicinato' ? 'Schivata' : null;
+    else if (ho('schivata') && ev !== 'ravvicinato') consiglio = 'Schivata';
+    else if (ho('rimbalzo') && ev !== 'aperto') consiglio = 'Rimbalzo';
+    return `💡 Ti spara ${testo}${consiglio ? `: gioca ${consiglio}` : ''}`;
+  }
+
   deveRecuperare(p) { return this.carta.evento === 'flashback' && !this.recuperato[p] && this.g[p].scarti.length > 0; }
 
   attesi() {

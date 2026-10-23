@@ -16,6 +16,7 @@ const { MOSTRI } = require('./draghi/mostri');
 const MAP = require('./draghi/mappe');
 const { Combattimento } = require('./draghi/combattimento');
 const MASTER = require('./draghi/master');
+const T = require('../giochi/trucco');
 
 const AMBIENTAZIONI = ['classica', 'oscura', 'pirati', 'citta', 'selvaggia'];
 const ATTESA_DICHIARAZIONI = 150000; // dopo la prima azione scritta, al massimo 2 minuti e mezzo per gli altri
@@ -127,6 +128,9 @@ class Draghi {
     return cambiato;
   }
   livelloIA() { return { storia: 'facile', normale: 'medio', mortale: 'difficile' }[this.difficolta]; }
+  // !win banana: il prossimo d20 del personaggio (prova, tiro salvezza, attacco, azione libera) sarà un 20 naturale
+  // (lo spengono T.consuma in azioneProve/azioneLibera e combattimento.venti); a chi l'ha scritto un cenno segreto
+  trucco(posto) { if (!(this.pg[posto] && this.pg[posto].morto)) T.sussurra(this, posto, '🍀 Il prossimo tiro di dado sarà un 20 naturale', 3000); }
   salta(p) { /* chi è via: il computer gioca per lui (bot) */ }
 
   // ---------- azioni ----------
@@ -376,7 +380,8 @@ class Draghi {
     const x = this.prove.find((q) => q.posto === p && !q.esito && (a.id == null || q.id === Number(a.id)));
     if (!x) return { errore: 'Non hai tiri da fare' };
     const pg = this.pg[p];
-    const opz = { cd: x.cd, vantaggio: x.vantaggio || (a.ispirazione && pg.ispirazione), svantaggio: x.svantaggio };
+    // il trucco segreto (!win banana): questo tiro è un 20 naturale
+    const opz = { cd: x.cd, vantaggio: x.vantaggio || (a.ispirazione && pg.ispirazione), svantaggio: x.svantaggio, venti: T.consuma(this, p) };
     if (a.ispirazione && pg.ispirazione) pg.ispirazione = false;
     const isp = (pg.effetti || []).find((e) => e.effetto === 'ispirato');
     if (isp && a.bardica) { opz.ispirazione = isp.dado; pg.effetti = pg.effetti.filter((e) => e !== isp); }
@@ -411,6 +416,8 @@ class Draghi {
     const gruppo = this.pgVivi().map((k) => this.pg[k]);
     for (const p of gruppo) { p.condizioni = p.condizioni.filter((x) => x !== 'prono'); }
     this.combattimento = new Combattimento({ scena, gruppo, nemici, sorpresa: def.sorpresa === 'gruppo' || def.sorpresa === 'nemici' ? def.sorpresa : null, livelloIA: this.livelloIA() });
+    // il trucco segreto: il prossimo d20 (attacco, tiro salvezza, prova) del personaggio di chi l'ha attivato è un 20
+    this.combattimento.venti = (c) => { const k = this.pg.indexOf(c.ref); return k >= 0 && T.consuma(this, k); };
     this.metaCombattimento = { nemici: nemici.map((m) => m.nome), inizio: Date.now() };
     this.scenaVista = scena;
     this.fase = 'combattimento';
@@ -448,7 +455,7 @@ class Draghi {
     if (!c.turno.azione) return { errore: 'Hai già usato l\'azione' };
     if (this.attesaLibera) return { errore: 'Il master sta ancora decidendo l\'azione di prima' };
     c.turno.azione = false;
-    const d20 = R.d20().valore;
+    const d20 = R.d20({ venti: T.consuma(this, p) }).valore;
     cb.evento({ tipo: 'nota', id: c.id, testo: `${pg.nome} tenta: «${testo}» (d20: ${d20})` });
     this.scrivi('azione', testo, { posto: p, chi: pg.nome, combattimento: true });
     if (!(this.chiave && this.fetch)) { cb.evento({ tipo: 'nota', id: c.id, testo: d20 >= 11 ? 'Riesce, ma senza effetti sulle regole (senza IA il master di riserva non può giudicarlo).' : 'Non riesce.' }); this.dopoAzioneCombattimento(); return { ok: true }; }

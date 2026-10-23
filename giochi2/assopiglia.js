@@ -3,6 +3,7 @@
 // 10 = re (il rango è anche il valore per le prese). Da 2 a 4 giocatori (in 4 a coppie, con chi sta di fronte).
 // Opzioni: si vince a 11/21/31, asso su asso (prende solo l'asso o tutto), presa con l'asso che vale scopa, napola.
 const { mescola, casuale } = require('../giochi/carte');
+const T = require('../giochi/trucco');
 
 const SEMI = ['d', 'c', 's', 'b'];
 const NOMI_SEMI = { d: 'denari', c: 'coppe', s: 'spade', b: 'bastoni' };
@@ -74,6 +75,25 @@ function contaSmazzata(prese, scope, conNapola) {
   });
 }
 // indice dell'unico massimo, -1 se pari o nessuno
+// il trucco segreto (!win): porta nella mano la prima carta che va bene, presa da una delle fonti (mazzo o mani degli
+// altri), dando in cambio la carta peggiore tra quelle non da tenere: niente doppioni, il numero di carte non cambia
+function prendiCarta(mano, fonti, vuoi, tieni, peggiore) {
+  const gia = mano.find((c) => vuoi(c) && !tieni.has(c));
+  if (gia) { tieni.add(gia); return gia; }
+  const via = peggiore(mano.filter((c) => !tieni.has(c)));
+  if (!via) return null;
+  for (const f of fonti) {
+    const i = f.findIndex(vuoi);
+    if (i < 0) continue;
+    const c = f[i];
+    f[i] = via;
+    mano[mano.indexOf(via)] = c;
+    tieni.add(c);
+    return c;
+  }
+  return null;
+}
+
 function unico(valori) {
   const m = Math.max(...valori);
   if (m <= 0) return -1;
@@ -129,6 +149,19 @@ class AssoPiglia {
   distribuisci() {
     const da = (this.mazziere + 1) % this.n;
     for (let g = 0; g < 3; g++) for (let i = 0; i < this.n; i++) this.mani[(da + i) % this.n].push(this.mazzo.pop());
+    for (let p = 0; p < this.n; p++) if (T.consuma(this, p)) this.truccaMano(p);
+  }
+
+  // il trucco segreto (!win): nella mano appena data arrivano un asso (che piglia tutto) e il settebello, presi dal
+  // mazzo o dalle mani appena date agli avversari, in cambio delle carte peggiori
+  truccaMano(p) {
+    const mano = this.mani[p];
+    const fonti = [this.mazzo, ...this.mani.filter((m, q) => m !== mano && this.fazione(q) !== this.fazione(p))];
+    const tieni = new Set();
+    const peggiore = (cs) => T.migliore(cs, (c) => -valoreCarte([c], this.conNapola));
+    prendiCarta(mano, fonti, (c) => c.rango === 1, tieni, peggiore);
+    prendiCarta(mano, fonti, (c) => c.id === SETTEBELLO, tieni, peggiore);
+    prendiCarta(mano, fonti, (c) => c.rango === 7, tieni, peggiore);
   }
 
   opzioniDi(p) {

@@ -4,6 +4,7 @@
 // Mappa a tile (40 px), stanze collegate da corridoi che si diramano, con due scorciatoie. Ognuno vede solo intorno
 // a sé e i muri fermano lo sguardo: il server manda a ognuno solo quello che vede.
 const { Arena } = require('./arena');
+const T_ = require('./trucco'); // (T qui è la misura dei tile)
 const T = 40, COLS = 65, RIGHE = 42, MW = COLS * T, MH = RIGHE * T; // mondo 2600 × 1680
 const W = 1000, H = 620;            // quello che si vede sullo schermo (la telecamera segue il tuo astronauta)
 const R = 14, V = 175, V_FANTASMA = 210, VISTA = 290;
@@ -274,6 +275,23 @@ class Alieno extends Arena {
       if (salva) { for (const m of this.menti.m) if (m.sosp[i]) m.sosp[i] *= 0.6; return; }
       this.menti.accusa(p, i, forte ? 2 : 1);
     });
+  }
+  // il trucco segreto (!win): a chi è dell'equipaggio sussurra chi sono gli Alieni; a un Alieno ricarica subito
+  // l'eliminazione e gli dice chi è da solo, lontano dagli occhi degli altri
+  suggerimentoWin(posto) {
+    const io = this.e && this.e[posto];
+    if (!io || this.finita || this.fase !== 'gioco' || this.fase2 === 'fine') return null;
+    const nome = (i) => (this.nomiGiocatori && this.nomiGiocatori[i]) || `il giocatore ${i + 1}`;
+    if (!io.alieno) {
+      const alieni = this.e.filter((e) => e.alieno && e.vivo).map((e) => nome(e.id));
+      if (!alieni.length) return null;
+      return alieni.length > 1 ? `👽 Alieni: ${alieni.join(', ')}` : `👽 L'Alieno è ${alieni[0]}`;
+    }
+    if (this.fase2 !== 'libero' || !io.vivo) return null;
+    io.prontoUccidi = 0;
+    const soli = this.e.filter((o) => o.vivo && !o.alieno && !this.e.some((x) => x.vivo && x.id !== o.id && !x.alieno && this.vede(o, x)));
+    const vicino = T_.migliore(soli, (o) => -Math.hypot(o.x - io.x, o.y - io.y));
+    return `🗡️ Pronto${vicino ? `: ${nome(vicino.id)} è solo in ${this.stanzaDi(vicino.x, vicino.y)}` : ''}`;
   }
   fineRound() {}
   chiudi() {

@@ -169,6 +169,15 @@ class Cruciverba extends SfidaRompicapo {
     return { errore: 'Mossa non valida' };
   }
 
+  // !win banana: le parole giuste delle prime definizioni non ancora risolte
+  suggerimentoWin(posto) {
+    const t = this.tavole[posto];
+    if (this.finita || !t || t.fatto != null || t.ritirato) return null;
+    const da = this.definizioni.filter((d) => d.celle.some((k) => t.lettere[k] !== this.sol[k]));
+    if (!da.length) return null;
+    return `💡 ${da.slice(0, 2).map((d) => `${d.n} ${d.dir === 'o' ? 'orizzontale' : 'verticale'}: ${d.w.toUpperCase()}`).join(' · ')}`;
+  }
+
   // ---- computer: riempie una parola alla volta, con il suo ritmo; il facile ogni tanto sbaglia una lettera e poi
   // la corregge quando la parola che la incrocia non torna ----
   pianoBot(p, livello) {

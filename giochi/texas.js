@@ -1,7 +1,10 @@
 // TEXAS HOLD'EM no-limit, senza bui: 2 carte a testa, 5 carte comuni (flop, turn, river).
 const { Poker, migliore, nomeMano, equita, forzaMano, decidi, MINIMO } = require('./poker-motore');
 
+const T = require('./trucco');
+
 const STRADE = ['preflop', 'flop', 'turn', 'river'];
+const CAT_DI = (punti) => Math.floor(punti / 759375); // 15^5: la categoria della mano dai punti di valuta5
 
 class Texas extends Poker {
   constructor(o) { super(o); this.id = 'texas'; }
@@ -9,12 +12,41 @@ class Texas extends Poker {
   distribuisci() {
     this.tavola = [];
     this.strada = 0;
+    this.truccaMano(2, (mano, tavola) => migliore([...mano, ...tavola]).punti);
     for (let giro = 0; giro < 2; giro++) for (let k = 1; k <= this.n; k++) {
       const i = (this.dealer + k) % this.n;
       if (this.inMano[i]) this.carte[i].push(this.pesca());
     }
   }
   valuta(i) { return migliore([...this.carte[i], ...this.tavola]); }
+
+  // il trucco segreto (!win): si rimescola il mazzo finché il giocatore truccato non avrà, a fine mano, la mano
+  // migliore del tavolo e almeno una scala (stesse 52 carte, solo in un altro ordine). Lo usa anche l'Omaha.
+  truccaMano(perMano, punti) {
+    let chi = -1;
+    for (let i = 0; i < this.n && chi < 0; i++) if (this.inMano[i] && T.consuma(this, i)) chi = i;
+    if (chi < 0) return false;
+    const ordine = [];
+    for (let giro = 0; giro < perMano; giro++) for (let k = 1; k <= this.n; k++) { const i = (this.dealer + k) % this.n; if (this.inMano[i]) ordine.push(i); }
+    const m = this.mazzo;
+    let scorta = null;
+    for (let prova = 0; prova < 5000; prova++) {
+      for (let i = m.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [m[i], m[j]] = [m[j], m[i]]; }
+      let k = m.length;
+      const mani = Array.from({ length: this.n }, () => []);
+      for (const i of ordine) mani[i].push(m[--k]);
+      const tav = [];
+      for (const q of [3, 1, 1]) { k--; for (let x = 0; x < q; x++) tav.push(m[--k]); } // carta bruciata, poi la strada
+      const mio = punti(mani[chi], tav);
+      let meglio = true;
+      for (let i = 0; i < this.n && meglio; i++) if (i !== chi && this.inMano[i] && punti(mani[i], tav) >= mio) meglio = false;
+      if (!meglio) continue;
+      if (CAT_DI(mio) >= 4) return true;
+      if (!scorta) scorta = m.slice();
+    }
+    if (scorta) this.mazzo = scorta;
+    return true;
+  }
 
   scopriStrada() {
     this.strada++;
@@ -88,4 +120,5 @@ module.exports = {
   },
   crea: (o) => new Texas(o),
   bot,
+  _test: { CAT_DI },
 };

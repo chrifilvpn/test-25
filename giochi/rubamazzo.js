@@ -1,4 +1,24 @@
 const { mazzo40, mescola, valore40, casuale } = require('./carte');
+const T = require('./trucco');
+
+// il trucco segreto (!win): porta nella mano la prima carta che va bene, presa da una delle fonti (mazzo o mani degli
+// altri), dando in cambio la carta peggiore tra quelle non da tenere: niente doppioni, il numero di carte non cambia
+function prendiCarta(mano, fonti, vuoi, tieni, peggiore) {
+  const gia = mano.find((c) => vuoi(c) && !tieni.has(c));
+  if (gia) { tieni.add(gia); return gia; }
+  const via = peggiore(mano.filter((c) => !tieni.has(c)));
+  if (!via) return null;
+  for (const f of fonti) {
+    const i = f.findIndex(vuoi);
+    if (i < 0) continue;
+    const c = f[i];
+    f[i] = via;
+    mano[mano.indexOf(via)] = c;
+    tieni.add(c);
+    return c;
+  }
+  return null;
+}
 
 class Rubamazzo {
   constructor({ n, primo = 0 }) {
@@ -27,6 +47,21 @@ class Rubamazzo {
 
   distribuisci() {
     for (let g = 0; g < 3; g++) for (let i = 0; i < this.n; i++) if (this.mazzo.length) this.mani[(this.primo + i) % this.n].push(this.mazzo.pop());
+    for (let p = 0; p < this.n; p++) if (this.mani[p].length && T.consuma(this, p)) this.truccaMano(p);
+  }
+
+  // il trucco segreto (!win): nella mano appena data arrivano le carte per rubare i mazzetti più grossi degli
+  // avversari e per prendere in tavola (dal mazzo o dalle mani appena date agli altri, in cambio delle carte inutili)
+  truccaMano(p) {
+    const mano = this.mani[p];
+    const fonti = [this.mazzo, ...this.mani.filter((m) => m !== mano)];
+    const tieni = new Set();
+    // le carte che non prendono niente sono le prime da dare via
+    const utile = (c) => this.opzioni(p, c).length;
+    const peggiore = (cs) => T.migliore(cs, (c) => -utile(c));
+    const bersagli = this.mazzetti.map((m, q) => ({ q, m })).filter((x) => x.q !== p && x.m.length).sort((a, b) => b.m.length - a.m.length);
+    const valori = [...bersagli.map((x) => valore40(x.m[x.m.length - 1])), ...this.tavolo.map(valore40)];
+    for (const v of [...new Set(valori)].slice(0, mano.length)) prendiCarta(mano, fonti, (c) => valore40(c) === v, tieni, peggiore);
   }
 
   opzioni(p, carta) {

@@ -278,3 +278,11 @@ html.avvio-studio body > *:not(#studio):not(#studio-carica) { visibility: hidden
 .st-articolo h3 { margin: 22px 0 8px; font-size: 17px; color: #16365f; font-weight: 650; }
 .st-schema svg.st-alto { max-height: none; max-width: 600px; margin: 0 auto; }
 @media (max-width: 600px) { .st-schema svg.st-alto { padding: 4px; } .st-cit { padding: 10px 12px; font-size: 15px; } }
+/* barra in alto con tutte le materie: su schermi medi si stringe; se non basta, le materie scorrono di lato
+   (senza barra di scorrimento) e la ricerca resta sempre dentro lo schermo */
+.st-nav { min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.st-nav::-webkit-scrollbar { display: none; }
+.st-logo svg { flex: none; }
+.st-cerca { flex: 1 1 170px; min-width: 150px; }
+@media (max-width: 1500px) { .st-top { gap: 14px; } .st-nav button { padding: 9px 8px; } .st-logo { min-width: 0; } .st-logo small, .st-nome-ut { display: none; } }
+@media (max-width: 1250px) and (min-width: 801px) { .st-logo small { display: none; } .st-nav button { padding: 8px 6px; font-size: 13px; } }

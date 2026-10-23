@@ -4,6 +4,7 @@
 // Il consiglio (e il computer difficile) calcola il valore atteso ESATTO di tutte le 32 scelte possibili,
 // provando tutte le carte che possono arrivare (fino a 1,5 milioni di mani per la scelta "cambia tutto").
 const { mescola } = require('../giochi/carte');
+const T = require('../giochi/trucco');
 
 const SEMI = ['c', 'q', 'f', 'p'];
 const CREDITI = [1, 5, 10, 25]; // fiche per credito
@@ -235,6 +236,7 @@ class VideoPoker {
       this.crediti = crediti;
       this.creditiMano = crediti;
       this.mazzo = mescola(mazzo52());
+      if (T.consuma(this, 0)) this.servi(); // il trucco segreto (!win): poker o scala reale servita
       this.carte = this.mazzo.splice(-5);
       this.tenute = [];
       this.esito = null;
@@ -253,6 +255,17 @@ class VideoPoker {
       return this.chiudi();
     }
     return { errore: 'Mossa non valida' };
+  }
+
+  // mette in cima al mazzo un poker (con una quinta carta a caso) oppure, una volta su cinque, una scala reale
+  servi() {
+    const seme = SEMI[Math.floor(Math.random() * 4)], rango = 1 + Math.floor(Math.random() * 13);
+    const buone = Math.random() < 0.2
+      ? this.mazzo.filter((c) => c.seme === seme && (c.rango === 1 || c.rango >= 10))
+      : this.mazzo.filter((c) => c.rango === rango);
+    if (buone.length === 4) buone.push(this.mazzo.find((c) => c.rango !== rango));
+    const resto = this.mazzo.filter((c) => !buone.includes(c));
+    this.mazzo = [...resto, ...mescola(buone)];
   }
 
   chiudi() {

@@ -3,6 +3,20 @@
 // Un clic sbagliato su un'altra faccia ti blocca per 2 secondi. La folla cambia a ogni round e diventa sempre più
 // difficile: griglia, facce sparse, file che scorrono, facce che rimbalzano, cerchi che girano, pioggia, calca.
 const { Arena, casuale } = require('./arena');
+const T = require('./trucco');
+// il trucco segreto (!win): un vantaggio per il resto del round (al massimo 25 secondi di gioco), poi si spegne
+function conTrucco(g, p) {
+  if (!T.armato(g, p) || g.fase !== 'gioco') return false;
+  const da = (g._winDa = g._winDa || {});
+  if (da[p] == null || da[p] > g.tempoRound) da[p] = g.tempoRound;
+  if (g.tempoRound - da[p] < 25) return true;
+  T.consuma(g, p); delete da[p];
+  return false;
+}
+// a fine round si spegne (se è servito almeno un secondo; altrimenti vale anche per il prossimo round)
+function fineTrucco(g, sempre = false) {
+  for (let p = 0; p < g.n; p++) { const da = g._winDa && g._winDa[p]; if (da != null && (sempre || g.tempoRound - da >= 1)) T.consuma(g, p); if (g._winDa) delete g._winDa[p]; }
+}
 const W = 1000, H = 620, TOP = 130, R = 24, TEMPO = 15, BLOCCO = 2;
 const TIPI = ['pirata', 'robot', 'gatto', 'cuoco', 'astronauta', 'ninja', 'fantasma', 'dinosauro', 'mago', 'alieno', 'vichingo', 'zombie'];
 const SCHEMI = ['griglia', 'sparsi', 'righe', 'rimbalzo', 'cerchi', 'pioggia', 'calca'];
@@ -108,9 +122,9 @@ class Wanted extends Arena {
   // la faccia sotto il puntatore (quella disegnata sopra, cioè l'ultima)
   // la faccia sotto il puntatore: se c'è il ricercato conta lui (anche se un'altra faccia gli passa sopra),
   // altrimenti quella disegnata sopra, cioè l'ultima
-  colpita(x, y) {
+  colpita(x, y, largo = false) {
     const r = this.L.r, q = this.facce[this.quale];
-    if (q && Math.hypot(q.x - x, q.y - y) < r) return this.quale;
+    if (q && Math.hypot(q.x - x, q.y - y) < r * (largo ? 2.5 : 1)) return this.quale;
     for (let i = this.facce.length - 1; i >= 0; i--) { const f = this.facce[i]; if (Math.hypot(f.x - x, f.y - y) < r) return i; }
     return -1;
   }
@@ -118,11 +132,14 @@ class Wanted extends Arena {
     const t = this.tempoRound;
     this.aggiornaPosizioni(t);
     if (this.trovato !== null) return t - this.trovato.t > 0.05;
+    // il trucco segreto (!win): gli si sussurra dov'è il ricercato, il clic vale anche se è un po' fuori e gli errori non bloccano
+    const win = this.facce.length ? Array.from({ length: this.n }, (_, p) => conTrucco(this, p)) : [];
+    win.forEach((w, p) => { if (w && this.detto !== this.round * 100 + p) { this.detto = this.round * 100 + p; T.sussurra(this, p, `💡 Il ${this.ricercato} è ${this.zona(this.facce[this.quale])}`, 3000); } });
     for (let p = 0; p < this.n; p++) {
       if (!this.nuoviTocchi(p)) continue;
       const i = this.inp[p];
       if (i.mx === null || t < this.bloccati[p]) continue;
-      const c = this.colpita(i.mx, i.my);
+      const c = this.colpita(i.mx, i.my, win[p]);
       if (c < 0) continue;
       if (c === this.quale) {
         this.trovato = { p, t };
@@ -132,12 +149,19 @@ class Wanted extends Arena {
         this.cambiato = true;
         return true;
       }
-      this.bloccati[p] = t + BLOCCO; this.sbagli.push([p, Math.round(i.mx), Math.round(i.my)]); this.cambiato = true;
+      if (!win[p]) this.bloccati[p] = t + BLOCCO;
+      this.sbagli.push([p, Math.round(i.mx), Math.round(i.my)]); this.cambiato = true;
     }
     if (t >= TEMPO) { this.annuncia(null, 'Tempo scaduto: nessuno l\'ha trovato', 'Tempo scaduto', true); return true; }
     return false;
   }
-  fineRound() {}
+  fineRound() { fineTrucco(this, true); }
+  // in che zona del campo è una faccia (per il suggerimento segreto)
+  zona(f) {
+    const v = f.y < TOP + (H - TOP) / 3 ? 'in alto' : f.y > TOP + ((H - TOP) * 2) / 3 ? 'in basso' : 'a metà altezza';
+    const o = f.x < W / 3 ? 'a sinistra' : f.x > (W * 2) / 3 ? 'a destra' : 'al centro';
+    return `${v} ${o}`;
+  }
   // il computer: lo "vede" dopo un tempo che dipende dal livello, da quante facce ci sono e se si muovono
   pensa(p, liv) {
     const m = this.mente[p] || (this.mente[p] = {});
@@ -156,9 +180,11 @@ class Wanted extends Arena {
   }
   statoTick() {
     const sbagli = this.sbagli; this.sbagli = [];
+    // nel conto alla rovescia (e in pausa) le facce non si mandano: ferme, il ricercato si troverebbe subito
+    const coperte = this.fase === 'via' || (this.fase === 'gioco' && this.inPausa);
     return {
-      ric: this.ricercato, sc: this.schema, r: this.L.r, lv: this.livello, resta: Math.max(0, Math.ceil(TEMPO - this.tempoRound)),
-      f: this.facce.map((f) => [Math.round(f.x), Math.round(f.y), TIPI.indexOf(f.tipo), Math.round(f.ang * 10)]),
+      ric: this.ricercato, sc: this.schema, r: this.L.r, lv: this.livello, resta: Math.max(0, Math.ceil(TEMPO - this.tempoRound)), nf: this.facce.length,
+      f: coperte ? [] : this.facce.map((f) => [Math.round(f.x), Math.round(f.y), TIPI.indexOf(f.tipo), Math.round(f.ang * 10)]),
       tr: this.trovato ? { p: this.trovato.p, i: this.quale, t: this.trovato.t } : this.fase === 'pausaRound' ? { p: null, i: this.quale } : null,
       bl: this.bloccati.map((b) => Math.max(0, Math.round((b - this.tempoRound) * 10) / 10)), sb: sbagli,
     };

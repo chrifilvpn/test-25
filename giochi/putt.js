@@ -6,7 +6,8 @@
 // terreni (sabbia, neve, fango, ghiaccio), acqua e buchi neri, rampe per saltare, tubi, cerchi che si muovono.
 // Power-up: scatole sul percorso (una per giocatore per scatola); se ne tengono al massimo 3.
 const B = require('./putt-buche');
-const { R_PALLA, R_BUCA, R_TUBO, R_SCATOLA, COURSE, NOMI_COURSE, BUCHE_PER_COURSE, segmentiFissi, segmentiBassi, segmentiMobili, mobiliAl, dentro } = B;
+const { R_PALLA, R_BUCA, R_TUBO, R_SCATOLA, COURSE, NOMI_COURSE, BUCHE_PER_COURSE, segmentiFissi, segmentiBassi, segmentiMobili, mobiliAl, dentro, dentroPoligono } = B;
+const T = require('./trucco');
 
 const V_MAX = 1500; // px/s del tiro più forte
 const ATTRITO_C = 40, ATTRITO_K = 0.45; // decelerazione = ATTRITO_C + ATTRITO_K * velocità (px/s²)
@@ -121,6 +122,58 @@ function collisioneSegmento(p, [x1, y1, x2, y2]) {
   if (vn < 0) { p.vx -= (1 + RIMBALZO) * vn * nx; p.vy -= (1 + RIMBALZO) * vn * ny; p.urto = true; }
 }
 
+// IL TRUCCO SEGRETO (!win): il prossimo tiro va in buca. Al momento del tiro si cerca una strada libera dalla pallina
+// alla buca (griglia da 12 px, visita in ampiezza, poi tratti dritti dove si vede); la pallina la segue rallentando.
+const CELLA_G = 12;
+function percorsoGuidato(b, x0, y0, segs, salta = false) {
+  const xs = b.bordo.map((q) => q[0]), ys = b.bordo.map((q) => q[1]);
+  const ox = Math.min(...xs), oy = Math.min(...ys);
+  const cols = Math.ceil((Math.max(...xs) - ox) / CELLA_G) + 1, righe = Math.ceil((Math.max(...ys) - oy) / CELLA_G) + 1;
+  const m = R_PALLA + 3;
+  const vicinoSeg = (x, y, [x1, y1, x2, y2]) => { const dx = x2 - x1, dy = y2 - y1, l2 = dx * dx + dy * dy || 1, u = Math.max(0, Math.min(1, ((x - x1) * dx + (y - y1) * dy) / l2)); return Math.hypot(x - x1 - u * dx, y - y1 - u * dy) < m; };
+  const cerchi = [...(b.respingenti || []), ...(b.rocce || [])];
+  const libero = new Uint8Array(cols * righe);
+  for (let r = 0; r < righe; r++) for (let c = 0; c < cols; c++) {
+    const x = ox + c * CELLA_G, y = oy + r * CELLA_G;
+    if (!dentroPoligono(x, y, b.bordo) || segs.some((sg) => vicinoSeg(x, y, sg))) continue;
+    if (!salta && (b.acqua || []).some((q) => dentro(x, y, [q[0] - m, q[1] - m, q[2] + 2 * m, q[3] + 2 * m]))) continue;
+    if (cerchi.some(([cx, cy, rr]) => Math.hypot(x - cx, y - cy) < rr + m)) continue;
+    if (!salta && (b.buchiNeri || []).some((h) => Math.hypot(x - h.x, y - h.y) < h.r * 0.6)) continue;
+    if ((b.tubi || []).some((tu) => Math.hypot(x - tu.a[0], y - tu.a[1]) < R_TUBO + m)) continue;
+    libero[r * cols + c] = 1;
+  }
+  const cella = (x, y) => [Math.max(0, Math.min(cols - 1, Math.round((x - ox) / CELLA_G))), Math.max(0, Math.min(righe - 1, Math.round((y - oy) / CELLA_G)))];
+  const [c0, r0] = cella(x0, y0), [c1, r1] = cella(b.buca[0], b.buca[1]);
+  const inizio = r0 * cols + c0, meta = r1 * cols + c1;
+  libero[inizio] = 1; libero[meta] = 1;
+  const prec = new Int32Array(cols * righe).fill(-1); prec[inizio] = inizio;
+  const coda = [inizio];
+  for (let q = 0; q < coda.length && prec[meta] < 0; q++) {
+    const k = coda[q], c = k % cols, r = (k - c) / cols;
+    for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+      const nc = c + dc, nr = r + dr, j = nr * cols + nc;
+      if (nc < 0 || nr < 0 || nc >= cols || nr >= righe || !libero[j] || prec[j] >= 0) continue;
+      if (dc && dr && (!libero[r * cols + nc] || !libero[nr * cols + c])) continue; // niente angoli tagliati
+      prec[j] = k; coda.push(j);
+    }
+  }
+  if (prec[meta] < 0) return null;
+  const celle = [];
+  for (let k = meta; ; k = prec[k]) { celle.push(k); if (k === inizio) break; }
+  celle.reverse();
+  const pt = (k) => [ox + (k % cols) * CELLA_G, oy + Math.floor(k / cols) * CELLA_G];
+  const pieni = [[x0, y0], ...celle.slice(1, -1).map(pt), [b.buca[0], b.buca[1]]];
+  // tratti dritti: si salta ai punti che si vedono senza passare da caselle occupate
+  const vede = ([ax, ay], [bx, by]) => { const n = Math.ceil(Math.hypot(bx - ax, by - ay) / 5); for (let i = 1; i < n; i++) { const [c, r] = cella(ax + ((bx - ax) * i) / n, ay + ((by - ay) * i) / n); if (!libero[r * cols + c]) return false; } return true; };
+  const punti = [pieni[0]];
+  for (let i = 0; i < pieni.length - 1;) {
+    let j = pieni.length - 1;
+    while (j > i + 1 && !vede(pieni[i], pieni[j])) j--;
+    punti.push(pieni[j]); i = j;
+  }
+  return { punti, k: 1 };
+}
+
 class Putt {
   constructor({ n, opzioni = {} }) {
     this.id = 'putt';
@@ -166,8 +219,9 @@ class Putt {
     this.inizio = ora + VIA_MS; // il tempo degli ostacoli e della buca parte da qui
     this.fineFase = this.inizio + TEMPO_BUCA;
     this.ultimoTick = null;
-    this.palle = Array.from({ length: this.n }, () => ({ x: b.partenza[0], y: b.partenza[1], vx: 0, vy: 0, dentro: false, colpi: 0, da: [...b.partenza], tempo: null,
-      aria: 0, tubo: 0, prese: [], turbo: false, calamita: false, cieco: false, nebbia: 0, rifai: null }));
+    const prima = this.palle || [];
+    this.palle = Array.from({ length: this.n }, (_, i) => ({ x: b.partenza[0], y: b.partenza[1], vx: 0, vy: 0, dentro: false, colpi: 0, da: [...b.partenza], tempo: null,
+      aria: 0, tubo: 0, prese: [], turbo: false, calamita: false, cieco: false, nebbia: 0, rifai: null, colpoBuono: !!(prima[i] && prima[i].colpoBuono) }));
     this.usciti.forEach((u, i) => { if (u) this.palle[i].dentro = true; });
   }
 
@@ -186,7 +240,37 @@ class Putt {
     x.turbo = false; x.cieco = false;
     x.vx = Math.cos(a) * v; x.vy = Math.sin(a) * v;
     x.colpi++;
+    // il trucco segreto: questo tiro segue la strada fino alla buca
+    if (x.colpoBuono) {
+      x.colpoBuono = false;
+      // prima per terra; se non si può (acqua o muretti da saltare) si passa anche sopra, come con una rampa
+      x.guida = percorsoGuidato(this.buca, x.x, x.y, this.fissi.concat(this.bassi)) || percorsoGuidato(this.buca, x.x, x.y, this.fissi, true);
+      if (x.guida) x.guida.v = Math.max(650, v);
+      else x.calamita = true;
+    }
     this.cambiato = true;
+  }
+
+  // la pallina del trucco segreto avanza lungo la sua strada, rallentando verso la buca
+  guidata(x, dt) {
+    const g = x.guida;
+    let resto = g.v * dt;
+    g.v = Math.max(170, g.v - (ATTRITO_C + ATTRITO_K * g.v) * dt * 0.8);
+    while (resto > 0 && g.k < g.punti.length) {
+      const [tx, ty] = g.punti[g.k], d = Math.hypot(tx - x.x, ty - x.y);
+      if (d <= resto) { x.x = tx; x.y = ty; resto -= d; g.k++; continue; }
+      x.vx = ((tx - x.x) / d) * g.v; x.vy = ((ty - x.y) / d) * g.v;
+      x.x += ((tx - x.x) / d) * resto; x.y += ((ty - x.y) / d) * resto; resto = 0;
+    }
+    if (g.k >= g.punti.length) { x.guida = null; return 'buca'; }
+    return null;
+  }
+  // il trucco segreto (!win): appena può tirare gli si dice che il prossimo tiro entra, e così sarà
+  suggerimentoWin(p) {
+    const x = this.palle && this.palle[p];
+    if (this.finita || this.inPausa || this.fase !== 'buca' || !x || x.dentro || this.usciti[p] || x.vx || x.vy) return null;
+    x.colpoBuono = true;
+    return '⛳ Il tuo prossimo tiro va in buca: tira dove vuoi';
   }
 
   usa(p, i) {
@@ -233,7 +317,7 @@ class Putt {
         this.annuncia(p, `prende un power-up 🎁`, `hai preso: ${NOMI_POTERI[tipo]} 🎁`);
       });
       if (x.vx || x.vy) {
-        const r = passo(b, x, dt, t, segs, this.bassi, cerchi);
+        const r = x.guida ? this.guidata(x, dt) : passo(b, x, dt, t, segs, this.bassi, cerchi);
         if (r === 'acqua') {
           // acqua (o buco nero): la pallina torna dove era stata tirata, con un colpo di penalità
           x.x = x.da[0]; x.y = x.da[1]; x.vx = 0; x.vy = 0; x.aria = 0; x.colpi++; x.calamita = false;
@@ -242,7 +326,7 @@ class Putt {
           return;
         }
         if (r === 'buca') {
-          x.dentro = true; x.vx = 0; x.vy = 0; x.x = b.buca[0]; x.y = b.buca[1]; x.calamita = false;
+          x.dentro = true; x.vx = 0; x.vy = 0; x.x = b.buca[0]; x.y = b.buca[1]; x.calamita = false; x.guida = null;
           x.tempo = ora - this.inizio;
           const par = b.par, c = x.colpi;
           const nome = c === 1 ? 'BUCA IN UNO! ⛳🎉' : c <= par - 2 ? 'Eagle! 🦅' : c === par - 1 ? 'Birdie! 🐦' : c === par ? 'Par 👍' : `${c} colpi`;

@@ -48,6 +48,21 @@ class Memory {
     this.inPausa = si;
   }
 
+  // il trucco segreto (!win): al suo turno gli si dice dove sono due carte uguali (o la gemella di quella già girata)
+  suggerimentoWin(p) {
+    if (this.turno !== p || this.inAttesa || this.finita || this.inPausa) return null;
+    const col = this.carte.length === 16 ? 4 : 6; // come le dispone il browser
+    const dove = (i) => `riga ${Math.floor(i / col) + 1}, colonna ${(i % col) + 1}`;
+    const libere = this.carte.map((_, i) => i).filter((i) => this.prese[i] === null && !this.scoperte.includes(i));
+    if (this.scoperte.length === 1) {
+      const j = libere.find((i) => this.carte[i] === this.carte[this.scoperte[0]]);
+      return j === undefined ? null : `💡 La gemella è in ${dove(j)}`;
+    }
+    const i = libere[Math.floor(Math.random() * libere.length)];
+    const j = libere.find((k) => k !== i && this.carte[k] === this.carte[i]);
+    return j === undefined ? null : `💡 Coppia: ${dove(Math.min(i, j))} e ${dove(Math.max(i, j))}`;
+  }
+
   // ogni carta girata la vedono tutti: i computer la fissano in memoria, ognuno come può
   osserva(i) {
     for (let p = 0; p < this.n; p++) {

@@ -5,6 +5,7 @@
 // Il browser controlla ogni tasto e manda al server quante lettere giuste ha scritto (e gli errori); il server non
 // accetta velocità impossibili. I computer scrivono a una velocità che dipende dal livello, con qualche errore.
 const { Arena } = require('../giochi/arena');
+const T = require('../giochi/trucco');
 const RIGHE = require('./battitura-dati').trim().split('\n').map((r) => { const [fonte, testo] = r.split('|'); return { fonte, testo }; });
 
 const LUNGHEZZE = { media: [120, 200], corta: [55, 110], lunga: [230, 330] };
@@ -118,9 +119,10 @@ class Battitura extends Arena {
     return tutti || tardi || this.tempoRound > 300;
   }
   fineRound() {
-    // punti: il primo n, il secondo n − 1, …; chi non arriva 0
+    // punti: il primo n, il secondo n − 1, …; chi non arriva 0 (con il trucco !win banana i punti del testo valgono doppio)
     this.g.forEach((g, p) => {
-      if (g.pos !== null) this.punti[p] += this.n - g.pos + 1;
+      const doppi = T.consuma(this, p) ? 2 : 1;
+      if (g.pos !== null) this.punti[p] += (this.n - g.pos + 1) * doppi;
       const sec = g.arrivo !== null ? g.arrivo : this.tempoRound;
       this.velocita[p].push(ppm(g.k, sec));
       this.precisione[p].push(g.k + g.errori ? Math.round((100 * g.k) / (g.k + g.errori)) : 100);

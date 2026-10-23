@@ -171,6 +171,15 @@ class Duemila {
     return { ok: true };
   }
 
+  // il trucco segreto (!win): le prossime mosse migliori, calcolate sapendo già quali tessere usciranno
+  suggerimentoWin(p) {
+    const g = this.griglie[p];
+    if (this.finita || this.inPausa || !g || g.fatto !== null) return null;
+    const mosse = prossimeMosse(g.valori(), g.seme, g.k, 4);
+    if (!mosse.length) return null;
+    return `💡 ${mosse.map((d) => NOMI_DIR[d]).join(', ')}`;
+  }
+
   // nella sfida chi resta via troppo a lungo smette di giocare (i suoi punti restano)
   salta(p) {
     const g = this.griglie[p];
@@ -275,6 +284,34 @@ function caso(c, prof) {
   return tot / campione.length;
 }
 
+// la mossa del difficile, senza caso
+function mossaMigliore(c) {
+  let meglio = null, v = -Infinity;
+  for (const d of DIREZIONI) {
+    const s = scorri(c, d);
+    if (!s.mosso) continue;
+    const val = caso(s.celle, c.filter((x) => !x).length <= 4 ? 2 : 1) + s.punti * 0.002;
+    if (val > v) { v = val; meglio = d; }
+  }
+  return meglio;
+}
+// le prossime "quante" mosse migliori: le tessere nuove sono già decise dal seme, quindi si possono prevedere
+const NOMI_DIR = { su: '⬆️ su', giu: '⬇️ giù', sx: '⬅️ sinistra', dx: '➡️ destra' };
+function prossimeMosse(c, seme, k, quante) {
+  const out = [];
+  for (let n = 0; n < quante; n++) {
+    const d = mossaMigliore(c);
+    if (!d) break;
+    out.push(d);
+    c = scorri(c, d).celle;
+    const vuote = []; for (let i = 0; i < 16; i++) if (!c[i]) vuote.push(i);
+    if (!vuote.length) break;
+    const t = tesseraN(seme, k++);
+    c[vuote[Math.floor(t.x * vuote.length)]] = t.v;
+  }
+  return out;
+}
+
 function bot(g, p, livello) {
   const gr = g.griglie[p];
   const c = gr.valori();
@@ -334,5 +371,5 @@ module.exports = {
   },
   crea: (o) => new Duemila(o),
   bot,
-  _test: { scorri, puoMuovere, tesseraN, Griglia, ritmo, OBIETTIVO, RECORD },
+  _test: { scorri, puoMuovere, tesseraN, Griglia, ritmo, OBIETTIVO, RECORD, prossimeMosse },
 };

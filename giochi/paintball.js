@@ -1,6 +1,20 @@
 // PAINTBALL: sparatutto visto dall'alto. Ti muovi con la tastiera (o il joystick) e spari palline di vernice verso il
 // mouse (o dove tocchi il campo). Chi viene colpito si sporca e riparte da un angolo. Vince chi fa più centri.
 const { Arena, casuale } = require('./arena');
+const T = require('./trucco');
+// il trucco segreto (!win): un vantaggio per il resto del round (al massimo 25 secondi di gioco), poi si spegne
+function conTrucco(g, p) {
+  if (!T.armato(g, p) || g.fase !== 'gioco') return false;
+  const da = (g._winDa = g._winDa || {});
+  if (da[p] == null || da[p] > g.tempoRound) da[p] = g.tempoRound;
+  if (g.tempoRound - da[p] < 25) return true;
+  T.consuma(g, p); delete da[p];
+  return false;
+}
+// a fine round si spegne (se è servito almeno un secondo; altrimenti vale anche per il prossimo round)
+function fineTrucco(g, sempre = false) {
+  for (let p = 0; p < g.n; p++) { const da = g._winDa && g._winDa[p]; if (da != null && (sempre || g.tempoRound - da >= 1)) T.consuma(g, p); if (g._winDa) delete g._winDa[p]; }
+}
 const W = 1000, H = 620, R = 16, V = 215, V_PALLA = 640, VITA_PALLA = 1.3, RICARICA = 0.35, DURATA = 75, RINASCITA = 1.5, PROTEZIONE = 1.2;
 // CAMPI a tema, simmetrici rispetto al centro (così nessun angolo è avvantaggiato). Ogni blocco è
 // [x, y, larghezza, altezza, tipo]: il tipo serve solo al disegno; le palline si fermano su tutti.
@@ -60,6 +74,7 @@ class Paintball extends Arena {
     this.colpi.push(p);
   }
   passo(dt) {
+    const win = this.e.map((_, p) => conTrucco(this, p)); // il trucco segreto: le sue palle prendono da più lontano e lui non viene colpito
     for (let p = 0; p < this.n; p++) {
       const e = this.e[p], i = this.inp[p];
       e.ricarica = Math.max(0, e.ricarica - dt); e.prot = Math.max(0, e.prot - dt);
@@ -82,8 +97,8 @@ class Paintball extends Arena {
       if (b.t > VITA_PALLA || b.x < 0 || b.y < 0 || b.x > W || b.y > H || this.blocchi.some((r) => dentroRett(b.x, b.y, r))) { b.fine = true; this.macchie.push({ x: Math.round(b.x), y: Math.round(b.y), c: b.da, r: 8 }); continue; }
       for (let q = 0; q < this.n; q++) {
         const e = this.e[q];
-        if (q === b.da || e.morto > 0 || e.prot > 0) continue;
-        if (Math.hypot(e.x - b.x, e.y - b.y) < R + 5) {
+        if (q === b.da || e.morto > 0 || e.prot > 0 || win[q]) continue;
+        if (Math.hypot(e.x - b.x, e.y - b.y) < R + (win[b.da] ? 26 : 5)) {
           b.fine = true; e.morto = RINASCITA; this.punti[b.da]++; this.e[b.da].centri++;
           this.macchie.push({ x: Math.round(e.x), y: Math.round(e.y), c: b.da, r: 22 });
           this.cambiato = true;
@@ -96,7 +111,7 @@ class Paintball extends Arena {
     if (this.macchie.length > 160) this.macchie.splice(0, this.macchie.length - 160);
     return this.tempoRound >= DURATA;
   }
-  fineRound() {}
+  fineRound() { fineTrucco(this); }
   pensa(p, liv) {
     const e = this.e[p];
     if (e.morto > 0) return {};

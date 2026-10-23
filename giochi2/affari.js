@@ -5,6 +5,7 @@
 // Tutto è pubblico tranne l'ordine delle carte. I soldi sono in "€".
 const { CASELLE, GRUPPI, DESTINO, SORPRESA } = require('./affari-dati');
 const { mescola } = require('../giochi/carte');
+const T = require('../giochi/trucco');
 
 const VIA = 200, INIZIO = 1500, PRIGIONE = 10, MULTA = 50, CASE_BANCA = 32, ALBERGHI_BANCA = 12;
 const dado = () => 1 + Math.floor(Math.random() * 6);
@@ -252,7 +253,7 @@ class Affari {
         return { ok: true };
       }
       if (a.tipo !== 'tira') return { errore: 'Tira i dadi' };
-      return this.tira(p);
+      return this.tira(p, T.consuma(this, p) ? this.dadiMigliori(p) : undefined);
     }
     if (this.fase === 'fine') {
       if (a.tipo !== 'fine') return { errore: 'Chiudi il turno' };
@@ -290,6 +291,30 @@ class Affari {
     this.muovi(p, somma);
     if (this.attivo === p && !this.finita) this.dopo(); // (se ha fatto bancarotta il turno è già passato)
     return { ok: true };
+  }
+  // il trucco segreto (!win): i dadi che portano p sulla casella migliore (una proprietà libera che gli conviene,
+  // niente affitti, tasse o prigione; in prigione un doppio per uscire)
+  dadiMigliori(p) {
+    let best = null, bv = -Infinity;
+    for (let a = 1; a <= 6; a++) for (let b = 1; b <= 6; b++) {
+      const doppio = a === b, s = a + b, c = (this.pos[p] + s) % 40, x = CASELLE[c];
+      let v = Math.random();
+      if (this.inPrigione[p] >= 0 && !doppio) v -= 500;
+      else if (this.inPrigione[p] < 0 && doppio && this.doppi === 2) v -= 1000;
+      else {
+        if (doppio) v += 15;
+        if (this.pos[p] + s >= 40) v += VIA / 4;
+        if (ACQUISTABILE(c)) {
+          const pad = this.padrone[c];
+          if (pad == null) v += this.soldi[p] >= x.prezzo ? valore(this, p, c, 'difficile') : 0;
+          else if (pad !== p && !this.ipoteca[c]) v -= this.affitto(c, s, false, false) * 2;
+        } else if (x.tipo === 'tassa') v -= x.importo;
+        else if (x.tipo === 'vaiprigione') v -= 400;
+        else if (x.tipo === 'parcheggio' && this.parcheggio) v += this.piatto;
+      }
+      if (v > bv) { bv = v; best = [a, b]; }
+    }
+    return best;
   }
   // uscendo di prigione col doppio non si ritira
   dopoPrigione() {

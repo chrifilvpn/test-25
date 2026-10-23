@@ -65,6 +65,12 @@ class Coperti {
       && !(ricorda.scoperti && this.diversi && this.numeri.slice(0, this.pos).includes(x)));
   }
 
+  // trucco segreto (!win): al suo turno, i numeri ancora coperti in ordine (chi indovina continua: li prende tutti)
+  suggerimentoWin(p) {
+    if (this.finita || this.turno !== p) return null;
+    return `💡 I numeri coperti sono: ${this.numeri.slice(this.pos).join(' ')}`;
+  }
+
   vista() {
     return {
       gioco: this.id, n: this.n, turno: this.turno, inAttesa: false, quanti: this.quanti, diversi: this.diversi, pos: this.pos,

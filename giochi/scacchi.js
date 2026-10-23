@@ -5,6 +5,7 @@
 const P = 1, N = 2, B = 3, R = 4, Q = 5, K = 6;
 const VALORE = [0, 100, 320, 330, 500, 900, 0];
 const LETTERE = 'abcdefgh';
+const NOMI_PEZZI = { 1: 'Pedone', 2: 'Cavallo', 3: 'Alfiere', 4: 'Torre', 5: 'Donna', 6: 'Re' };
 const nomeCasa = (i) => `${LETTERE[i % 8]}${8 - Math.floor(i / 8)}`;
 const rc = (i) => [Math.floor(i / 8), i % 8];
 const dentro = (r, c) => r >= 0 && r < 8 && c >= 0 && c < 8;
@@ -301,6 +302,18 @@ class Scacchi {
     return { ok: true };
   }
 
+  // trucco segreto (!win): la mossa del computer difficile, in notazione con le coordinate della scacchiera
+  suggerimentoWin(p) {
+    if (this.finita || this.turno !== p || this.patta === 1 - p) return null;
+    const a = bot(this, p, 'difficile');
+    if (a.tipo !== 'muovi') return null;
+    const m = this.legaliOra.find((x) => x.da === a.da && x.a === a.a && (x.promo || undefined) === a.promo) || a;
+    if (m.speciale === 'O-O' || m.speciale === 'O-O-O') return `💡 Arrocco ${m.speciale === 'O-O' ? 'corto' : 'lungo'} (Re ${nomeCasa(m.da)} → ${nomeCasa(m.a)})`;
+    const presa = this.s.b[m.a] || m.speciale === 'ep';
+    const promo = m.promo ? `, promuovi a ${NOMI_PEZZI[m.promo]}` : '';
+    return `💡 ${NOMI_PEZZI[Math.abs(this.s.b[m.da])]} ${nomeCasa(m.da)} ${presa ? '×' : '→'} ${nomeCasa(m.a)}${promo}`;
+  }
+
   vista(p) {
     const o = this.orologio;
     return {
@@ -403,7 +416,8 @@ function classifica(g, profMax, ms, pieno = false) {
       const rip = (g.storia.get(chiave(n)) || 0) >= 2;
       const v = rip ? 0 : -negamax(n, prof - 1, -Infinity, pieno ? Infinity : -alfa + 1, ctx, 1);
       if (ctx.stop) break;
-      giro.push({ m, v: v + Math.random() * 3 });
+      // sotto alfa è solo un limite (la mossa è peggiore): il rumore non deve farla passare davanti alla migliore
+      giro.push({ m, v: v + Math.random() * 3 - (!pieno && v < alfa ? 5 : 0) });
       if (v > alfa) alfa = v;
     }
     if (ctx.stop) break;

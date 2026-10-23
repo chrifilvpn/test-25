@@ -1,5 +1,6 @@
 const { mazzoDoppio, mescola, casuale } = require('./carte');
 const { valuta, penalita, sostituisceJolly } = require('./scala-regole');
+const T = require('./trucco');
 
 const APERTURA = 40;
 
@@ -50,6 +51,24 @@ class Scala40 {
     this.tt = { presoDalPozzo: null, daUsare: [], apertoOra: false, azioni: 0, jollyDa: null };
   }
 
+  // il trucco segreto (!win): si pesca un jolly, se nel mazzo ce n'è ancora; se no la carta che fa crescere di più
+  // le combinazioni in mano (quella che chiude una scala o un tris)
+  truccaPescata(p) {
+    if (T.inCima(this.mazzo, (c) => c.jolly)) return;
+    const mano = this.mani[p];
+    const base = migliore(candidati(mano), mano.length).punti;
+    const visti = new Set();
+    let best = null, bv = base;
+    for (const c of this.mazzo) {
+      const k = `${c.rango}${c.seme}`;
+      if (visti.has(k)) continue;
+      visti.add(k);
+      const v = migliore(candidati([...mano, c]), mano.length + 1).punti;
+      if (v > bv) { bv = v; best = c; }
+    }
+    if (best) T.inCima(this.mazzo, (c) => c === best);
+  }
+
   togliDallaMano(p, ids) {
     const mano = this.mani[p];
     if (new Set(ids).size !== ids.length) return null;
@@ -84,6 +103,7 @@ class Scala40 {
         if (!this.mazzo.length) this.rimescola();
         // se il mazzo è stato rigirato troppe volte senza che nessuno chiuda, la smazzata si annulla
         if (!this.mazzo.length || this.rimescolate > 3) return this.annulla();
+        if (T.consuma(this, p)) this.truccaPescata(p);
         mano.push(this.mazzo.pop());
       }
       this.fase = 'gioca';

@@ -222,6 +222,14 @@ class Anagrammi {
     if (this.nSq === 1) this.risultato.titolo = `${max} punti`;
   }
 
+  // il trucco segreto (!win): durante il round gli sussurra le soluzioni più lunghe che la sua squadra non ha ancora trovato
+  suggerimentoWin(posto) {
+    if (this.finita || this.fase !== 'gioco') return null;
+    const st = this.stato[this.sq[posto]];
+    const restano = this.parole.filter((x, i) => st[i].chi === null).map((x) => x.parola).sort((a, b) => b.length - a.length);
+    return restano.length ? `🔀 ${restano.slice(0, 4).join(', ').toUpperCase()}` : null;
+  }
+
   vista(p) {
     const q = Number.isInteger(p) && p >= 0 && p < this.n ? p : 0;
     const s = this.sq[q];

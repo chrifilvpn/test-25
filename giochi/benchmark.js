@@ -14,6 +14,7 @@ const BOT = {
   difficile: { reazione: [235, 25], sequenza: [14, 3], numeri: [10, 1.5], bersagli: [470, 60], visiva: [12, 2] },
 };
 const MINORE_MEGLIO = { reazione: true, bersagli: true };
+const T = require('./trucco');
 const gauss = () => { let u = 0, v = 0; while (!u) u = Math.random(); while (!v) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); };
 const intero = (n) => Math.floor(Math.random() * n);
 
@@ -157,6 +158,14 @@ class Benchmark {
 
   chiudiProva(ora) {
     const t = this.tipo;
+    // il trucco segreto (!win): chi ce l'ha vince questa prova, di poco (come se fosse andata bene davvero)
+    for (let p = 0; p < this.n; p++) {
+      if (!T.consuma(this, p) || this.n !== 2) continue;
+      const mio = this.g[p], altro = this.g[1 - p].valore, prima = mio.valore;
+      if (MINORE_MEGLIO[t]) { const margine = t === 'reazione' ? 4 + intero(18) : 120 + intero(400); if (!(mio.valore < altro)) mio.valore = Math.max(t === 'reazione' ? 110 : N_BERSAGLI * 130, altro - margine); }
+      else if (!(mio.valore > altro)) mio.valore = altro + 1;
+      if (t === 'reazione' && prima > 0) mio.tempi = mio.tempi.map((x) => Math.round((x * mio.valore) / prima));
+    }
     const v = this.g.map((x) => x.valore);
     let vince = -1;
     if (this.n === 2 && v[0] !== v[1]) vince = MINORE_MEGLIO[t] ? (v[0] < v[1] ? 0 : 1) : (v[0] > v[1] ? 0 : 1);

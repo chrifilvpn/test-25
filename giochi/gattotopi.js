@@ -1,6 +1,20 @@
 // IL GATTO E I TOPI: a ogni round uno è il gatto (si muove seguendo il mouse o il dito) e gli altri sono topi (tastiera
 // o joystick). I topi raccolgono formaggi senza farsi prendere; il gatto prende i topi. Il gatto cambia a ogni round.
 const { Arena, casuale, dist, verso } = require('./arena');
+const T = require('./trucco');
+// il trucco segreto (!win): un vantaggio per il resto del round (al massimo 25 secondi di gioco), poi si spegne
+function conTrucco(g, p) {
+  if (!T.armato(g, p) || g.fase !== 'gioco') return false;
+  const da = (g._winDa = g._winDa || {});
+  if (da[p] == null || da[p] > g.tempoRound) da[p] = g.tempoRound;
+  if (g.tempoRound - da[p] < 25) return true;
+  T.consuma(g, p); delete da[p];
+  return false;
+}
+// a fine round si spegne (se è servito almeno un secondo; altrimenti vale anche per il prossimo round)
+function fineTrucco(g, sempre = false) {
+  for (let p = 0; p < g.n; p++) { const da = g._winDa && g._winDa[p]; if (da != null && (sempre || g.tempoRound - da >= 1)) T.consuma(g, p); if (g._winDa) delete g._winDa[p]; }
+}
 const W = 1000, H = 620, R_TOPO = 14, R_GATTO = 24, V_TOPO = 240, V_GATTO = 275, DURATA = 50;
 const PUNTI_PRESA = 3, PUNTI_FORMAGGIO = 1, MAX_FORMAGGI = 6;
 
@@ -64,6 +78,7 @@ class GattoTopi extends Arena {
       }
       this.prossimo = casuale(0.7, 1.5);
     }
+    const win = this.e.map((_, p) => conTrucco(this, p)); // il trucco segreto: più veloce; da gatto prende da più lontano, da topo non viene preso
     for (let p = 0; p < this.n; p++) {
       const e = this.e[p], i = this.inp[p];
       if (e.fermo > 0) { e.fermo -= dt; continue; }
@@ -72,10 +87,10 @@ class GattoTopi extends Arena {
         // il gatto va verso il puntatore; se non c'è (tastiera o joystick) usa la direzione
         let dx = i.x, dy = i.y;
         if (i.mx !== null && (Math.abs(i.x) + Math.abs(i.y) < 0.1)) { const d = Math.hypot(i.mx - e.x, i.my - e.y); if (d > 6) { dx = (i.mx - e.x) / d; dy = (i.my - e.y) / d; } else { dx = 0; dy = 0; } }
-        e.x += dx * V_GATTO * dt; e.y += dy * V_GATTO * dt;
+        e.x += dx * V_GATTO * dt * (win[p] ? 1.3 : 1); e.y += dy * V_GATTO * dt * (win[p] ? 1.3 : 1);
         spingiFuori(e, R_GATTO, this.mobili);
       } else {
-        e.x += i.x * V_TOPO * dt; e.y += i.y * V_TOPO * dt;
+        e.x += i.x * V_TOPO * dt * (win[p] ? 1.3 : 1); e.y += i.y * V_TOPO * dt * (win[p] ? 1.3 : 1);
         spingiFuori(e, R_TOPO, this.mobili);
         // formaggi
         for (const f of this.formaggio) if (!f.preso && Math.hypot(f.x - e.x, f.y - e.y) < R_TOPO + 14) { f.preso = true; this.punti[p] += PUNTI_FORMAGGIO; this.formaggi[p]++; this.cambiato = true; }
@@ -87,8 +102,8 @@ class GattoTopi extends Arena {
     for (let p = 0; p < this.n; p++) {
       if (p === this.gatto) continue;
       const t = this.e[p];
-      if (t.fermo > 0 || t.scudo > 0) continue;
-      if (Math.hypot(t.x - g.x, t.y - g.y) < R_TOPO + R_GATTO - 4) {
+      if (t.fermo > 0 || t.scudo > 0 || win[p]) continue;
+      if (Math.hypot(t.x - g.x, t.y - g.y) < R_TOPO + R_GATTO - 4 + (win[this.gatto] ? 22 : 0)) {
         this.punti[this.gatto] += PUNTI_PRESA; this.prese[this.gatto]++;
         const tana = tane[Math.floor(Math.random() * 4)];
         t.x = tana[0]; t.y = tana[1]; t.fermo = 1.5; t.scudo = 1.5; t.salto++;
@@ -98,7 +113,7 @@ class GattoTopi extends Arena {
     }
     return this.tempoRound >= DURATA;
   }
-  fineRound() {}
+  fineRound() { fineTrucco(this); }
   pensa(p, liv) {
     const e = this.e[p], ora = this.tempoRound;
     const m = this.memoria[p] || (this.memoria[p] = { fino: 0, dir: { x: 0, y: 0 }, bers: null });

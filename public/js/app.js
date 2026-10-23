@@ -169,7 +169,7 @@
   }
 
   // filtri della home: per nome, per numero di giocatori, col computer o solo tra persone
-  const filtro = { nome: '', giocatori: mem.get('fGioc', ''), tipo: mem.get('fTipo', ''), cat: mem.get('fCat', '') };
+  const filtro = { nome: '', giocatori: mem.get('fGioc', ''), tipo: mem.get('fTipo', ''), cat: mem.get('fCat', ''), ctrl: mem.get('fCtrl', '') };
   // preferiti (⭐) e giochi fatti di recente: salvati nel browser
   const leggiJson = (k, d) => { try { return JSON.parse(mem.get(k, '')) ?? d; } catch { return d; } };
   let preferiti = new Set(leggiJson('preferiti', []));
@@ -189,6 +189,7 @@
     filtro.cat = b.dataset.cat; mem.set('fCat', filtro.cat);
     disegnaCategorie(); disegnaGiochi();
   });
+  const touch = () => matchMedia('(hover: none) and (pointer: coarse)').matches;
   const semplice = (t) => String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
   function passaFiltro(g) {
     if (filtro.nome) {
@@ -201,6 +202,9 @@
     }
     if (filtro.tipo === 'bot' && g.soloPersone) return false;
     if (filtro.tipo === 'persone' && !g.soloPersone) return false;
+    // con cosa si gioca: i giochi "uno" (mouse o tastiera, a scelta) valgono sia per il mouse sia per la tastiera
+    // (sul telefono il filtro è nascosto e non conta: si gioca col dito)
+    if (filtro.ctrl && !touch() && g.controlli !== filtro.ctrl && !(g.controlli === 'uno' && filtro.ctrl !== 'entrambi')) return false;
     if (filtro.cat === 'pref' && !preferiti.has(g.id)) return false;
     if (filtro.cat === 'recenti' && !recenti.includes(g.id)) return false;
     if (filtro.cat && !['pref', 'recenti'].includes(filtro.cat) && g.categoria !== filtro.cat) return false;
@@ -208,6 +212,14 @@
   }
   $('#filtro-giocatori').value = filtro.giocatori;
   for (const b of $$('#filtro-tipo button')) b.setAttribute('aria-pressed', String(b.dataset.tipo === filtro.tipo));
+  for (const b of $$('#filtro-controlli button')) b.setAttribute('aria-pressed', String(b.dataset.ctrl === filtro.ctrl));
+  $('#filtro-controlli').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-ctrl]');
+    if (!b) return;
+    filtro.ctrl = b.dataset.ctrl; mem.set('fCtrl', filtro.ctrl);
+    for (const x of $$('#filtro-controlli button')) x.setAttribute('aria-pressed', String(x === b));
+    disegnaGiochi();
+  });
   $('#filtro-nome').addEventListener('input', (e) => { filtro.nome = e.target.value; disegnaGiochi(); });
   $('#filtro-giocatori').addEventListener('change', (e) => { filtro.giocatori = e.target.value; mem.set('fGioc', filtro.giocatori); disegnaGiochi(); });
   $('#filtro-tipo').addEventListener('click', (e) => {
@@ -218,7 +230,8 @@
     disegnaGiochi();
   });
   $('#filtro-azzera').addEventListener('click', () => {
-    Object.assign(filtro, { nome: '', giocatori: '', tipo: '', cat: '' }); mem.set('fGioc', ''); mem.set('fTipo', ''); mem.set('fCat', ''); disegnaCategorie();
+    Object.assign(filtro, { nome: '', giocatori: '', tipo: '', cat: '', ctrl: '' }); mem.set('fGioc', ''); mem.set('fTipo', ''); mem.set('fCat', ''); mem.set('fCtrl', ''); disegnaCategorie();
+    for (const x of $$('#filtro-controlli button')) x.setAttribute('aria-pressed', String(x.dataset.ctrl === ''));
     $('#filtro-nome').value = ''; $('#filtro-giocatori').value = '';
     for (const x of $$('#filtro-tipo button')) x.setAttribute('aria-pressed', String(x.dataset.tipo === ''));
     disegnaGiochi();
@@ -233,7 +246,7 @@
     } else if (filtro.cat === 'recenti') visibili.sort((a, b) => recenti.indexOf(a.id) - recenti.indexOf(b.id));
     $('#filtro-vuoto').hidden = visibili.length > 0;
     $('#filtro-vuoto').textContent = filtro.cat === 'pref' && !preferiti.size ? 'Nessun preferito: tocca la ☆ di un gioco per aggiungerlo.' : filtro.cat === 'recenti' && !recenti.length ? 'Non hai ancora giocato a niente da questo browser.' : 'Nessun gioco con questi filtri.';
-    $('#filtro-azzera').hidden = !(filtro.nome || filtro.giocatori || filtro.tipo || filtro.cat);
+    $('#filtro-azzera').hidden = !(filtro.nome || filtro.giocatori || filtro.tipo || filtro.cat || (filtro.ctrl && !touch()));
     // se il filtro fissa i giocatori, il numero scelto lo segue
     if (filtro.giocatori && !filtro.nome) {
       const m = meta(scelto.gioco), n = Number(filtro.giocatori);
@@ -430,6 +443,16 @@
     avviso(m);
     if (!stato && /Nessun tavolo|pieno|iniziata/.test(m)) mem.del('tavolo');
     if (stato && stato.partita) disegnaGioco(); // rimette a posto le carte se la mossa non era valida
+  });
+  // il trucco segreto (!win): un suggerimento piccolo e discreto che sparisce da solo, e non resta da nessuna parte
+  socket.on('segreto', ({ testo, durata } = {}) => {
+    let el = document.getElementById('segreto');
+    if (!el) { el = document.createElement('div'); el.id = 'segreto'; el.setAttribute('aria-live', 'polite'); el.addEventListener('click', () => { el.hidden = true; }); document.body.append(el); }
+    el.textContent = testo || '';
+    el.hidden = false;
+    el.classList.remove('va'); void el.offsetWidth; el.classList.add('va');
+    clearTimeout(el._t);
+    el._t = setTimeout(() => { el.hidden = true; el.textContent = ''; }, Math.min(8000, Math.max(1500, Number(durata) || 4500)));
   });
   // avviso solo per me scritto da un gioco (es. "ci sei quasi!" in Disegna e indovina): va anche nella chat
   socket.on('avvisoPrivato', (m) => {

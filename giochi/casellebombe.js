@@ -68,6 +68,17 @@ class CaselleBombe {
     return { ok: true };
   }
 
+  // !win banana: nel tuo turno, qualche casella sicura (senza bomba) ancora coperta
+  suggerimentoWin(posto) {
+    if (this.finita || this.inAttesa || posto !== this.turno) return null;
+    const sicure = [];
+    for (let i = 0; i < this.scoperte.length; i++) if (!this.scoperte[i] && !this.bombe.has(i)) sicure.push(i);
+    if (!sicure.length) return null;
+    for (let i = sicure.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [sicure[i], sicure[j]] = [sicure[j], sicure[i]]; }
+    const dove = sicure.slice(0, 3).map((i) => `riga ${Math.floor(i / this.lato) + 1} col ${(i % this.lato) + 1}`);
+    return `💡 Caselle sicure: ${dove.join(' · ')}`;
+  }
+
   passa(p) { this.turno = (p + 1) % this.n; return { ok: true }; }
 
   avanza() {

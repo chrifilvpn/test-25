@@ -275,6 +275,20 @@ class Casse extends SfidaRompicapo {
     return { ok: true };
   }
 
+  // !win banana: la strada fino alla prossima spinta giusta (come l'aiuto, ma gratis e senza muovere niente)
+  suggerimentoWin(posto) {
+    const t = this.tavole[posto];
+    if (this.finita || !t || t.fatto != null || t.ritirato) return null;
+    const r = this.prossimaSpinta(t);
+    if (r.errore) return `💡 ${r.errore}`;
+    const NOMI = { u: 'su', d: 'giù', l: 'sinistra', r: 'destra' };
+    const passi = r.passi.slice(0, -1), gruppi = [];
+    for (const d of passi) { const u = gruppi[gruppi.length - 1]; if (u && u.d === d) u.n++; else gruppi.push({ d, n: 1 }); }
+    const strada = gruppi.map((g) => `${NOMI[g.d]}${g.n > 1 ? ` ×${g.n}` : ''}`).join(', ');
+    const spinta = { u: 'in su', d: 'in giù', l: 'a sinistra', r: 'a destra' }[r.passi[r.passi.length - 1]];
+    return `💡 ${strada ? `Cammina ${strada}, poi spingi` : 'Spingi'} la cassa ${spinta}${r.mancano > 1 ? ` (mancano ${r.mancano} spinte)` : ''}`;
+  }
+
   // ---- computer: segue la soluzione del livello (calcolata da qui), un passo alla volta ----
   pianoBot(p, livello) {
     if (this.menti[p] && this.menti[p].strada) return this.menti[p];

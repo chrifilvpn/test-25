@@ -5,6 +5,7 @@
 // risolutore (ricerca "best-first"): si può sempre vincere, e la soluzione guida aiuto e computer.
 // Da soli per il tempo; in sfida (2-8) tutti hanno la stessa distribuzione.
 const { SfidaRompicapo, FATTORE_LIVELLO, passoBot, mescola } = require('../giochi2/rompicapo-sfida');
+const { nomeCarta } = require('../giochi/carte');
 
 const SEMI = ['c', 'q', 'f', 'p'];
 const ROSSO = { c: true, q: true };
@@ -151,6 +152,19 @@ function risolvi(inizio, limite = 60000) {
   return { mosse: null, nodi };
 }
 
+// il trucco segreto (!win): una mossa della soluzione detta a parole
+function descriviMossa(s, m) {
+  const nome = (id) => nomeCarta({ rango: rango(id), seme: seme(id) });
+  let cosa;
+  if (m.da.f != null) cosa = `${nome(s.celle[m.da.f])} (cella ${m.da.f + 1})`;
+  else {
+    const col = s.col[m.da.c];
+    cosa = `${col.length - m.da.k > 1 ? 'la pila dal ' : ''}${nome(col[m.da.k])} (colonna ${m.da.c + 1})`;
+  }
+  const dove = m.a.b ? 'sulla base' : m.a.f != null ? 'in una cella' : `colonna ${m.a.c + 1}`;
+  return `💡 ${cosa} → ${dove}`;
+}
+
 function nuovaDistribuzione() {
   const m = []; for (const x of SEMI) for (let r = 1; r <= 13; r++) m.push(`${r}${x}`);
   for (let t = 0; t < 50; t++) {
@@ -208,6 +222,14 @@ class FreeCell extends SfidaRompicapo {
       return { ok: true };
     }
     return { errore: 'Mossa non valida' };
+  }
+
+  suggerimentoWin(p) {
+    const t = this.tavole[p];
+    if (!t || this.finita || t.fatto != null || t.ritirato) return null;
+    const r = t.mosse === 0 ? { mosse: this.soluzione } : risolvi(t.s, 20000);
+    if (!r.mosse || !r.mosse.length) return '💡 Da qui non si vince più: annulla qualche mossa';
+    return descriviMossa(t.s, r.mosse[0]);
   }
 
   // ---- computer: segue la soluzione (o la ricalcola); il facile ogni tanto parcheggia una carta e poi la riprende ----
@@ -274,5 +296,5 @@ module.exports = {
   },
   crea: (o) => new FreeCell(o),
   bot: (g, p, livello) => g.mossaBot(p, livello),
-  _test: { risolvi, applica, automatiche, capienza, inizioPila, sicura, mosse, nuovaDistribuzione, copia, sulleBasi },
+  _test: { risolvi, applica, automatiche, capienza, inizioPila, sicura, mosse, nuovaDistribuzione, copia, sulleBasi, descriviMossa },
 };

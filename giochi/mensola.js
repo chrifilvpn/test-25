@@ -126,6 +126,14 @@ class Mensola {
     if (this.n === 1) this.risultato.titolo = `Hai fatto ${this.punti[0]} punti`;
   }
 
+  // il trucco segreto (!win): quando tocca rispondere gli sussurra la soluzione (l'ordine, ripiano per ripiano, o l'oggetto cambiato)
+  suggerimentoWin(posto) {
+    if (this.finita || this.fase !== 'rispondi' || this.risposte[posto] !== undefined) return null;
+    if (this.modo === 'cambiato') return `🧠 Tocca: ${this.dopo[this.cambio.posti[0]]}`;
+    let i = 0;
+    return `🧠 ${this.piani.map((k) => this.mensola.slice(i, (i += k)).join(', ')).join(' / ')}`;
+  }
+
   vista(p) {
     const f = this.fase;
     const scopri = f === 'esito' || this.finita;

@@ -2,6 +2,20 @@
 // resta stordito e scivola un po' indietro. Chi arriva in cima prende punti; chi tira prende punti per ogni colpo.
 // Chi tira cambia a ogni round.
 const { Arena, casuale } = require('./arena');
+const T = require('./trucco');
+// il trucco segreto (!win): un vantaggio per il resto del round (al massimo 25 secondi di gioco), poi si spegne
+function conTrucco(g, p) {
+  if (!T.armato(g, p) || g.fase !== 'gioco') return false;
+  const da = (g._winDa = g._winDa || {});
+  if (da[p] == null || da[p] > g.tempoRound) da[p] = g.tempoRound;
+  if (g.tempoRound - da[p] < 25) return true;
+  T.consuma(g, p); delete da[p];
+  return false;
+}
+// a fine round si spegne (se è servito almeno un secondo; altrimenti vale anche per il prossimo round)
+function fineTrucco(g, sempre = false) {
+  for (let p = 0; p < g.n; p++) { const da = g._winDa && g._winDa[p]; if (da != null && (sempre || g.tempoRound - da >= 1)) T.consuma(g, p); if (g._winDa) delete g._winDa[p]; }
+}
 const W = 1000, H = 620, CIMA = 92, BASE = 575, R = 16, R_MASSO = 26;
 // il sentiero è stretto: ai lati ci sono le pareti di roccia (non si passa)
 const SX = 250, DX = 750;
@@ -35,6 +49,12 @@ class Massi extends Arena {
       this.massi.push({ id: ++this.nM, x: this.tx, y: 70, vy: V_MASSO, giro: 0, oscilla: casuale(-1, 1) });
       this.ricarica = RICARICA;
     }
+    // il trucco segreto di chi tira: i massi piegano verso chi sale
+    if (conTrucco(this, this.tira)) for (const m of this.massi) {
+      let bx = null, db = Infinity;
+      this.e.forEach((e, q) => { if (q !== this.tira && e.arrivo === null && e.stordito <= 0 && e.y > m.y - 10 && e.y - m.y < db) { db = e.y - m.y; bx = e.x; } });
+      if (bx !== null) m.x += Math.sign(bx - m.x) * Math.min(Math.abs(bx - m.x), 260 * dt);
+    }
     for (const m of this.massi) { m.y += m.vy * dt; m.vy += 60 * dt; m.giro += dt * 6; m.x += Math.sin(m.y / 60) * m.oscilla * 25 * dt; if (m.x < SX + R_MASSO - 8) { m.x = SX + R_MASSO - 8; m.oscilla = Math.abs(m.oscilla); } if (m.x > DX - R_MASSO + 8) { m.x = DX - R_MASSO + 8; m.oscilla = -Math.abs(m.oscilla); } }
     // chi sale
     for (let p = 0; p < this.n; p++) {
@@ -42,10 +62,11 @@ class Massi extends Arena {
       const e = this.e[p], i = this.inp[p];
       if (e.arrivo !== null) continue;
       if (e.stordito > 0) { e.stordito -= dt; continue; }
+      const win = conTrucco(this, p); // il trucco segreto di chi sale: più veloce e i massi gli passano accanto
       e.x = Math.max(SX + R, Math.min(DX - R, e.x + i.x * V_LATO * dt));
-      e.y = Math.max(CIMA - 10, Math.min(BASE, e.y + i.y * (i.y < 0 ? V_SU : V_LATO) * dt));
+      e.y = Math.max(CIMA - 10, Math.min(BASE, e.y + i.y * (i.y < 0 ? V_SU * (win ? 1.4 : 1) : V_LATO) * dt));
       for (const m of this.massi) {
-        if (m.fatto) continue;
+        if (m.fatto || win) continue;
         if (Math.hypot(m.x - e.x, m.y - e.y) < R + R_MASSO - 6) {
           m.fatto = true; e.stordito = STORDITO; e.y = Math.min(BASE, e.y + INDIETRO); e.colpi++;
           this.punti[this.tira]++; this.botti.push([Math.round(e.x), Math.round(e.y)]); this.cambiato = true;
@@ -64,6 +85,7 @@ class Massi extends Arena {
     return corridori.every((e) => e.arrivo !== null) || this.tempoRound >= DURATA;
   }
   fineRound() {
+    fineTrucco(this);
     if (!this.arrivi.length && this.n > 1) { this.punti[this.tira] += 3; this.annuncia(this.tira, 'non fa arrivare nessuno in cima: +3 🏔️', 'nessuno è arrivato in cima: +3 🏔️', true); }
   }
   pensa(p, liv) {

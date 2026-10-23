@@ -3,6 +3,7 @@
 // sbagliato (bianchi), senza dire quali. Da soli, oppure in sfida (come lo scontro di Wordle): tutti cercano lo
 // STESSO codice, ognuno per conto suo; vince chi usa meno tentativi e, a parità, chi finisce prima.
 const TENTATIVI = 10;
+const NOMI_COLORI = ['rosso', 'blu', 'verde', 'giallo', 'arancio', 'viola', 'azzurro', 'rosa'];
 
 // risposta a un tentativo: [neri, bianchi]
 const CONTA_A = new Int8Array(8), CONTA_B = new Int8Array(8);
@@ -102,6 +103,12 @@ class CodiceSegreto {
     this.risultato = { fazioni: punti.map((x, i) => ({ posti: [i], punti: x })), etichetta: 'punti', pareggio: false, vincitori };
     if (this.n === 1 && !vinti.length) this.risultato.titolo = 'Codice non trovato';
     return { ok: true };
+  }
+
+  // trucco segreto (!win): il codice segreto, per pochi secondi (stessi nomi dei colori della tastiera)
+  suggerimentoWin(p) {
+    if (this.finita || !this.righe[p] || this.fatto[p]) return null;
+    return `💡 Il codice è: ${this.segreto.map((k) => NOMI_COLORI[k]).join(' · ')}`;
   }
 
   vista(p) {

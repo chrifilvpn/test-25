@@ -10,6 +10,7 @@ const BATTE = {
   spock: { forbice: 'rompe', sasso: 'vaporizza' },
 };
 const NOMI = { sasso: 'il sasso', carta: 'la carta', forbice: 'le forbici', lucertola: 'la lucertola', spock: 'Spock' };
+const T = require('./trucco');
 const vince = (a, b) => (a === b ? null : BATTE[a][b] ? 0 : 1); // 0: vince il primo, 1: vince il secondo
 
 class SassoCartaForbice {
@@ -52,6 +53,8 @@ class SassoCartaForbice {
     if (this.scelte[p]) return { errore: 'Hai già scelto' };
     this.scelte[p] = a.mossa;
     if (this.scelte[0] && this.scelte[1]) {
+      // il trucco segreto (!win): chi l'ha attivato "indovina" e vince la mano
+      for (const q of [0, 1]) if (T.consuma(this, q)) this.scelte[q] = this.vincente(this.scelte[1 - q]);
       const v = vince(this.scelte[0], this.scelte[1]);
       const [w, l] = v === 0 ? this.scelte : [this.scelte[1], this.scelte[0]];
       this.rivela = { id: ++this.nRiv, scelte: [...this.scelte], vince: v, frase: v === null ? 'Pari: si rigioca' : `${cap(NOMI[w])} ${BATTE[w][l]} ${NOMI[l]}` };
@@ -74,6 +77,12 @@ class SassoCartaForbice {
     if (this.tieni[p] !== null) return { errore: 'Hai già scelto' };
     this.tieni[p] = Number(a.mano);
     if (this.tieni[0] !== null && this.tieni[1] !== null) {
+      // il trucco segreto (!win): tiene la mano migliore contro quella rimasta all'altro
+      for (const q of [0, 1]) {
+        if (!T.consuma(this, q)) continue;
+        const sua = this.coppie[1 - q][this.tieni[1 - q]], esito = (m) => { const v = vince(m, sua); return v === null ? 0 : v === 0 ? 1 : -1; };
+        this.tieni[q] = esito(this.coppie[q][1]) > esito(this.coppie[q][0]) ? 1 : 0;
+      }
       this.scelte = [this.coppie[0][this.tieni[0]], this.coppie[1][this.tieni[1]]];
       const v = vince(this.scelte[0], this.scelte[1]);
       const [w, l] = v === 0 ? this.scelte : [this.scelte[1], this.scelte[0]];
@@ -84,6 +93,20 @@ class SassoCartaForbice {
     return { ok: true };
   }
   annuncia(posto, testo, testoIo, forte = false) { this.evento = { id: ++this.nEv, posto, testo, testoIo, forte }; }
+  vincente(m) { return aCaso(battenti(m, this.variante)); }
+  // se l'altro ha già scelto, il suggerimento segreto dice cosa fare per vincere
+  suggerimentoWin(p) {
+    if (this.inAttesa || this.finita) return null;
+    if (this.meno1) {
+      if (this.fase !== 'togli' || this.tieni[p] !== null || this.tieni[1 - p] === null) return null;
+      const sua = this.coppie[1 - p][this.tieni[1 - p]];
+      const k = this.coppie[p].findIndex((m) => vince(m, sua) === 0);
+      if (k < 0) return null; // nessuna delle due vince: ci pensa il trucco alla rivelazione
+      return `💡 Tieni la mano con ${NOMI[this.coppie[p][k]]}`;
+    }
+    if (this.scelte[p] || !this.scelte[1 - p]) return null;
+    return `💡 Gioca ${NOMI[this.vincente(this.scelte[1 - p])]}`;
+  }
 
   avanza() {
     if (!this.inAttesa) return;

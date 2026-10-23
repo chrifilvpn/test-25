@@ -193,6 +193,23 @@ class Sblocca {
     }
     return { ok: true };
   }
+  // !win banana: le prossime mosse della strada più corta (gratis e solo per te)
+  suggerimentoWin(posto) {
+    const t = this.tavole[posto];
+    if (this.finita || this.inAttesa || !t || t.fatto !== null) return null;
+    const strada = risolvi(t.blocchi);
+    if (!strada || !strada.length) return null;
+    const bl = t.blocchi.map((b) => ({ ...b })), frasi = [];
+    for (const m of strada.slice(0, 3)) {
+      const b = bl[m.b];
+      const nome = m.b === 0 ? 'rosso' : b.o === 'v' ? `verticale in colonna ${b.c + 1} (righe ${b.r + 1}-${b.r + b.l})` : `orizzontale in riga ${b.r + 1} (colonne ${b.c + 1}-${b.c + b.l})`;
+      const d = b.o === 'v' ? m.r - b.r : m.c - b.c;
+      const verso = b.o === 'v' ? (d > 0 ? 'giù' : 'su') : d > 0 ? 'a destra' : 'a sinistra';
+      frasi.push(`Blocco ${nome} ${verso} di ${Math.abs(d)}`);
+      bl[m.b] = { ...b, r: m.r, c: m.c };
+    }
+    return `💡 ${frasi.join(' → ')}`;
+  }
   chiudiRound(tempo) {
     this.storico.push(this.tavole.map((t) => (t.fatto === null ? null : { mosse: t.mosse, ms: t.fatto, stelle: t.stelle })));
     if (tempo) this.annuncia(null, 'Tempo scaduto!', 'Tempo scaduto!', true);

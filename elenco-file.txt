@@ -99,6 +99,7 @@ giochi/texas.js
 giochi/tigerball-livelli.js
 giochi/tigerball.js
 giochi/tris.js
+giochi/trucco.js
 giochi/uno.js
 giochi/wanted.js
 giochi/wordle.js
@@ -152,6 +153,7 @@ giochi2/nonogram.js
 giochi2/oca.js
 giochi2/omaha.js
 giochi2/otello.js
+giochi2/paroliere-aggiunte.js
 giochi2/paroliere-dati.js
 giochi2/paroliere.js
 giochi2/patata.js
@@ -212,6 +214,7 @@ package.json
 public/boss.css
 public/index.html
 public/js/app.js
+public/js/boss-contenuti/esercizi-gpoi.js
 public/js/boss-contenuti/esercizi-informatica.js
 public/js/boss-contenuti/esercizi-inglese.js
 public/js/boss-contenuti/esercizi-italiano.js
@@ -219,6 +222,7 @@ public/js/boss-contenuti/esercizi-matematica.js
 public/js/boss-contenuti/esercizi-sistemi.js
 public/js/boss-contenuti/esercizi-storia.js
 public/js/boss-contenuti/esercizi-tpsit.js
+public/js/boss-contenuti/gpoi.js
 public/js/boss-contenuti/informatica.js
 public/js/boss-contenuti/inglese.js
 public/js/boss-contenuti/italiano.js
@@ -492,8 +496,18 @@ test/giochi3/picross.js
 test/giochi3/piramide.js
 test/giochi3/xiangqi.js
 test/migliorie3.js
+test/novita.js
 test/nuovi.js
 test/serate.js
 test/simula.js
+test/trucco.js
+test/trucco/azione1.js
+test/trucco/azione2.js
+test/trucco/carte.js
+test/trucco/casino.js
+test/trucco/infra.js
+test/trucco/parole.js
+test/trucco/rompicapo.js
+test/trucco/strategia.js
 tornei.js
 verifica.js

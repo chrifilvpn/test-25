@@ -5,6 +5,20 @@
 // e lo stesso vale per le caselle sparite finché non tornano. Ci si può dare pugni e si raccolgono potenziamenti.
 // L'ultimo che resta vince il round.
 const { Arena, casuale } = require('./arena');
+const T = require('./trucco');
+// il trucco segreto (!win): un vantaggio per il resto del round (al massimo 25 secondi di gioco), poi si spegne
+function conTrucco(g, p) {
+  if (!T.armato(g, p) || g.fase !== 'gioco') return false;
+  const da = (g._winDa = g._winDa || {});
+  if (da[p] == null || da[p] > g.tempoRound) da[p] = g.tempoRound;
+  if (g.tempoRound - da[p] < 25) return true;
+  T.consuma(g, p); delete da[p];
+  return false;
+}
+// a fine round si spegne (se è servito almeno un secondo; altrimenti vale anche per il prossimo round)
+function fineTrucco(g, sempre = false) {
+  for (let p = 0; p < g.n; p++) { const da = g._winDa && g._winDa[p]; if (da != null && (sempre || g.tempoRound - da >= 1)) T.consuma(g, p); if (g._winDa) delete g._winDa[p]; }
+}
 const W = 1000, H = 620, C = 60, COLS = 16, RIGHE = 10, OX = 20, OY = 10, R = 15, V = 250;
 const NCOLORI = 8, NOMI = ['rosso', 'blu', 'verde', 'giallo', 'viola', 'arancione', 'rosa', 'azzurro'];
 const CADUTA = 1.6, PUGNO_R = 60, PUGNO_SPINTA = 110, STORDITO = 0.9, RICARICA = 1.1;
@@ -110,11 +124,12 @@ class Arcobaleno extends Arena {
   pieno(k) { if (k < 0 || !this.maschera[k]) return false; return this.fase2 !== 'cade' || this.caselle[k] === this.colore; }
   cade(p) {
     const e = this.e[p];
-    if (e.piuma) {
+    const win = conTrucco(this, p); // il trucco segreto: come una piuma che non finisce mai, e senza dirlo a nessuno
+    if (e.piuma || win) {
       // la piuma salva una volta: si vola sulla casella buona più vicina
       let meglio = -1, dm = Infinity;
       for (const k of this.celle) if (this.pieno(k)) { const c = centro(k), d = Math.hypot(c.x - e.x, c.y - e.y); if (d < dm) { dm = d; meglio = k; } }
-      if (meglio >= 0) { const c = centro(meglio); e.x = c.x; e.y = c.y; e.vx = e.vy = 0; e.piuma = false; e.salto++; this.cambiato = true; this.annuncia(p, 'si salva con la piuma! 🪶', 'la piuma ti ha salvato! 🪶'); return; }
+      if (meglio >= 0) { const c = centro(meglio); e.x = c.x; e.y = c.y; e.vx = e.vy = 0; e.salto++; this.cambiato = true; if (win) return; e.piuma = false; this.annuncia(p, 'si salva con la piuma! 🪶', 'la piuma ti ha salvato! 🪶'); return; }
     }
     e.fuori = true; this.ordine.push(p); this.cambiato = true;
     this.annuncia(p, 'cade nel vuoto! 😱', 'sei caduto nel vuoto! 😱');
@@ -144,7 +159,7 @@ class Arcobaleno extends Arena {
       if (e.gelo > 0) e.gelo -= dt;
       if (bloccato) this.nuoviTocchi(p);
       else {
-        const v = V * (e.veloce > 0 ? 1.5 : 1);
+        const v = V * (e.veloce > 0 ? 1.5 : 1) * (conTrucco(this, p) ? 1.3 : 1);
         e.x += i.x * v * dt; e.y += i.y * v * dt;
         if (this.nuoviTocchi(p) && e.ricarica <= 0) this.pugno(p);
       }
@@ -216,12 +231,14 @@ class Arcobaleno extends Arena {
     if (bers === null) return;
     e.superPugno = false;
     const b = this.e[bers];
+    if (conTrucco(this, bers)) return; // col trucco segreto i pugni non lo spostano
     if (b.scudo > 0) { this.annuncia(p, 'colpisce lo scudo di @ 🛡️', 'lo scudo di @ para il pugno 🛡️', false, { bersaglio: bers, testoTe: 'lo scudo ha parato un pugno 🛡️' }); return; }
     const dx = b.x - e.x, dy = b.y - e.y, l = Math.hypot(dx, dy) || 1, sp = PUGNO_SPINTA * 6 * (forte ? 2 : 1);
     b.vx = (dx / l) * sp; b.vy = (dy / l) * sp; b.stordito = STORDITO;
     this.annuncia(p, forte ? 'SUPER PUGNO a @! 🥊' : 'tira un pugno a @! 👊', forte ? 'super pugno a @! 🥊' : 'pugno a @! 👊', false, { bersaglio: bers, testoTe: forte ? 'ti ha tirato un super pugno! 💫' : 'ti ha tirato un pugno! 💫' });
   }
   fineRound() {
+    fineTrucco(this);
     this.ordine.forEach((p, k) => { this.punti[p] += k; });
     const vivi = this.e.map((e, p) => (e.fuori ? -1 : p)).filter((p) => p >= 0);
     for (const p of vivi) this.punti[p] += this.ordine.length + 2;

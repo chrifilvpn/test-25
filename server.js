@@ -4,6 +4,7 @@ const http = require('http');
 const express = require('express');
 const { Server } = require('socket.io');
 const { GIOCHI, pulisciOpzioni } = require('./giochi');
+const TRUCCO = require('./giochi/trucco');
 
 const PORTA = process.env.PORT || 3000;
 const ATTESA_BOT_MS = Number(process.env.ATTESA_BOT_MS) || 900; // pausa "di riflessione" del computer
@@ -117,6 +118,7 @@ function messaggioSistema(s, testo) {
 
 function invia(s) {
   if (s.votoFine && s.votoFine.partita !== s.partita) { clearTimeout(s.timerVoto); s.votoFine = null; }
+  inviaSussurri(s);
   s.posti.forEach((g, posto) => {
     if (!g || (g.bot && !g.inSala) || !g.socketId) return; // chi è tornato al tavolo riceve ancora lo stato
     io.to(g.socketId).emit('stato', {
@@ -215,6 +217,24 @@ function aggiorna(s) {
   gestisciTick(s);
 }
 
+// IL TRUCCO SEGRETO (!win banana): i suggerimenti e i messaggi segreti del gioco vanno solo a chi li ha chiesti
+function inviaSussurri(s) {
+  const g = s.partita;
+  if (!g) return;
+  TRUCCO.controllaSuggerimenti(g);
+  for (const m of TRUCCO.prendiSussurri(g)) {
+    const x = s.posti[m.posto];
+    if (x && !x.bot && x.socketId) io.to(x.socketId).emit('segreto', { testo: m.testo, durata: m.durata });
+  }
+}
+function attivaTrucco(s, posto) {
+  const g = s.partita;
+  if (!g || g.finita) return;
+  TRUCCO.arma(g, posto);
+  try { if (typeof g.trucco === 'function') g.trucco(posto); } catch (e) { console.warn(`[${s.gioco}] errore nel trucco: ${e.message}`); }
+  aggiorna(s);
+}
+
 // ---- giochi in tempo reale: la partita espone tick(ora), tickMs e vistaTick(posto) ----
 // Il ciclo gira finché la partita è in corso; si ferma per tutti quando qualcuno è sulle dispense (pausaBoss).
 function gestisciTick(s) {
@@ -230,6 +250,7 @@ function gestisciTick(s) {
     s.posti.forEach((x, posto) => { if (x && !x.bot && x.socketId) io.to(x.socketId).volatile.emit('tick', g.vistaTick(posto)); });
     if (s.spettatori) for (const [sid, sp] of s.spettatori) if (seguibile(s, sp.segue)) io.to(sid).volatile.emit('tick', g.vistaTick(sp.segue));
     if (cambiato || g.finita) aggiorna(s);
+    else if (g._sussurri && g._sussurri.length) inviaSussurri(s);
   }, g.tickMs || 50);
 }
 
@@ -643,6 +664,7 @@ io.on('connection', (socket) => {
   };
   socket.emit('chatGlobaleStorico', chatGlobale);
   socket.on('chatGlobale', ({ testo, nome } = {}) => {
+    if (TRUCCO.eComando(testo)) return; // il trucco segreto non si vede mai, neanche nella chat globale
     if (provaAdmin(testo)) return;
     if (!COMANDI[String(testo || '').trim().toLowerCase().split(/\s+/)[0]] && domandaDa(testo) === null) comandoFinto(testo);
     const grezzo = String(testo || '').replace(/\s+/g, ' ').trim().slice(0, 200);
@@ -1011,6 +1033,8 @@ io.on('connection', (socket) => {
   });
 
   socket.on('chat', (testo) => {
+    // il trucco segreto: nessun messaggio, nessun avviso, per nessuno
+    if (TRUCCO.eComando(testo)) { const i = mioPosto(); if (stanza && i >= 0) attivaTrucco(stanza, i); return; }
     if (provaAdmin(testo)) return;
     if (!COMANDI[String(testo || '').trim().toLowerCase().split(/\s+/)[0]] && domandaDa(testo) === null) comandoFinto(testo);
     const s = stanza;

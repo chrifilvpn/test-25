@@ -4,6 +4,7 @@
 // I punti si contano in mezzi (×2) per non avere numeri con la virgola: 7 e mezzo = 15.
 const { Casino, puntataBot } = require('../giochi/casino');
 const { mescola } = require('../giochi/carte');
+const T = require('../giochi/trucco');
 
 const SEMI = ['d', 'c', 's', 'b'];
 const MATTA = '10d';
@@ -80,6 +81,10 @@ class SetteMezzo extends Casino {
     if (p !== this.turno) return { errore: 'Non è il tuo turno' };
     const m = this.mani[p];
     if (a.tipo === 'carta') {
+      if (this.serviti && this.serviti.has(p) && m.carte.length === 1) {
+        this.serviti.delete(p);
+        if (!T.inCima(this.mazzo, (c) => c.rango === 7)) T.inCima(this.mazzo, eMatta);
+      }
       m.carte.push(this.pesca());
       const t = conta(m.carte);
       if (t.sballato) { m.stato = 'sballato'; this.annuncia(p, `sballa con ${fmt(t.mezzi)}`, `hai sballato: ${fmt(t.mezzi)}`); return this.prossimo(p); }
@@ -94,7 +99,13 @@ class SetteMezzo extends Casino {
   gioca() {
     this.fase = 'turni';
     this.ordine = this.mani.map((m, i) => (m ? i : -1)).filter((i) => i >= 0);
-    for (const i of this.ordine) this.mani[i].carte.push(this.pesca());
+    // il trucco segreto (!win): una figura coperta, poi alla prima carta chiesta un 7 → sette e mezzo servito
+    this.truccati = this.ordine.filter((i) => T.consuma(this, i));
+    this.serviti = new Set(this.truccati);
+    for (const i of this.ordine) {
+      if (this.serviti.has(i)) T.inCima(this.mazzo, (c) => c.rango >= 8 && !eMatta(c));
+      this.mani[i].carte.push(this.pesca());
+    }
     this.banco.push(this.pesca());
     this.turno = null;
     this.prossimo(-1);
@@ -120,7 +131,14 @@ class SetteMezzo extends Casino {
     if (this.fase === 'banco') {
       const vivi = this.ordine.some((i) => this.mani[i].stato === 'stai');
       const b = conta(this.banco);
-      if (vivi && !b.sballato && b.mezzi < this.soglia * 2) { this.banco.push(this.pesca()); return; }
+      if (vivi && !b.sballato && b.mezzi < this.soglia * 2) {
+        // col trucco il banco non pareggia il sette e mezzo servito con le sue prime due carte
+        if (this.banco.length === 1 && (this.truccati || []).some((i) => this.mani[i].stato === 'stai' && conta(this.mani[i].carte).setteMezzo)) {
+          T.inCima(this.mazzo, (c) => !conta([...this.banco, c]).setteMezzo);
+        }
+        this.banco.push(this.pesca());
+        return;
+      }
       this.paga();
       return;
     }

@@ -5,6 +5,17 @@
 // guarda il compagno) o, senza disco, prova a rubarlo. Gli spintoni forti fanno perdere il disco. Si gioca a tempo;
 // in parità si va ai supplementari col gol d'oro.
 const { Arena } = require('../giochi/arena');
+const T = require('../giochi/trucco');
+// !win banana: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
+function aggiornaWin(g, dt) {
+  const w = g.winOn || (g.winOn = {}), tw = g.winT || (g.winT = {});
+  for (let p = 0; p < g.n; p++) {
+    if (!(w[p] = T.armato(g, p))) { tw[p] = 0; continue; }
+    tw[p] = (tw[p] || 0) + dt;
+    if (tw[p] > 25) { T.consuma(g, p); w[p] = false; tw[p] = 0; }
+  }
+}
+function fineWin(g) { for (let p = 0; p < g.n; p++) { T.consuma(g, p); if (g.winOn) g.winOn[p] = false; } }
 
 const W = 1100, H = 600, RAGGIO_ANGOLO = 150;
 const LINEA_PORTA = 92, BOCCA = 50, PROF_PORTA = 34; // la porta: da y = H/2 − BOCCA a H/2 + BOCCA, profonda 34
@@ -91,6 +102,7 @@ class Hockey extends Arena {
 
   // ---------- un passo del mondo ----------
   passo(dt) {
+    aggiornaWin(this, dt);
     const t = this.tempoRound, d = this.disco;
     if (this.pausaGol > 0) {
       this.pausaGol -= dt;
@@ -124,7 +136,7 @@ class Hockey extends Arena {
     p.vx += ix * ACC * dt; p.vy += iy * ACC * dt;
     const att = l > 0.1 ? ATTRITO : ATTRITO_FERMO;
     p.vx *= Math.exp(-att * dt); p.vy *= Math.exp(-att * dt);
-    const vmax = (this.disco.chi === p.k ? V_CONDISCO : V_MAX) * (L ? L.v : 1);
+    const vmax = (this.disco.chi === p.k ? V_CONDISCO : V_MAX) * (L ? L.v : 1) * (this.winOn[p.k] ? 1.25 : 1);
     const v = Math.hypot(p.vx, p.vy);
     if (v > vmax) { p.vx *= vmax / v; p.vy *= vmax / v; }
     p.x += p.vx * dt; p.y += p.vy * dt;
@@ -177,7 +189,7 @@ class Hockey extends Arena {
     // senza disco: colpo di bastone verso il disco vicino (se lo porta un avversario lo può rubare)
     const s = this.bastone(p);
     if (Math.hypot(d.x - s.x, d.y - s.y) < 34 && (d.chi === null || this.g[d.chi].sq !== p.sq)) {
-      const riesce = d.chi === null || Math.random() < 0.6;
+      const riesce = d.chi === null || (Math.random() < 0.6 && !this.winOn[d.chi]); // a chi ha il trucco non si ruba
       if (riesce) { if (d.chi !== null) { this.annuncia(p.k < this.n ? p.k : null, 'ruba il disco! 🏒', 'disco rubato! 🏒'); this.g[d.chi].pausa = 0.5; } d.chi = p.k; d.ultimo = p.k; d.assist = null; }
       else p.pausa = 0.35;
     }
@@ -244,7 +256,7 @@ class Hockey extends Arena {
       if (b) { d.x = b.x; d.y = b.y; }
       // gli avversari col bastone vicino al disco possono rubarlo (i computer: secondo il livello)
       for (const q of this.g) {
-        if (q.sq === p.sq || q.pausa > 0) continue;
+        if (q.sq === p.sq || q.pausa > 0 || this.winOn[p.k]) continue;
         const sq = this.bastone(q);
         if (Math.hypot(sq.x - d.x, sq.y - d.y) > 18) continue;
         const liv = this.livelloDi(q.k), prob = (liv ? LIV[liv].ruba : 1.6) * dt;
@@ -274,6 +286,7 @@ class Hockey extends Arena {
       for (const q of this.portieri) {
         const dx = d.x - q.x, dy = d.y - q.y, dist = Math.hypot(dx, dy);
         if (dist >= R_PORTIERE + R_DISCO) continue;
+        if (this.tiro && this.winOn[this.tiro.k] && this.tempoRound - this.tiro.t < 1.5 && this.squadra(this.tiro.k) !== q.sq) continue; // !win banana: il tiro entra
         const v = Math.hypot(d.vx, d.vy);
         const nx = dx / (dist || 1), ny = dy / (dist || 1);
         d.x = q.x + nx * (R_PORTIERE + R_DISCO); d.y = q.y + ny * (R_PORTIERE + R_DISCO);
@@ -302,6 +315,7 @@ class Hockey extends Arena {
     for (let p = 0; p < this.n; p++) this.punti[p] = this.gol[p % 2];
     const chi = d.ultimo !== null && this.g[d.ultimo].sq === sq ? d.ultimo : null;
     const nome = ['Rossi', 'Blu'][sq];
+    if (chi !== null && chi < this.n && T.consuma(this, chi)) this.winOn[chi] = false; // il trucco vale fino al gol
     if (chi !== null && chi < this.n) this.annuncia(chi, `segna! 🚨 ${this.gol[0]}–${this.gol[1]}`, `gol! 🚨 ${this.gol[0]}–${this.gol[1]}`, true);
     else this.annuncia(null, `Gol dei ${nome}! 🚨 ${this.gol[0]}–${this.gol[1]}`, `Gol dei ${nome}! 🚨 ${this.gol[0]}–${this.gol[1]}`, true);
     this.effetti.push(['g', sq]);
@@ -312,6 +326,7 @@ class Hockey extends Arena {
     return false;
   }
   fineRound() {
+    fineWin(this);
     for (let p = 0; p < this.n; p++) this.punti[p] = this.gol[p % 2];
     if (this.gol[0] === this.gol[1]) this.annuncia(null, `Finisce pari: ${this.gol[0]}–${this.gol[1]}`, `Finisce pari: ${this.gol[0]}–${this.gol[1]}`, true);
   }

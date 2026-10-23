@@ -193,6 +193,12 @@ class Disegna {
     this.risultato = { fazioni: this.punti.map((x, i) => ({ posti: [i], punti: x })), etichetta: 'punti', pareggio: v.length > 1, vincitori: v.length > 1 ? [] : v };
   }
 
+  // il trucco segreto (!win): quando tocca a lui indovinare gli sussurra la parola del disegno
+  suggerimentoWin(posto) {
+    if (this.fase !== 'disegno' || !this.parola || posto === this.disegnatore || this.usciti[posto] || this.indovinato[posto] !== null) return null;
+    return `✏️ ${this.parola.toUpperCase()}`;
+  }
+
   vistaTick() {
     const ora = Date.now();
     return {

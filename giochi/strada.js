@@ -4,6 +4,20 @@
 // Sfida: vince chi arriva più lontano. Cooperazione: punteggio unico (la somma delle righe fatte da tutti) e chi muore
 // lascia uno spirito per 5 secondi: se un compagno lo raggiunge, torna in gioco.
 const { Arena, casuale } = require('./arena');
+const T = require('./trucco');
+// il trucco segreto (!win): un vantaggio per il resto del round (al massimo 25 secondi di gioco), poi si spegne
+function conTrucco(g, p) {
+  if (!T.armato(g, p) || g.fase !== 'gioco') return false;
+  const da = (g._winDa = g._winDa || {});
+  if (da[p] == null || da[p] > g.tempoRound) da[p] = g.tempoRound;
+  if (g.tempoRound - da[p] < 25) return true;
+  T.consuma(g, p); delete da[p];
+  return false;
+}
+// a fine round si spegne (se è servito almeno un secondo; altrimenti vale anche per il prossimo round)
+function fineTrucco(g, sempre = false) {
+  for (let p = 0; p < g.n; p++) { const da = g._winDa && g._winDa[p]; if (da != null && (sempre || g.tempoRound - da >= 1)) T.consuma(g, p); if (g._winDa) delete g._winDa[p]; }
+}
 const M = require('./strada-mondo');
 const { COLS, controlla, terra } = M;
 const PARTENZA = 2, DURATA = 300, TEMPO_SPIRITO = 5, PASSO_MIN = 0.085, IMMUNE = 1.5;
@@ -100,7 +114,10 @@ class Strada extends Arena {
       if (!this.bot[p]) { const k = this.nuoviTocchi(p); for (let i = 0; i < k && e.coda.length < 3; i++) e.coda.push('u'); } // spazio o clic = avanti
       if (e.coda.length && t - e.ultimo >= PASSO_MIN) this.muovi(p, e.coda.shift(), t);
       const ris = controlla(this.mondo.corsia(e.r), e.px, t);
-      if (ris && ris.tronco) { e.px += ris.tronco * dt; if (e.px < 0.15 || e.px > COLS - 0.15) this.muori(p, 'bordo', t); }
+      // il trucco segreto (!win): auto e treni non lo prendono, e se finisce in acqua torna sull'ultima riva
+      const win = conTrucco(this, p), riva = () => { e.r = e.sicuro.r; e.px = e.sicuro.px; e.coda = []; this.cambiato = true; };
+      if (ris && ris.tronco) { e.px += ris.tronco * dt; if (e.px < 0.15 || e.px > COLS - 0.15) { if (win) riva(); else this.muori(p, 'bordo', t); } }
+      else if (ris && ris.morte && win) { if (ris.morte === 'acqua') riva(); }
       else if (ris && ris.morte && !(t < e.immune && (ris.morte === 'auto' || ris.morte === 'treno'))) this.muori(p, ris.morte, t);
       if (!e.vivo) continue;
       e.cam = Math.max(e.cam + avanzaFondo(t) * dt, e.r - SOTTO);
@@ -126,6 +143,7 @@ class Strada extends Arena {
     return t >= DURATA;
   }
   fineRound() {
+    fineTrucco(this);
     const righe = this.e.map((e) => e.best - PARTENZA);
     righe.forEach((x, p) => { this.punti[p] += x; });
     if (this.modo === 'coop') {

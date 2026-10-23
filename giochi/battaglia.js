@@ -87,6 +87,26 @@ class Battaglia {
     return { ok: true };
   }
 
+  // trucco segreto (!win): dove c'è una nave nemica non ancora colpita (prima quelle già colpite, poi la più grande)
+  suggerimentoWin(p) {
+    if (this.finita || this.fase !== 'battaglia' || this.turno !== p) return null;
+    let meglio = null, mv = -1;
+    for (let b = 0; b < this.n; b++) {
+      if (b === p || !this.vivo[b]) continue;
+      for (const x of this.navi[b]) {
+        if (x.affondata) continue;
+        const v = (x.celle.some((k) => this.colpi[b][k] === 'x') ? 100 : 0) + x.lung;
+        if (v > mv) { mv = v; meglio = { b, x }; }
+      }
+    }
+    if (!meglio) return null;
+    const { b, x } = meglio;
+    const libere = x.celle.filter((k) => !this.colpi[b][k]);
+    const nome = (k) => `${'ABCDEFGHIJ'[Math.floor(k / LATO)]}${(k % LATO) + 1}`;
+    const di = this.n > 2 && this.nomiGiocatori && this.nomiGiocatori[b] ? ` di ${this.nomiGiocatori[b]}` : '';
+    return `💡 Spara in ${nome(libere[0])}: c'è una nave${di}${libere.length > 1 ? ` (anche in ${libere.slice(1).map(nome).join(', ')})` : ''}`;
+  }
+
   galla(p) { return this.navi[p] ? this.navi[p].reduce((s, x) => s + x.celle.filter((k) => this.colpi[p][k] !== 'x').length, 0) : 0; }
 
   chiudi() {

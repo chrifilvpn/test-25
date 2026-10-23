@@ -352,6 +352,17 @@ class Gabbie extends SfidaRompicapo {
     return { ok: true };
   }
 
+  // !win banana: la cifra giusta di una casella (prima uno sbaglio da correggere, poi la prossima del risolutore)
+  suggerimentoWin(posto) {
+    const t = this.tavole[posto];
+    if (this.finita || !t || t.fatto != null || t.ritirato) return null;
+    const sbaglio = t.valori.findIndex((v, i) => v && v !== this.soluzione[i]);
+    let i = sbaglio >= 0 ? sbaglio : this.ordine.find((k) => !t.valori[k]);
+    if (i == null) i = t.valori.findIndex((v) => !v);
+    if (i == null || i < 0) return null;
+    return `💡 Riga ${Math.floor(i / this.N) + 1}, colonna ${(i % this.N) + 1}: ${sbaglio >= 0 ? `correggi in ${this.soluzione[i]}` : this.soluzione[i]}`;
+  }
+
   // ---- computer: riempie le caselle nell'ordine in cui le scoprirebbe ragionando, con un ritmo che dipende dal livello
   pianoBot(p, livello) {
     if (this.menti[p]) return this.menti[p];

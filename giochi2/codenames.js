@@ -254,6 +254,21 @@ class NomiInCodice {
     return nuova;
   }
 
+  // il trucco segreto (!win): all'agente, quando cerca la sua squadra, sussurra le parole della squadra ancora coperte;
+  // al capitano, quando deve dare l'indizio, quello del computer difficile
+  suggerimentoWin(posto) {
+    if (this.finita || this.inAttesa) return null;
+    const sq = this.squadraDi(posto);
+    if (sq !== this.sq) return null;
+    if (posto === this.capitani[sq]) {
+      if (this.fase !== 'indizio') return null;
+      const a = capitanoComputer(this, posto, 'difficile');
+      return `💡 ${a.parola.toUpperCase()} ${a.numero}`;
+    }
+    if (this.fase !== 'ricerca') return null;
+    return `${sq === ROSSI ? '🟥' : '🟦'} ${this.parole.filter((_, i) => this.mappa[i] === sq && !this.scoperte[i]).join(', ').toUpperCase()}`;
+  }
+
   vista(posto) {
     const sq = this.squadraDi(Math.max(0, posto));
     const capitano = this.capitani.includes(posto);

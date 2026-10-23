@@ -111,6 +111,26 @@ class Picross extends SfidaRompicapo {
     return { errore: 'Mossa non valida' };
   }
 
+  // !win banana: il nome del disegno e la riga con più caselle da sistemare, blocco per blocco con il suo colore
+  suggerimentoWin(posto) {
+    const t = this.tavole[posto];
+    if (this.finita || !t || t.fatto != null || t.ritirato) return null;
+    const { W, H, img } = this.d;
+    const giusta = (v, k) => (img[k] ? v === img[k] : v === 0 || v === CROCE);
+    let y = -1, peggio = 0;
+    for (let r = 0; r < H; r++) { let k = 0; for (let x = 0; x < W; x++) if (!giusta(t.celle[r * W + x], r * W + x)) k++; if (k > peggio) { peggio = k; y = r; } }
+    if (y < 0) return null;
+    const blocchi = [];
+    for (let x = 0; x < W; x++) {
+      const v = img[y * W + x];
+      if (!v) continue;
+      const u = blocchi[blocchi.length - 1];
+      if (u && u.v === v && u.b === x - 1) u.b = x; else blocchi.push({ v, a: x, b: x });
+    }
+    const testo = blocchi.length ? blocchi.map((q) => `col ${q.a + 1}${q.b > q.a ? `-${q.b + 1}` : ''} colore ${q.v}`).join(', ') : 'tutta vuota';
+    return `💡 È: ${this.d.nome} · Riga ${y + 1}: ${testo}`;
+  }
+
   // ---- computer: colora le caselle giuste in un ordine qualsiasi; il facile ogni tanto sbaglia colore ----
   pianoBot(p, livello) {
     if (this.menti[p]) return this.menti[p];

@@ -16,6 +16,9 @@ const D = require('../../giochi2/paroliere-dati');
   assert.ok(/NE/.test(g.azione(0, { tipo: 'parola', testo: 'verde' }).errore), 'deve cominciare con NE');
   assert.ok(/dizionario/.test(g.azione(0, { tipo: 'parola', testo: 'nexxo' }).errore));
   assert.ok(g.azione(0, { tipo: 'parola', testo: 'Néve' }).ok, 'maiuscole e accenti si tolgono');
+  // parole vere che prima mancavano (aggiunte al dizionario); le parolacce restano fuori
+  for (const w of ['come', 'quando', 'perché', 'mentre', 'oppure', 'ciao', 'aglio', 'giraffa', 'zenzero', 'smartphone']) assert.ok(D.esiste(D.normalizza(w)), `"${w}" è nel dizionario`);
+  assert.ok(!D.esiste('cazzo') && !D.esiste('stronzo'), 'niente parolacce');
   assert.strictEqual(g.turno, 1);
   g.catena.push({ w: 'vecane', chi: 0 }); g.usate.add('vecane');
   assert.ok(/già/.test(g.azione(1, { tipo: 'parola', testo: 'neve' }).errore), 'niente ripetizioni');

@@ -97,6 +97,17 @@ class Tesoro {
     return { ok: true };
   }
 
+  // trucco segreto (!win): dove sono le gemme e le monete ancora coperte (prima le gemme), tante quanti gli scavi rimasti
+  suggerimentoWin(p) {
+    if (this.finita || this.scavi[p] <= 0 || (this.modo === 'turni' && this.turno !== p)) return null;
+    const g = this.grigliaDi(p);
+    const buone = this.contenuto.map((x, i) => (tesoro(x) && !g[i] ? i : -1)).filter((i) => i >= 0)
+      .sort((a, b) => VALORE[this.contenuto[b]] - VALORE[this.contenuto[a]]).slice(0, Math.min(this.scavi[p], 5));
+    if (!buone.length) return null;
+    const nome = (i) => `${this.contenuto[i] === 'gemma' ? '💎' : '🪙'} riga ${Math.floor(i / this.lato) + 1} col ${(i % this.lato) + 1}`;
+    return `💡 Scava qui: ${buone.map(nome).join(', ')}`;
+  }
+
   vista(p) {
     const mia = this.grigliaDi(p);
     return {

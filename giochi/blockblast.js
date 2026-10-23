@@ -188,6 +188,15 @@ class BlockBlast {
     if (this.vittoria === 'resistenza' ? vivi.length <= 1 : vivi.length === 0) this.chiudi();
   }
 
+  // !win banana: la mossa migliore (quella del computer difficile), quando puoi giocare
+  suggerimentoWin(posto) {
+    if (this.finita || this.inPausa || (this.modo !== 'sfida' && posto !== this.turno)) return null;
+    const b = this.planciaDi(posto);
+    if (!b || !b.vivo || !b.puoGiocare()) return null;
+    const m = bot(this, posto, 'difficile');
+    return `💡 Pezzo ${m.pezzo + 1} (da sinistra) con l'angolo in alto a sinistra in riga ${m.r + 1}, colonna ${m.c + 1}`;
+  }
+
   impostaPausa(si) { this.inPausa = !!si && this.pausaBoss; }
 
   chiudi() {

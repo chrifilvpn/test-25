@@ -276,7 +276,7 @@ nav a {
   // ================= NAVIGAZIONE =================
   // materia → argomento → sezioni. La posizione vive solo in memoria: l'indirizzo resta /dispense, nessuna voce
   // nella cronologia; ricaricando si riparte dall'indice.
-  const ORDINE = ['sistemi', 'tpsit', 'informatica', 'inglese', 'matematica', 'italiano', 'storia'];
+  const ORDINE = ['sistemi', 'tpsit', 'informatica', 'gpoi', 'inglese', 'matematica', 'italiano', 'storia'];
   const materie = () => ORDINE.map((id) => (window.BossContenuti || {})[id]).filter(Boolean);
   const materia = (id) => (window.BossContenuti || {})[id];
   const argomento = (m, a) => materia(m) && materia(m).argomenti.find((x) => x.id === a);

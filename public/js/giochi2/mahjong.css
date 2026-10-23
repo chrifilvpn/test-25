@@ -1,6 +1,7 @@
 /* MAHJONG SOLITARIO: tessere d'avorio con lo spessore verde giada e l'ombra, impilate in strati */
 .mj { display: grid; justify-items: center; gap: .8rem; width: 100%; padding: .3rem 0 1rem; }
-.mj-tavolo { position: relative; max-width: 100%; }
+/* isolation: lo z-index delle tessere resta dentro al tavolo (prima copriva la finestra di "Esci" e i menu) */
+.mj-tavolo { position: relative; max-width: 100%; isolation: isolate; }
 .mj-t {
   position: absolute; width: var(--w); height: var(--h); padding: 0; border: 0; border-radius: calc(var(--w) * .12); cursor: pointer;
   background: linear-gradient(160deg, #fffdf6, #f1ead6 70%, #e6dcc1);

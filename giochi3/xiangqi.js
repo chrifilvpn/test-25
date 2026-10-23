@@ -132,6 +132,17 @@ class Xiangqi {
     this.risultato = { fazioni: [0, 1].map((x) => ({ posti: [x], punti: x === v ? 1 : 0 })), etichetta: 'vittorie', pareggio: v === null, vincitori: v === null ? [] : [v] };
     return { ok: true };
   }
+  // trucco segreto (!win): la mossa del computer difficile. La scacchiera non ha coordinate scritte: colonne a-i da
+  // sinistra e righe 1-10 dal lato del giocatore (il nero la vede girata)
+  suggerimentoWin(p) {
+    if (this.finita || this.turno !== p) return null;
+    const a = bot(this, p, 'difficile');
+    const nero = this.colore(p) === 1;
+    const casa = (i) => { const r = Math.floor(i / C), c = i % C; return nero ? `${'abcdefghi'[C - 1 - c]}${r + 1}` : nomeCasa(i); };
+    const nomeP = NOMI[Math.abs(this.b[a.da])];
+    return `💡 ${nomeP[0].toUpperCase()}${nomeP.slice(1)} ${casa(a.da)} ${this.b[a.a] ? '×' : '→'} ${casa(a.a)} (colonne a-i da sinistra, righe 1-10 dal tuo lato)`;
+  }
+
   vista(p) {
     const mio = this.turno === p && !this.finita;
     const b = Int8Array.from(this.b);

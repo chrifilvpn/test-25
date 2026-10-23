@@ -86,6 +86,12 @@ class Forza4 {
     return { ok: true };
   }
 
+  // trucco segreto (!win): la colonna che sceglierebbe il computer difficile
+  suggerimentoWin(p) {
+    if (this.finita || this.turno !== p) return null;
+    return `💡 Colonna ${bot(this, p, 'difficile').colonna + 1} (da sinistra)`;
+  }
+
   vista(p) {
     return {
       gioco: this.id, n: this.n, colonne: COL, righe: RIG, celle: this.celle, colori: this.colori, puoAnnullare: ANN.puo(this, p), annullate: this.annullate,

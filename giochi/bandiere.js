@@ -162,6 +162,9 @@ class Bandiere {
     return { ok: true };
   }
 
+  // il trucco segreto (!win): finché non ha risposto gli sussurra la risposta giusta (vale anche per capitali, sagome, monumenti)
+  suggerimentoWin(posto) { return !this.finita && !this.inAttesa && this.risposte[posto] === null ? `💡 ${this.banca.elementi[this.giusta].nome}` : null; }
+
   vista(p) {
     const svela = this.inAttesa || this.finita;
     const E = this.banca.elementi;

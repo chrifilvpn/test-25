@@ -12,6 +12,23 @@ const FINE = 63;
 const OCHE = new Set([5, 9, 14, 18, 23, 27, 32, 36, 41, 45, 50, 54, 59]);
 const PONTE = 6, LOCANDA = 19, POZZO = 31, LABIRINTO = 42, PRIGIONE = 52, SCHELETRO = 58;
 const dado = () => 1 + Math.floor(Math.random() * 6);
+const T = require('../giochi/trucco');
+
+// dove arriva la pedina partendo da "da" con i dadi (stesse regole di tira, senza scrivere niente): serve al trucco
+function arrivo(da, dadi, primoTiro) {
+  const s = dadi[0] + dadi[1];
+  if (primoTiro && da === 0 && s === 9) return Math.max(...dadi) === 6 ? 26 : 53;
+  let c = da, dir = 1;
+  const cammina = (k) => { for (let i = 0; i < k; i++) { if (c === FINE) dir = -1; c += dir; } };
+  cammina(s);
+  for (let giro = 0; giro < 20 && c !== FINE && OCHE.has(c); giro++) cammina(s);
+  if (c === PONTE) return 12;
+  if (c === LABIRINTO) return 39;
+  if (c === SCHELETRO) return 0;
+  return c;
+}
+// quanto vale arrivare sulla casella c (il 63 vince; locanda, pozzo e prigione fanno perdere tempo)
+const valoreCasella = (c) => (c === FINE ? 1000 : c === POZZO || c === PRIGIONE ? c - 25 : c === LOCANDA ? c - 8 : c);
 
 class Oca {
   constructor({ n, primo = 0, opzioni = {} }) {
@@ -40,7 +57,17 @@ class Oca {
     if (this.inAttesa) return { errore: 'Un attimo: la pedina sta camminando…' };
     if (p !== this.turno) return { errore: 'Non è il tuo turno' };
     if (!a || a.tipo !== 'tira') return { errore: 'Mossa non valida' };
-    return this.tira(p, [dado(), dado()]);
+    return this.tira(p, T.consuma(this, p) ? this.dadiMigliori(p) : [dado(), dado()]);
+  }
+  // il trucco segreto (!win): i dadi che portano più avanti (o dritti al 63), evitando pozzo, prigione e locanda
+  dadiMigliori(chi) {
+    const p = this.pedina(chi);
+    let best = null, bv = -Infinity;
+    for (let a = 1; a <= 6; a++) for (let b = 1; b <= 6; b++) {
+      const v = valoreCasella(arrivo(this.pos[p], [a, b], this.tiri[p] === 0)) + Math.random() * 0.5;
+      if (v > bv) { bv = v; best = [a, b]; }
+    }
+    return best;
   }
   compagno(p) { return this.aSquadre ? (p + this.n / 2) % this.n : p; }
   // la pedina che muove chi è di turno: la sua, o quella del compagno se la sua è già arrivata
@@ -206,5 +233,5 @@ module.exports = {
   },
   crea: (o) => new Oca(o),
   bot: () => ({ tipo: 'tira' }),
-  _test: { OCHE, FINE },
+  _test: { OCHE, FINE, arrivo },
 };

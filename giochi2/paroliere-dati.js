@@ -1,4 +1,4 @@
-// IL DIZIONARIO ITALIANO dei giochi di parole (Paroliere, Anagrammi a squadre): 334005 parole, comprese le forme
+// IL DIZIONARIO ITALIANO dei giochi di parole (Paroliere, Anagrammi a squadre): 334005 parole (più le circa 37.000 di paroliere-aggiunte.js), comprese le forme
 // flesse (plurali, femminili, tutte le voci dei verbi), senza accenti, da 3 a 16 lettere. Niente nomi propri, sigle,
 // interiezioni, parolacce e troncamenti poetici.
 // Fonte delle parole: Morph-it! di Marco Baroni ed Eros Zanchetta (licenza LGPL / CC BY-SA 2.0), dai dati di
@@ -33,9 +33,18 @@ function decodifica(s) {
 
 let elenco = null;
 let fasce = null;
-// tutte le parole, in ordine alfabetico (per la ricerca binaria)
+// tutte le parole, in ordine alfabetico (per la ricerca binaria): quelle di Morph-it più le parole aggiunte
+// (paroliere-aggiunte.js: parole comuni che mancavano, come "come", "quando", "perché", "aglio")
 function dizionario() {
-  if (!elenco) elenco = decodifica(PAROLE);
+  if (!elenco) {
+    const a = decodifica(PAROLE), b = decodifica(require('./paroliere-aggiunte'));
+    elenco = [];
+    let i = 0, j = 0;
+    while (i < a.length || j < b.length) {
+      const x = j >= b.length || (i < a.length && a[i] <= b[j]) ? a[i++] : b[j++];
+      if (elenco[elenco.length - 1] !== x) elenco.push(x);
+    }
+  }
   return elenco;
 }
 // la prima posizione con una parola >= p

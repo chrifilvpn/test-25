@@ -2,6 +2,20 @@
 // (spazio) si travolgono gli altri: chi viene colpito perde un po' di monete, che restano per terra. Dopo 60 secondi
 // vince chi ne ha di più.
 const { Arena, casuale } = require('./arena');
+const T = require('./trucco');
+// il trucco segreto (!win): un vantaggio per il resto del round (al massimo 25 secondi di gioco), poi si spegne
+function conTrucco(g, p) {
+  if (!T.armato(g, p) || g.fase !== 'gioco') return false;
+  const da = (g._winDa = g._winDa || {});
+  if (da[p] == null || da[p] > g.tempoRound) da[p] = g.tempoRound;
+  if (g.tempoRound - da[p] < 25) return true;
+  T.consuma(g, p); delete da[p];
+  return false;
+}
+// a fine round si spegne (se è servito almeno un secondo; altrimenti vale anche per il prossimo round)
+function fineTrucco(g, sempre = false) {
+  for (let p = 0; p < g.n; p++) { const da = g._winDa && g._winDa[p]; if (da != null && (sempre || g.tempoRound - da >= 1)) T.consuma(g, p); if (g._winDa) delete g._winDa[p]; }
+}
 const W = 1000, H = 620, CX = W / 2, CY = H / 2, RA = 290, R = 17, V = 230;
 const SCATTO_V = 3.1, SCATTO_T = 0.25, RICARICA = 1.8, DURATA = 60, MAX_MONETE = 24, POT_T = 6;
 const POTENZIAMENTI = ['veloce', 'calamita', 'scudo'];
@@ -28,7 +42,8 @@ class Pioggia extends Arena {
       if (e.stordito > 0) { e.stordito -= dt; this.nuoviTocchi(p); continue; }
       if (Math.abs(i.x) + Math.abs(i.y) > 0.1) { const l = Math.hypot(i.x, i.y); e.dx = i.x / l; e.dy = i.y / l; }
       if (this.nuoviTocchi(p) && e.ricarica <= 0) { e.scatto = SCATTO_T; e.ricarica = RICARICA; e.colpiti = new Set(); }
-      const vel = V * (e.pot === 'veloce' ? 1.5 : 1);
+      const win = conTrucco(this, p); // il trucco segreto: più veloce, calamita leggera e nessuno lo travolge
+      const vel = V * (e.pot === 'veloce' ? 1.5 : 1) * (win ? 1.3 : 1);
       if (e.scatto > 0) { e.scatto -= dt; e.x += e.dx * vel * SCATTO_V * dt; e.y += e.dy * vel * SCATTO_V * dt; }
       else { e.x += i.x * vel * dt; e.y += i.y * vel * dt; }
       const dc = Math.hypot(e.x - CX, e.y - CY);
@@ -37,6 +52,7 @@ class Pioggia extends Arena {
       for (const c of this.m) {
         const d = Math.hypot(c.x - e.x, c.y - e.y);
         if (e.pot === 'calamita' && d < 160 && d > 1) { c.x += ((e.x - c.x) / d) * 260 * dt; c.y += ((e.y - c.y) / d) * 260 * dt; }
+        if (win && d < 110 && d > 1) { c.x += ((e.x - c.x) / d) * 200 * dt; c.y += ((e.y - c.y) / d) * 200 * dt; }
         if (!c.presa && d < R + 11) { c.presa = true; e.monete += c.v; }
       }
       for (const q of this.pot) if (!q.preso && Math.hypot(q.x - e.x, q.y - e.y) < R + 16) { q.preso = true; e.pot = q.t; e.potT = POT_T; this.cambiato = true; this.annuncia(p, `prende ${{ veloce: 'la velocità ⚡', calamita: 'la calamita 🧲', scudo: 'lo scudo 🛡️' }[q.t]}`, `hai preso ${{ veloce: 'la velocità ⚡', calamita: 'la calamita 🧲', scudo: 'lo scudo 🛡️' }[q.t]}`); }
@@ -49,7 +65,7 @@ class Pioggia extends Arena {
       for (let b = 0; b < this.n; b++) {
         if (a === b || A.colpiti.has(b)) continue;
         const B = this.e[b];
-        if (Math.hypot(A.x - B.x, A.y - B.y) > R * 2 + 4 || B.pot === 'scudo' || B.stordito > 0) continue;
+        if (Math.hypot(A.x - B.x, A.y - B.y) > R * 2 + 4 || B.pot === 'scudo' || B.stordito > 0 || conTrucco(this, b)) continue;
         A.colpiti.add(b);
         const perse = Math.min(B.monete, Math.max(1, Math.round(B.monete * 0.33)));
         B.monete -= perse; B.stordito = 0.6;
@@ -61,6 +77,7 @@ class Pioggia extends Arena {
     return this.tempoRound >= DURATA;
   }
   fineRound() {
+    fineTrucco(this);
     this.e.forEach((e, p) => { this.punti[p] += e.monete; });
     const max = Math.max(...this.e.map((e) => e.monete));
     const v = this.e.findIndex((e) => e.monete === max);

@@ -138,6 +138,9 @@ class Wordle {
     return { ok: true };
   }
 
+  // il trucco segreto (!win): finché sta ancora giocando gli sussurra la parola
+  suggerimentoWin(posto) { return !this.finita && !this.fatto[posto] ? `🟩 ${this.segreta.toUpperCase()}` : null; }
+
   vista(p) {
     const svela = this.finita;
     return {

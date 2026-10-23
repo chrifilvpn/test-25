@@ -6,6 +6,17 @@
 // testa e gli ultimi angoli, il browser se li tiene; se gliene manca qualcuno lo chiede (input { rs: 1 }) e al tick
 // dopo riceve la scia intera.
 const { Arena } = require('../giochi/arena');
+const T = require('../giochi/trucco');
+// !win banana: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
+function aggiornaWin(g, dt) {
+  const w = g.winOn || (g.winOn = {}), tw = g.winT || (g.winT = {});
+  for (let p = 0; p < g.n; p++) {
+    if (!(w[p] = T.armato(g, p))) { tw[p] = 0; continue; }
+    tw[p] = (tw[p] || 0) + dt;
+    if (tw[p] > 25) { T.consuma(g, p); w[p] = false; tw[p] = 0; }
+  }
+}
+function fineWin(g) { for (let p = 0; p < g.n; p++) { T.consuma(g, p); if (g.winOn) g.winOn[p] = false; } }
 
 const CELLA = 10; // unità del browser per quadretto
 const ARENE = { media: [88, 55], piccola: [64, 40], grande: [120, 75] };
@@ -109,6 +120,7 @@ class MotoDiLuce extends Arena {
 
   // ---------- il movimento a passi (mezzi passi: col turbo si va al doppio) ----------
   passo(dt) {
+    aggiornaWin(this, dt);
     const t = this.tempoRound;
     // turbo
     for (let p = 0; p < this.n; p++) if (!this.bot[p] && this.nuoviTocchi(p)) this.turbo(this.m[p]);
@@ -137,6 +149,7 @@ class MotoDiLuce extends Arena {
     for (const b of muove) {
       if (b.extra || this.bot[b.id]) this.decidi(b, b.liv || this.bot[b.id]);
       else while (b.coda.length) { const d = b.coda.shift(); if (d !== b.dir && d !== (b.dir + 2) % 4) { b.dir = d; break; } }
+      if (b.id < this.n && this.winOn[b.id]) this.salva(b);
     }
     const dove = new Map(), morti = [];
     for (const b of muove) {
@@ -156,6 +169,15 @@ class MotoDiLuce extends Arena {
       G[b.y * C + b.x] = b.id + 1;
     }
     if (morti.length) this.cadono(morti);
+  }
+  // !win banana: se la moto sta per schiantarsi gira da sola verso la strada più libera
+  salva(b) {
+    const C = this.cols, R = this.righe, G = this.griglia;
+    const libera = (d) => { const x = b.x + DX[d], y = b.y + DY[d]; return x >= 0 && y >= 0 && x < C && y < R && !G[y * C + x]; };
+    if (libera(b.dir)) return;
+    const corsa = (d) => { let k = 0, x = b.x, y = b.y; while (k < 40) { x += DX[d]; y += DY[d]; if (x < 0 || y < 0 || x >= C || y >= R || G[y * C + x]) break; k++; } return k; };
+    const ok = [(b.dir + 1) % 4, (b.dir + 3) % 4].filter(libera).sort((a, c) => corsa(c) - corsa(a));
+    if (ok.length) { b.dir = ok[0]; b.coda.length = 0; }
   }
   cadono(morti) {
     const gruppo = [];
@@ -190,6 +212,7 @@ class MotoDiLuce extends Arena {
     this.cambiato = true;
   }
   fineRound() {
+    fineWin(this);
     // un punto per ogni moto caduta prima di te; l'ultimo rimasto ne prende 2 in più
     const prima = new Array(this.tot).fill(0);
     let caduti = 0;

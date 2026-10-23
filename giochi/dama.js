@@ -161,6 +161,18 @@ class Dama {
     return { ok: true };
   }
 
+  // trucco segreto (!win): la mossa del computer difficile, con le caselle viste dal giocatore (a-h da sinistra,
+  // 1-8 dal suo lato: il nero vede la damiera girata)
+  suggerimentoWin(p) {
+    if (this.finita || this.turno !== p) return null;
+    const perc = bot(this, p, 'difficile').percorso;
+    const nero = this.lato[p] === 1;
+    const nome = (i) => { const r = Math.floor(i / 8), c = i % 8; return nero ? `${'abcdefgh'[7 - c]}${r + 1}` : `${'abcdefgh'[c]}${8 - r}`; };
+    const m = this.legali.find((x) => x.percorso.length === perc.length && x.percorso.every((k, j) => k === perc[j]));
+    const pezzo = this.b[perc[0]].d ? 'Dama' : 'Pedina';
+    return `💡 ${pezzo} ${perc.map(nome).join(m && m.presi.length ? ' × ' : ' → ')} (colonne a-h da sinistra, righe 1-8 dal tuo lato)`;
+  }
+
   vista(p) {
     return {
       gioco: this.id, n: this.n, b: this.b, lato: this.lato, turno: this.turno, inAttesa: false,

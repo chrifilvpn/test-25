@@ -174,6 +174,14 @@ class Connessioni {
     if (this.n > 1) this.annuncia(null, vincitori.length ? 'Sfida finita!' : 'Sfida finita: nessuno ha risolto il puzzle', '', true);
   }
 
+  // il trucco segreto (!win): finché gioca gli sussurra i gruppi che gli mancano (i più difficili; l'ultimo viene da sé)
+  suggerimentoWin(posto) {
+    const g = this.giocatori[posto];
+    if (this.finita || !g || g.fatto) return null;
+    const mancano = [0, 1, 2, 3].filter((i) => !g.trovati.includes(i)).sort((a, b) => this.gruppi[b].livello - this.gruppi[a].livello);
+    return `🔗 ${mancano.slice(0, 3).map((i) => this.gruppi[i].parole.join(' ')).join(' / ')}`;
+  }
+
   gruppoVisto(i) { const g = this.gruppi[i]; return { tema: g.tema, parole: g.parole, spiegazione: g.spiegazione, colore: g.colore, livello: g.livello }; }
 
   vista(p) {

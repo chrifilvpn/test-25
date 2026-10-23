@@ -108,6 +108,13 @@ class Differenze {
     this.risultato = { fazioni: this.punti.map((x, i) => ({ posti: [i], punti: x })), etichetta: 'punti', pareggio: this.n > 1 && v.length > 1, vincitori: this.n === 1 ? [0] : v.length > 1 ? [] : v };
     if (this.n === 1) this.risultato.titolo = `${this.giuste[0]} su ${this.nRound} trovate`;
   }
+  // il trucco segreto (!win): appena compaiono i disegni gli sussurra qual è quello diverso e cosa cambia
+  suggerimentoWin(posto) {
+    if (this.finita || (this.fase !== 'guarda' && this.fase !== 'scegli') || this.risposte[posto] !== undefined) return null;
+    const cosa = { colore: 'un colore', manca: 'manca un oggetto', sposta: 'un oggetto spostato', grande: 'un oggetto più grande', gira: 'un oggetto girato', extra: 'un oggetto in più' }[this.cambio];
+    return `👀 Il n° ${this.diversa + 1} (${cosa})`;
+  }
+
   vista(p) {
     const f = this.fase, scopri = f === 'esito' || this.finita;
     return {

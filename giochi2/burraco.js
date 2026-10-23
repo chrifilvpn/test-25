@@ -6,6 +6,7 @@
 // un burraco (combinazione di 7 o più carte), scartando l'ultima carta. Se il tallone finisce, la smazzata si chiude.
 const { mazzoDoppio, mescola, casuale } = require('../giochi/carte');
 const { SEMI, punti, eMatta, valuta, bonus } = require('./burraco-regole');
+const T = require('../giochi/trucco');
 
 const CARTE_MANO = 11;
 const OBIETTIVI = [2005, 1005, 1]; // 1 = una sola smazzata
@@ -38,6 +39,23 @@ class Burraco {
   prossimo(p) { return (p + 1) % this.n; }
   postiDi(t) { return Array.from({ length: this.n }, (_, i) => i).filter((i) => squadra(i) === t); }
   haBurraco(t, comb = this.combinazioni[t]) { return comb.some((m) => m.burraco); }
+
+  // il trucco segreto (!win): si pesca un jolly, se nel tallone ce n'è ancora; se no la carta che rende di più alla
+  // mano (quella che chiude una scala o una combinazione, o che si attacca a quelle in tavola)
+  truccaPescata(p) {
+    if (T.inCima(this.tallone, (c) => c.jolly)) return;
+    const mano = this.mani[p], comb = this.combinazioni[squadra(p)];
+    const visti = new Set();
+    let best = null, bv = valoreMano(this, p, mano, comb);
+    for (const c of this.tallone) {
+      const k = `${c.rango}${c.seme}`;
+      if (visti.has(k)) continue;
+      visti.add(k);
+      const v = valoreMano(this, p, [...mano, c], comb);
+      if (v > bv) { bv = v; best = c; }
+    }
+    if (best) T.inCima(this.tallone, (c) => c === best);
+  }
 
   nuovaSmazzata() {
     this.mazziere = this.prossimo(this.mazziere);
@@ -118,6 +136,7 @@ class Burraco {
         this.annuncia(p, `prende gli scarti (${presi.length} ${presi.length === 1 ? 'carta' : 'carte'})`, `prendi gli scarti (${presi.length} ${presi.length === 1 ? 'carta' : 'carte'})`);
       } else {
         if (!this.tallone.length) return { errore: 'Il tallone è finito' };
+        if (T.consuma(this, p)) this.truccaPescata(p);
         this.mani[p].push(this.tallone.pop());
       }
       this.fase = 'gioca';

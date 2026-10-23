@@ -3,6 +3,7 @@
 // secondo, esce il numero e si paga. Puntate: pieno su un numero (35 a 1), rosso/nero, pari/dispari, 1-18/19-36
 // (1 a 1), dozzine e colonne (2 a 1). Con lo zero perdono tutte le puntate esterne.
 const { Casino, puntataBot } = require('./casino');
+const T = require('./trucco');
 
 const ROSSI = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
 const RUOTA = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26]; // ordine vero della ruota europea
@@ -16,6 +17,14 @@ const PUNTATE = {
   c1: ['1ª colonna', 2, (n) => n > 0 && n % 3 === 1], c2: ['2ª colonna', 2, (n) => n > 0 && n % 3 === 2], c3: ['3ª colonna', 2, (n) => n > 0 && n % 3 === 0],
 };
 for (let n = 0; n <= 36; n++) PUNTATE[`n${n}`] = [`il ${n}`, 35, (x) => x === n];
+// il numero che paga di più per queste puntate (a parità uno a caso tra i migliori)
+function numeroMigliore(q) {
+  const resa = (n) => Object.entries(q).reduce((t, [k, v]) => t + (PUNTATE[k][2](n) ? v * (PUNTATE[k][1] + 1) : 0), 0);
+  const tutti = Array.from({ length: 37 }, (_, n) => n);
+  const max = Math.max(...tutti.map(resa));
+  const migliori = tutti.filter((n) => resa(n) === max);
+  return migliori[Math.floor(Math.random() * migliori.length)];
+}
 const GIRO_MS = 5200, PAGA_MS = 4800;
 // le frasi del croupier Maggioni
 const FRASI = {
@@ -65,6 +74,9 @@ class Roulette extends Casino {
   gioca() {
     this.fase = 'giro';
     this.numero = Math.floor(Math.random() * 37); // la ruota è onesta: ogni numero ha la stessa probabilità
+    // …tranne col trucco segreto (!win): esce il numero che fa vincere di più il giocatore truccato
+    const chi = this.puntate.findIndex((q, i) => this.puntato[i] && T.consuma(this, i));
+    if (chi >= 0) this.numero = numeroMigliore(this.puntate[chi]);
     this.frase = aCaso(FRASI.lancia);
     this.inAttesa = true; this.pausaMs = GIRO_MS; // la ruota gira qualche secondo
     return { ok: true };
@@ -142,5 +154,5 @@ module.exports = {
   },
   crea: (o) => new Roulette(o),
   bot,
-  _test: { Roulette, PUNTATE, RUOTA, colore },
+  _test: { Roulette, PUNTATE, RUOTA, colore, numeroMigliore },
 };
