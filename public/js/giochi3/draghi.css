@@ -1033,3 +1033,8 @@
 .dr .dr-sip-box h2 { font-size: 1.6rem; color: var(--dr-oro2); }
 .dr .dr-sip-box p { margin: 0; line-height: 1.45; }
 .dr .dr-sip-box small { opacity: .65; }
+
+/* ---------- il master umano: il cappello nella compagnia (la sua schermata è in draghi-master.css) ---------- */
+.dr .dr-cr-compagnia li .dr-cr-dm { margin-left: auto; flex: none; padding: .18rem .5rem; font-size: .74rem; }
+.dr .dr-cr-compagnia li span.dr-cr-dm { display: inline-block; }
+.dr .dr-cr-compagnia li > span:nth-child(2) { display: grid; min-width: 0; }
