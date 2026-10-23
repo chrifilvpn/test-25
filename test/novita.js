@@ -115,3 +115,12 @@ const leggi = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
   assert.ok(/function papi\(/.test(js) && /Boss\.attivo\) return/.test(js), 'sulle dispense il video non parte');
   console.log('✓ Enrico Papi: "enrico papi" in chat (anche globale) fa partire il video per tutti, il tavolo si ferma, non sulle dispense');
 }
+
+// ---- AUDIO DEL SITO: spento all'apertura, un pulsante nella home e uno nel gioco ----
+{
+  const app = leggi('public/js/app.js'), boss = leggi('public/js/boss.js'), html = leggi('public/index.html');
+  assert.ok(/let suono = mem\.get\('audio', 'no'\) === 'si';/.test(app), 'audio spento finché non lo accendi');
+  assert.ok(html.includes('id="suono-home"') && html.includes('id="suono"'), 'pulsante nella home e nella barra del gioco');
+  assert.ok(/Boss\.silenzio\(!suono\)/.test(app) && /function silenzio\(si\)/.test(boss) && /if \(muto\) this\.muted = true/.test(boss) && /if \(attivo \|\| muto\)/.test(boss), 'spento vuol dire tutto: suoni dei giochi e video');
+  console.log('✓ Audio del sito: spento all\'apertura (anche i video partono muti), si accende dalla home o dalla barra del gioco e la scelta resta salvata');
+}

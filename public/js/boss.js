@@ -106,8 +106,23 @@ window.Boss = (() => {
     const Originale = window[nome];
     if (!Originale) continue;
     window[nome] = class extends Originale {
-      constructor(...a) { super(...a); contesti.add(this); if (attivo) { this.suspend(); sospesi.add(this); } }
+      constructor(...a) { super(...a); contesti.add(this); if (attivo || muto) { this.suspend(); sospesi.add(this); } }
     };
+  }
+  // AUDIO SPENTO (pulsante 🔇 del sito, spento all'apertura): tutti i suoni sospesi e ogni video o audio parte muto
+  let muto = false;
+  const playVero = HTMLMediaElement.prototype.play;
+  HTMLMediaElement.prototype.play = function (...a) { if (muto) this.muted = true; return playVero.apply(this, a); };
+  function silenzio(si) {
+    muto = !!si;
+    if (muto) {
+      contesti.forEach((c) => { if (c.state === 'running') { c.suspend(); sospesi.add(c); } });
+      document.querySelectorAll('audio, video').forEach((m) => { m.muted = true; });
+    } else if (!attivo) {
+      sospesi.forEach((c) => c.resume().catch(() => {}));
+      sospesi.clear();
+      document.querySelectorAll('audio, video').forEach((m) => { m.muted = false; });
+    }
   }
   const mediaPausa = new Set();
   function zittisci(si) {
@@ -115,8 +130,7 @@ window.Boss = (() => {
       contesti.forEach((c) => { if (c.state === 'running') { c.suspend(); sospesi.add(c); } });
       document.querySelectorAll('audio, video').forEach((m) => { if (!m.paused) { m.pause(); mediaPausa.add(m); } });
     } else {
-      sospesi.forEach((c) => c.resume().catch(() => {}));
-      sospesi.clear();
+      if (!muto) { sospesi.forEach((c) => c.resume().catch(() => {})); sospesi.clear(); }
       mediaPausa.forEach((m) => m.play().catch(() => {}));
       mediaPausa.clear();
     }
@@ -352,6 +366,8 @@ window.Boss = (() => {
     attivita,
     config,
     onCambio(f) { ascoltatori.push(f); },
+    silenzio,
+    get muto() { return muto; },
     replaceStato: (url) => replaceVero(history.state, '', url), // usato dalla pagina finta per le sue sezioni
   };
 })();
