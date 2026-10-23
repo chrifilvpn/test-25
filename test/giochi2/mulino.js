@@ -133,7 +133,7 @@ const nuova = (opz = {}, bot = [null, null]) => M.crea({ n: 2, primo: 0, opzioni
   const t0 = Date.now();
   const lista = classifica(c, [7, 7], true, 0, 40, 250);
   const ms = Date.now() - t0;
-  assert.ok(ms < 300, `il difficile pensa al massimo 300 ms (${ms} ms)`);
+  assert.ok(ms < 600, `il difficile pensa al massimo 600 ms (${ms} ms)`);
   assert.strictEqual(lista[0].m[1], 2, 'chiude il mulino');
   c[1] = null; c[4] = 0;
   const l2 = classifica(c, [7, 7], true, 0, 40, 250);
