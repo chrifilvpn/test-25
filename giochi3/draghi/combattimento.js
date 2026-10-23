@@ -991,7 +991,7 @@ class Combattimento {
     const a = this.sceltaArma(c, ber);
     const mischia = p.attacchi.filter((x) => x.mischia && x.id !== 'colpo').sort((x, y) => R.media(y.danno) - R.media(x.danno))[0] || p.attacchi.find((x) => x.id === 'colpo');
     const distanza = p.attacchi.filter((x) => !x.mischia).sort((x, y) => R.media(y.danno) - R.media(x.danno))[0];
-    const tiratore = distanza && (p.mod.des > p.mod.for || ['ranger', 'ladro', 'mago', 'stregone', 'warlock'].includes(p.classe));
+    const tiratore = distanza && (p.mod.des > p.mod.for || ['ranger', 'ladro', 'mago', 'stregone', 'warlock'].includes(CLASSI[p.classe].base || p.classe));
     if (a && (t.azione || (t.attacchi > 0 && t.attacchi < t.attacchiMax))) {
       const d = this.dist(c, ber);
       if ((a.mischia && d <= (a.portata || CELLA)) || (!a.mischia && a.gittata && d <= a.gittata[1] && M.vista(this.scena, c.x, c.y, ber.x, ber.y))) {

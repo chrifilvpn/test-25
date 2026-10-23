@@ -269,4 +269,12 @@ const PACCHETTI = {
   intrattenitore: { nome: 'Dotazione da intrattenitore', oggetti: ['zaino', 'sacco', 'costume', 'candele', 'razioni', 'otre', 'travestimento'] },
 };
 
+// le armi, le armature, gli oggetti e i passati delle ambientazioni horror (horror.js): hanno "tema", così la creazione
+// fantasy non li propone
+{
+  const H = require('./horror');
+  Object.assign(ARMI, H.ARMI); Object.assign(ARMATURE, H.ARMATURE); Object.assign(BACKGROUND, H.BACKGROUND);
+  for (const [id, o] of Object.entries(H.OGGETTI)) if (!OGGETTI[id]) OGGETTI[id] = o.nome;
+}
+
 module.exports = { CARATTERISTICHE, ORDINE_CAR, ABILITA, CONDIZIONI, TIPI_DANNO, LINGUE, STIRPI, DISCENDENZE, BACKGROUND, ARMI, ARMATURE, OGGETTI, PACCHETTI };
