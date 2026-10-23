@@ -90,13 +90,17 @@ function aggiungiLuogo(mondo, { nome, tipo, descrizione = '', vicinoA = null }, 
 // celle: '#' muro, '.' pavimento/terreno, '+' porta, '~' acqua (terreno difficile), 'T' albero (blocca), 'b' cespuglio
 // (difficile, copertura), 'r' roccia (blocca), 't' tavolo/mobile (copertura, blocca), ':' macerie (difficile),
 // 'w' acqua profonda (non si passa), 'c' colonna (blocca), 'S' sarcofago/altare (blocca), 'f' fuoco/camino (blocca)
-const BLOCCA = new Set(['#', 'T', 'r', 't', 'w', 'c', 'S', 'f']);
+// (ambientazioni horror, vedi stazione.js) 'a' armadietto, 'l' letto, 'k' terminale, 'u' uova e resina, 'L' porta
+// chiusa (bloccano), 'v' grata del condotto (si passa: da lì esce la creatura)
+const BLOCCA = new Set(['#', 'T', 'r', 't', 'w', 'c', 'S', 'f', 'a', 'l', 'k', 'u', 'L', 'o']);
 const DIFFICILE = new Set(['~', 'b', ':']);
-const OPACO = new Set(['#', 'T', 'r', 'c']);
+const OPACO = new Set(['#', 'T', 'r', 'c', 'a', 'k', 'L']);
 const STILI_SCENA = ['dungeon', 'grotta', 'foresta', 'villaggio', 'taverna', 'cripta', 'palude', 'montagna', 'strada', 'castello'];
 
 function scena(stile, seme, { w = 30, h = 20, luce = null } = {}) {
   const r = rng(seme);
+  const S = require('./stazione');
+  if (S.STILI.includes(stile)) return finisci(S.scenaHorror(stile, seme, { w, h, luce }), r);
   const st = STILI_SCENA.includes(stile) ? stile : 'dungeon';
   const g = new Array(w * h).fill('.');
   const I = (x, y) => y * w + x;
@@ -288,7 +292,7 @@ function copertura(sc, x0, y0, x1, y1) {
     const x = Math.round(x0 + ((x1 - x0) * k) / n), y = Math.round(y0 + ((y1 - y0) * k) / n);
     if ((x === x0 && y === y0) || (x === x1 && y === y1)) continue;
     const ch = sc.g[y * sc.w + x];
-    if (ch === 'b' || ch === 't' || ch === 'S') c = Math.max(c, 2);
+    if (ch === 'b' || ch === 't' || ch === 'S' || ch === 'l') c = Math.max(c, 2);
   }
   return c;
 }

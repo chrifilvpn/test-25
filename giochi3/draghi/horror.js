@@ -355,4 +355,22 @@ const CAMPAGNE = {
 // le classi e i passati di ogni ambientazione (una classe può stare in più ambientazioni)
 for (const [id, cp] of Object.entries(CAMPAGNE)) { cp.id = id; for (const k of cp.classi) (CLASSI[k].tema = CLASSI[k].tema || []).push(id); }
 
-module.exports = { TEMI, ARMI, ARMATURE, OGGETTI, CHIAVI, RICETTE, BACKGROUND, CLASSI, DOTAZIONE, MOSTRI, CAMPAGNE };
+// ---------- gli oggetti nello zaino (pg.oggetti: { id, nome, n }) ----------
+// le munizioni arrivano a scatole: una scatola di proiettili sono 6 colpi
+const SCATOLA = { proiettili: 6, cartucce: 4, chiodi: 8, carburante: 5, arpioni: 3 };
+const trova = (pg, id) => (pg.oggetti || []).find((o) => o.id === id || (!o.id && OGGETTI[id] && o.nome === OGGETTI[id].nome));
+const conta = (pg, id) => { const o = trova(pg, id); return o ? o.n : 0; };
+function dai(pg, id, n = 1) {
+  const def = OGGETTI[id]; if (!def) return null;
+  pg.oggetti = pg.oggetti || [];
+  const o = trova(pg, id);
+  if (o) { o.n += n; o.id = id; } else pg.oggetti.push({ id, nome: def.nome, n, descrizione: def.desc });
+  return def;
+}
+function togli(pg, id, n = 1) {
+  const o = trova(pg, id); if (!o || o.n < n) return false;
+  o.n -= n; if (o.n <= 0) pg.oggetti = pg.oggetti.filter((x) => x !== o);
+  return true;
+}
+
+module.exports = { TEMI, ARMI, ARMATURE, OGGETTI, CHIAVI, RICETTE, BACKGROUND, CLASSI, DOTAZIONE, MOSTRI, CAMPAGNE, SCATOLA, conta, dai, togli };

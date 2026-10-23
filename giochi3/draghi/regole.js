@@ -167,7 +167,7 @@ function creaPersonaggio(s) {
   pg.armatura = eq.armatura || null;
   pg.scudo = !!eq.scudo;
   pg.oggetti = [];
-  const aggiungi = (id) => { const nomeO = B.OGGETTI[id] || id; const x = pg.oggetti.find((o) => o.nome === nomeO); if (x) x.n++; else pg.oggetti.push({ nome: nomeO, n: 1 }); };
+  const aggiungi = (id) => { const nomeO = B.OGGETTI[id] || id; const x = pg.oggetti.find((o) => o.nome === nomeO); if (x) x.n++; else pg.oggetti.push({ id, nome: nomeO, n: 1 }); };
   for (const id of (B.PACCHETTI[eq.pacchetto] || { oggetti: [] }).oggetti) aggiungi(id);
   for (const id of (eq.extra || []).filter((x) => !B.ARMI[x])) aggiungi(id);
   for (const id of bg.equip) aggiungi(id);

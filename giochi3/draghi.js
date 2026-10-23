@@ -17,10 +17,14 @@ const MAP = require('./draghi/mappe');
 const { Combattimento } = require('./draghi/combattimento');
 const MASTER = require('./draghi/master');
 const T = require('../giochi/trucco');
+const H = require('./draghi/horror');
+const INC = require('./draghi/incubo');
+const { TempoReale } = require('./draghi/tempo-reale');
 
 const AMBIENTAZIONI = ['classica', 'oscura', 'pirati', 'citta', 'selvaggia'];
 const ATTESA_DICHIARAZIONI = 150000; // dopo la prima azione scritta, al massimo 2 minuti e mezzo per gli altri
 const MAX_RACCONTO = 400;
+const ATTESA_REVIVE = 15 * 60000; // tutti morti: un quarto d'ora per scrivere !revive, poi la campagna finisce
 const STILE_DA_LUOGO = { villaggio: 'villaggio', citta: 'villaggio', porto: 'villaggio', taverna: 'taverna', castello: 'castello', torre: 'castello', tempio: 'cripta', rovine: 'dungeon', dungeon: 'dungeon', grotta: 'grotta', cripta: 'cripta', foresta: 'foresta', montagna: 'montagna', palude: 'palude', deserto: 'strada', accampamento: 'foresta', ponte: 'strada', miniera: 'grotta', fattoria: 'villaggio', lago: 'palude' };
 const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
 
@@ -30,7 +34,10 @@ class Draghi {
     this.n = n;
     this.bot = Array.from({ length: n }, (_, i) => bot[i] || null);
     this.host = this.bot.findIndex((b) => !b); if (this.host < 0) this.host = 0;
-    this.ambientazione = AMBIENTAZIONI.includes(opzioni.ambientazione) ? opzioni.ambientazione : opzioni.ambientazione === 'caso' ? AMBIENTAZIONI[Math.floor(Math.random() * AMBIENTAZIONI.length)] : 'classica';
+    this.ambientazione = AMBIENTAZIONI.includes(opzioni.ambientazione) || H.TEMI.includes(opzioni.ambientazione) ? opzioni.ambientazione : opzioni.ambientazione === 'caso' ? AMBIENTAZIONI[Math.floor(Math.random() * AMBIENTAZIONI.length)] : 'classica';
+    // le ambientazioni horror (horror.js): una campagna a settori, a turni o in tempo reale (incubo.js, tempo-reale.js)
+    this.cp = H.CAMPAGNE[this.ambientazione] || null;
+    this.modalita = this.cp && opzioni.modalita === 'reale' ? 'reale' : 'turni';
     this.pazza = opzioni.pazza === true || opzioni.pazza === 'true';
     this.livelloIniziale = [1, 3, 5].includes(Number(opzioni.livello)) ? Number(opzioni.livello) : 1;
     this.difficolta = ['storia', 'normale', 'mortale'].includes(opzioni.difficolta) ? opzioni.difficolta : 'normale';
@@ -60,6 +67,14 @@ class Draghi {
     this.mondo = MAP.generaMondo(this.seme);
     this.posizione = null;
     this.scenaVista = null; // la mappa tattica dell'ultimo combattimento (si vede anche dopo)
+    if (this.cp) this.preparaIncubo();
+    if (this.modalita === 'reale') {
+      // tempo reale: il server chiama tick() ogni 50 ms e manda a ognuno vistaTick(posto); i comandi arrivano da input()
+      this.tickMs = 50;
+      this.tick = (ora) => (this.reale ? this.reale.tick(ora) : false);
+      this.vistaTick = (posto) => (this.reale ? this.reale.vistaTick(posto) : null);
+      this.input = (posto, dati) => { if (this.reale) this.reale.input(posto, dati); };
+    }
   }
   annuncia(posto, testo, testoIo, forte = false) { this.evento = { id: ++this.nEv, posto, testo, testoIo, forte }; }
   scrivi(tipo, testo, extra = {}) {
@@ -94,6 +109,8 @@ class Draghi {
   }
   scadenza() {
     if (this.finita) return null;
+    if (this.fase === 'caduti') return this.cadutiDa + ATTESA_REVIVE;
+    if (this.fase === 'reale') return null;
     if (this.attesaIA || this.attesaRacconto || this.attesaLibera || this.liberaPronta) return Date.now() + 400;
     if (this.erroreIA && this.ultimaRichiesta && this.tentativi < 3) return Date.now() + 6000;
     if (this.fase === 'combattimento' && this.combattimento) {
@@ -107,6 +124,8 @@ class Draghi {
   }
   controllaTempo() {
     if (this.finita) return false;
+    if (this.fase === 'caduti') { if (Date.now() >= this.cadutiDa + ATTESA_REVIVE) { this.chiudi('Tutti i personaggi sono morti.'); return true; } return false; }
+    if (this.fase === 'reale') return false;
     let cambiato = false;
     if (this.raccontoPronto) { const r = this.raccontoPronto; this.raccontoPronto = null; if (r.narrazione) this.scrivi('master', r.narrazione, { combattimento: true }); cambiato = true; }
     if (this.liberaPronta) { this.applicaLibera(); cambiato = true; }
@@ -144,6 +163,8 @@ class Draghi {
     }
     if (a.tipo === 'note') { const pg = this.pg[p]; if (!pg) return { errore: 'Prima crea il personaggio' }; pg.note = String(a.testo || '').slice(0, 3000); return { ok: true }; }
     if (this.fase === 'creazione') return this.azioneCreazione(p, a);
+    if (this.fase === 'caduti') return { errore: 'Tutti i personaggi sono morti: scrivete !revive in chat per riportarli in vita' };
+    if (this.fase === 'reale') return this.reale.azione(p, a);
     if (a.tipo === 'riprova') { if (!this.erroreIA || !this.ultimaRichiesta) return { errore: 'Non c\'è niente da riprovare' }; this.tentativi = 0; this.ripeti(); return { ok: true }; }
     if (this.attesaIA) return { errore: 'Il master sta scrivendo…' };
     if (this.fase === 'avventura') return this.azioneAvventura(p, a);
@@ -163,13 +184,17 @@ class Draghi {
     if (a.tipo === 'crea') {
       let s = a.scelte && typeof a.scelte === 'object' ? { ...a.scelte } : {};
       s.livello = this.livelloIniziale;
+      if (this.cp) this.scelteIncubo(s);
       if (s.metodo === 'dadi') s.tirati = this.tirati[p] ? this.tirati[p].valori : null;
       if (a.casuale || this.bot[p]) s = R.completaScelte({ ...s, classe: s.classe || this.classeCompagno(p) });
       if (s.metodo === 'dadi') s.tirati = this.tirati[p] ? this.tirati[p].valori : null;
+      if (this.cp && (!s.classe || !CLASSI[s.classe] || !(CLASSI[s.classe].tema || []).includes(this.cp.id))) return { errore: 'Scegli una delle classi di questa ambientazione' };
+      if (!this.cp && s.classe && CLASSI[s.classe] && CLASSI[s.classe].tema) return { errore: 'Questa classe c\'è solo nelle ambientazioni horror' };
       const r = R.creaPersonaggio(s);
       if (r.errore) return r;
       r.pg.uid = `pg${p}`;
       r.pg.posto = p;
+      if (this.cp) this.dopoCreazioneIncubo(r.pg, a.casuale || this.bot[p] ? { ...s, nome: a.scelte && a.scelte.nome } : s);
       this.pg[p] = r.pg;
       this.annuncia(p, `ha creato ${r.pg.nome}, ${B.STIRPI[r.pg.stirpe].nome.toLowerCase()} ${CLASSI[r.pg.classe].nome.toLowerCase()}`, `${r.pg.nome} è pronto all'avventura!`);
       if (this.pg.every(Boolean)) this.iniziaAvventura();
@@ -179,6 +204,7 @@ class Draghi {
       // "scegli tu per me" in un passaggio della creazione: il server completa le scelte mancanti e le rimanda
       const s = a.scelte && typeof a.scelte === 'object' ? { ...a.scelte } : {};
       s.livello = this.livelloIniziale;
+      if (this.cp) this.scelteIncubo(s);
       if (s.metodo === 'dadi') s.tirati = this.tirati[p] ? this.tirati[p].valori : null;
       try { this.suggerite[p] = { n: (this.suggerite[p] ? this.suggerite[p].n : 0) + 1, scelte: R.completaScelte(s) }; } catch (err) { return { errore: 'Non riesco a scegliere: prova a cambiare qualcosa' }; }
       return { ok: true };
@@ -195,11 +221,14 @@ class Draghi {
   }
   // i compagni del computer scelgono una classe che manca al gruppo
   classeCompagno(p) {
+    if (this.cp) return this.classeCompagnoIncubo(p);
     const prese = new Set(this.pg.filter(Boolean).map((x) => x.classe));
     const ruoli = ['guerriero', 'chierico', 'ladro', 'mago', 'ranger', 'paladino', 'bardo', 'druido', 'barbaro', 'stregone', 'warlock', 'monaco'];
     return ruoli.find((c) => !prese.has(c)) || ruoli[p % ruoli.length];
   }
   iniziaAvventura() {
+    if (this.modalita === 'reale') { this.fase = 'reale'; this.reale = new TempoReale(this); return; }
+    if (this.cp) { this.iniziaIncubo(); return; }
     this.fase = 'avventura';
     // il luogo di partenza
     const nomi = ['Borgo Cenere', 'Vallebruna', 'Porto Salmastro', 'Roccanera', 'Pietrafonda', 'Selvamorta', 'Torre del Corvo', 'Acquachiara'];
@@ -231,6 +260,7 @@ class Draghi {
       return { ok: true };
     }
     if (a.tipo === 'equip') return this.equipaggia(p, a);
+    if (a.tipo === 'incubo' && this.cp) return this.azioneIncubo(p, a);
     return { errore: 'Mossa non valida' };
   }
   mandaDichiarazioni() {
@@ -266,9 +296,12 @@ class Draghi {
     const png = this.png.slice(-25).map((x) => `${x.nome} (${x.atteggiamento || 'neutrale'}): ${x.descrizione.slice(0, 140)}`).join('\n');
     const miss = this.missioni.map((m) => `${m.titolo} [${m.stato}]: ${m.descrizione.slice(0, 160)}`).join('\n');
     const storia = this.storia.slice(-12).map((s) => `${s.ruolo === 'master' ? 'MASTER' : 'GIOCATORI'}: ${s.testo}`).join('\n\n');
-    return `IL GRUPPO\n${gruppo}\n\nLUOGO ATTUALE: ${luogo ? `${luogo.nome} (${luogo.tipo})${luogo.descrizione ? ` — ${luogo.descrizione}` : ''}` : 'sconosciuto'}\nLUOGHI NOTI: ${luoghi || 'nessuno'}\n\nPERSONAGGI NON GIOCANTI INCONTRATI:\n${png || 'nessuno'}\n\nMISSIONI:\n${miss || 'nessuna'}\n\nDIARIO DELLA CAMPAGNA:\n${this.diario || '(appena cominciata)'}\n\nSTORIA RECENTE:\n${storia || '(niente)'}`;
+    return `IL GRUPPO\n${gruppo}\n\nLUOGO ATTUALE: ${luogo ? `${luogo.nome} (${luogo.tipo})${luogo.descrizione ? ` — ${luogo.descrizione}` : ''}` : 'sconosciuto'}\nLUOGHI NOTI: ${luoghi || 'nessuno'}\n\nPERSONAGGI NON GIOCANTI INCONTRATI:\n${png || 'nessuno'}\n\nMISSIONI:\n${miss || 'nessuna'}${this.cp ? this.contestoIncubo() : ''}\n\nDIARIO DELLA CAMPAGNA:\n${this.diario || '(appena cominciata)'}\n\nSTORIA RECENTE:\n${storia || '(niente)'}`;
   }
-  sistema() { return MASTER.istruzioni({ ambientazione: this.ambientazione, pazza: this.pazza, difficolta: this.difficolta, lunghezza: this.lunghezza, regoleBrevi: MASTER.regoleBrevi(MOSTRI, B.CONDIZIONI) }); }
+  sistema() {
+    const base = MASTER.istruzioni({ ambientazione: this.cp ? 'oscura' : this.ambientazione, pazza: this.pazza, difficolta: this.difficolta, lunghezza: this.lunghezza, regoleBrevi: MASTER.regoleBrevi(this.cp ? Object.fromEntries(Object.entries(MOSTRI).filter(([, m]) => (m.tema || []).includes(this.cp.id))) : Object.fromEntries(Object.entries(MOSTRI).filter(([, m]) => !m.tema)), B.CONDIZIONI) });
+    return this.cp ? INC.istruzioniIncubo(base, this.cp) : base;
+  }
   chiediMaster(tipo, richiesta) {
     this.ultimaRichiesta = { tipo, richiesta };
     this.erroreIA = null;
@@ -278,6 +311,7 @@ class Draghi {
     const lv = Math.round(this.pgVivi().reduce((s, i) => s + this.pg[i].livello, 0) / Math.max(1, this.pgVivi().length));
     const fai = this.chiave && this.fetch
       ? MASTER.chiamaGemini({ chiave: this.chiave, sistema: this.sistema(), messaggi: [{ ruolo: 'giocatori', testo: messaggio }], fetch: this.fetch, maxToken: this.lunghezza === 'lunghe' ? 6000 : 4096 }).then((r) => (r.errore ? { errore: r.errore } : MASTER.leggiRisposta(r.testo)))
+      : this.cp ? Promise.resolve(this.masterRiservaIncubo(tipo))
       : Promise.resolve(MASTER.masterRiserva({ pazza: this.pazza, inizio: tipo === 'inizio', esiti: tipo === 'esiti' ? this.ultimiEsiti : null, livello: lv, luogo: (this.mondo.luoghi.find((l) => l.id === this.posizione) || {}).nome }));
     const io = this.ultimaRichiesta;
     fai.then((r) => { if (this.ultimaRichiesta !== io) return; this.attesaIA = false; if (r.errore) { this.erroreIA = r.errore; this.tentativi++; this.storia.pop(); } else { this.tentativi = 0; this.rispostaIA = r; } })
@@ -285,6 +319,7 @@ class Draghi {
   }
   ripeti() { const u = this.ultimaRichiesta; if (!u) return; this.erroreIA = null; this.chiediMaster(u.tipo, u.richiesta); }
   applicaRisposta(r) {
+    const tipo = this.ultimaRichiesta ? this.ultimaRichiesta.tipo : null;
     this.ultimaRichiesta = null;
     if (r.narrazione) { this.scrivi('master', r.narrazione); this.storia.push({ ruolo: 'master', testo: r.narrazione.slice(0, 3000) }); }
     if (this.storia.length > 40) this.storia.splice(0, this.storia.length - 40);
@@ -292,7 +327,8 @@ class Draghi {
     if (r.atmosfera) this.atmosfera = r.atmosfera;
     this.scelte = r.scelte || [];
     this.applicaEventi(r.eventi || []);
-    if (this.pgVivi().length === 0) { this.chiudi('Tutti i personaggi sono morti.'); return; }
+    if (this.finita) return;
+    if (this.pgVivi().length === 0) { this.tuttiMorti(); return; }
     // prove e tiri salvezza
     const prove = [];
     for (const x of r.prove || []) {
@@ -313,6 +349,8 @@ class Draghi {
     }
     if (r.combattimento) { this.iniziaCombattimento(r.combattimento); return; }
     this.fase = 'avventura';
+    // horror: ogni scambio col master fa passare il tempo (la creatura si muove)
+    if (this.cp && this.fase === 'avventura') { if (this.cacciatoreArriva) { this.cacciatoreArriva = false; this.incontroCacciatore(); } else if (tipo === 'azioni') this.passaTempo(); }
   }
   applicaEventi(eventi) {
     for (const e of eventi) {
@@ -320,6 +358,7 @@ class Draghi {
       const t = String(e.tipo || '');
       const chi = this.chiDi(e.chi);
       try {
+        if (this.cp && this.eventoIncubo(e, t, chi)) continue;
         if (t === 'danno') for (const k of chi) { const pg = this.pg[k]; const q = R.tira(e.danno || '1d6').totale; const sub = R.applicaDanno(pg, q, B.TIPI_DANNO[e.tipoDanno] ? e.tipoDanno : 'contundente', {}); this.scrivi('tiro', `${pg.nome} subisce ${sub} danni${e.tipoDanno ? ` da ${e.tipoDanno}` : ''}${e.motivo ? ` (${e.motivo})` : ''}.${pg.morto ? ' È MORTO.' : pg.pf <= 0 ? ' Cade a terra!' : ''}`, { posto: k }); }
         else if (t === 'cura') for (const k of chi) { const pg = this.pg[k]; const q = R.cura(pg, R.tira(e.cura || '1d8').totale); this.scrivi('tiro', `${pg.nome} recupera ${q} punti ferita.`, { posto: k }); }
         else if (t === 'condizione') for (const k of chi) { const pg = this.pg[k]; const c = norm(e.condizione); if (!B.CONDIZIONI[c]) continue; if (e.togli) pg.condizioni = pg.condizioni.filter((x) => x !== c); else if (!pg.condizioni.includes(c)) pg.condizioni.push(c); if (c === 'esausto' && !e.togli) pg.esaurimento = Math.min(6, pg.esaurimento + 1); }
@@ -381,7 +420,7 @@ class Draghi {
     if (!x) return { errore: 'Non hai tiri da fare' };
     const pg = this.pg[p];
     // il trucco segreto (!win + parola segreta): questo tiro è un 20 naturale
-    const opz = { cd: x.cd, vantaggio: x.vantaggio || (a.ispirazione && pg.ispirazione), svantaggio: x.svantaggio, venti: T.consuma(this, p) };
+    const opz = { cd: x.cd, vantaggio: x.vantaggio || (a.ispirazione && pg.ispirazione), svantaggio: x.svantaggio || !!(this.incubo && this.incubo.stato[p].paura >= 7), venti: T.consuma(this, p) };
     if (a.ispirazione && pg.ispirazione) pg.ispirazione = false;
     const isp = (pg.effetti || []).find((e) => e.effetto === 'ispirato');
     if (isp && a.bardica) { opz.ispirazione = isp.dado; pg.effetti = pg.effetti.filter((e) => e !== isp); }
@@ -410,14 +449,16 @@ class Draghi {
     }
     if (!nemici.length) { this.fase = 'avventura'; return; }
     const luogo = this.mondo.luoghi.find((l) => l.id === this.posizione);
-    const stile = MAP.STILI_SCENA.includes(def.scena) ? def.scena : STILE_DA_LUOGO[luogo && luogo.tipo] || 'foresta';
+    const qui = this.cp ? this.scenaIncubo(def) : null;
+    const stile = qui ? qui.stile : MAP.STILI_SCENA.includes(def.scena) ? def.scena : STILE_DA_LUOGO[luogo && luogo.tipo] || 'foresta';
     const grande = nemici.length + this.pgVivi().length > 10;
-    const scena = MAP.scena(stile, Math.floor(Math.random() * 1e9), { w: grande ? 36 : 30, h: grande ? 22 : 20, luce: ['giorno', 'buio', 'torce'].includes(def.luce) ? def.luce : null });
+    const scena = MAP.scena(stile, Math.floor(Math.random() * 1e9), { w: grande ? 36 : 30, h: grande ? 22 : 20, luce: qui ? qui.luce : ['giorno', 'buio', 'torce'].includes(def.luce) ? def.luce : null });
     const gruppo = this.pgVivi().map((k) => this.pg[k]);
     for (const p of gruppo) { p.condizioni = p.condizioni.filter((x) => x !== 'prono'); }
     this.combattimento = new Combattimento({ scena, gruppo, nemici, sorpresa: def.sorpresa === 'gruppo' || def.sorpresa === 'nemici' ? def.sorpresa : null, livelloIA: this.livelloIA() });
     // il trucco segreto: il prossimo d20 (attacco, tiro salvezza, prova) del personaggio di chi l'ha attivato è un 20
     this.combattimento.venti = (c) => { const k = this.pg.indexOf(c.ref); return k >= 0 && T.consuma(this, k); };
+    if (this.cp) { this.combattimento.horror = true; this.combattimento.rumore = this.incubo.rumore; }
     this.metaCombattimento = { nemici: nemici.map((m) => m.nome), inizio: Date.now() };
     this.scenaVista = scena;
     this.fase = 'combattimento';
@@ -489,6 +530,7 @@ class Draghi {
   dopoAzioneCombattimento() {
     const cb = this.combattimento;
     if (!cb) return;
+    if (this.cp) this.rumoreInCombattimento();
     if (cb.attivo && !cb.attivo.pg && this.prossimaMossaMostro < Date.now() + 600) this.prossimaMossaMostro = Date.now() + 900;
     // racconto del round appena finito (in sottofondo, il combattimento non aspetta)
     if (cb.round > this.roundRaccontato && this.chiave && this.fetch && !this.attesaRacconto) {
@@ -525,10 +567,34 @@ class Draghi {
     this.fase = 'avventura';
     this.atmosfera = 'calma';
     if (esito === 'vittoria' && px && vivi.length) this.daiPx(Math.round(px / vivi.length), 'il combattimento');
-    if (this.pgVivi().length === 0) { this.chiudi('Tutti i personaggi sono morti in battaglia.'); return; }
+    if (this.cp) this.dopoScontroIncubo(cb, esito);
+    if (this.pgVivi().length === 0) { this.tuttiMorti(); return; }
     this.chiediMaster('combattimentoFinito', `Il combattimento è finito: ${riassunto}\nRacconta la fine dello scontro e cosa succede dopo (cosa trovano sui nemici, chi è ferito, conseguenze). Se il gruppo ha perso decidi tu il destino: catturati, salvati, lasciati per morti… L'esperienza del combattimento l'ha già data il gioco.`);
   }
 
+  // morte permanente, ma con !revive in chat (server.js) i morti tornano: intanto la campagna aspetta
+  tuttiMorti() {
+    this.fase = 'caduti'; this.cadutiDa = Date.now(); this.attesaIA = false; this.combattimento = null;
+    this.scrivi('sistema', `💀 Tutti i personaggi sono morti.${this.cp ? ` ${this.cp.morte[Math.floor(Math.random() * this.cp.morte.length)]}` : ''} Scrivete !revive in chat per riportarli in vita, oppure chi ha aperto il tavolo chiude la campagna.`);
+  }
+  // !revive: i morti tornano in vita con tutti i punti ferita e le stesse cose che avevano
+  revive() {
+    const morti = this.pg.map((p, i) => (p && (p.morto || p.pf <= 0) ? i : -1)).filter((i) => i >= 0);
+    if (!morti.length || this.finita) return 0;
+    for (const k of morti) {
+      const pg = this.pg[k];
+      pg.morto = false; pg.pf = pg.pfMax; pg.stabile = false; pg.morte = { successi: 0, fallimenti: 0 };
+      pg.condizioni = pg.condizioni.filter((x) => !['privo', 'prono', 'spaventato', 'paralizzato', 'stordito', 'incapacitato', 'pietrificato'].includes(x));
+      R.ricalcola(pg);
+      if (this.incubo) this.incubo.stato[k].paura = 0;
+      const c = this.creaturaDi(k);
+      if (c) { c.fuggito = false; c.x = c.x; }
+    }
+    this.scrivi('sistema', `✨ !revive: ${morti.map((k) => this.pg[k].nome).join(', ')} ${morti.length > 1 ? 'tornano' : 'torna'} in vita con tutti i punti ferita.`);
+    if (this.fase === 'caduti') { this.fase = 'avventura'; this.cadutiDa = null; }
+    if (this.reale) this.reale.revive(morti);
+    return morti.length;
+  }
   chiudi(motivo) {
     this.finita = true;
     this.fase = 'fine';
@@ -548,6 +614,8 @@ class Draghi {
     const mio = this.pg[p] || null;
     return {
       gioco: this.id, n: this.n, fase: this.fase, host: this.host, bot: this.bot.map(Boolean), ambientazione: this.ambientazione, pazza: this.pazza, difficolta: this.difficolta, livelloIniziale: this.livelloIniziale,
+      modalita: this.modalita, incubo: this.cp && this.fase !== 'creazione' ? this.vistaIncubo(p) : this.cp ? { id: this.cp.id, nome: this.cp.nome, icona: this.cp.icona, sottotitolo: this.cp.sottotitolo } : null,
+      reale: this.reale ? this.reale.vistaFissa(p) : null,
       iaAttiva: !!(this.chiave && this.fetch), attesaIA: this.attesaIA, attesaLibera: !!this.attesaLibera, erroreIA: this.erroreIA, idea: this.idea,
       suggerite: this.suggerite[p], tirati: this.tirati[p] ? this.tirati[p].valori : null, tiriFatti: this.tirati[p] ? this.tirati[p].volte : 0,
       pg: this.pg, mioPg: mio ? mio.uid : null,
@@ -558,7 +626,7 @@ class Draghi {
       png: this.png, missioni: this.missioni, diario: this.diario,
       combattimento: cb ? { ...cb.vista(), scena: { w: cb.scena.w, h: cb.scena.h, g: cb.scena.g, stile: cb.scena.stile, luce: cb.scena.luce } } : null,
       mioId: mio ? mio.uid : null,
-      catalogo: this.fase === 'creazione' ? catalogo() : null,
+      catalogo: this.fase === 'creazione' ? catalogo(this.cp ? this.cp.id : null) : null,
       incantesimi: this.fase !== 'creazione' ? infoIncantesimi(this.pg) : null,
       pronti: this.pg.map(Boolean), nomiArmature: NOMI_ARMATURE,
       turno: null, inAttesa: false, finita: this.finita, risultato: this.risultato, evento: this.evento,
@@ -566,31 +634,38 @@ class Draghi {
   }
 }
 
+// i metodi delle ambientazioni horror a turni (con i getter: per questo non Object.assign)
+Object.defineProperties(Draghi.prototype, Object.getOwnPropertyDescriptors(INC.metodi));
+
 const NOMI_ARMATURE = Object.fromEntries(Object.entries(B.ARMATURE).map(([k, v]) => [k, v.nome]));
 
 // ---------- il catalogo per la creazione guidata (si manda solo durante la creazione) ----------
-let CATALOGO = null;
-function catalogo() {
-  if (CATALOGO) return CATALOGO;
+// le ambientazioni horror vedono solo umani, le loro classi e i loro passati; quelle fantasy niente di tutto ciò a tema
+const CATALOGO = {};
+function catalogo(tema = null) {
+  if (CATALOGO[tema]) return CATALOGO[tema];
   const { slotPer, STILI, SUPPLICHE } = require('./draghi/classi');
+  const delTema = (x) => (tema ? (x.tema || []).includes(tema) : !x.tema);
   const classi = {};
   for (const [id, c] of Object.entries(CLASSI)) {
+    if (!delTema(c)) continue;
     classi[id] = {
       nome: c.nome, desc: c.desc, dado: c.dado, principale: c.principale, salvezze: c.salvezze, armature: c.armature, armi: c.armi, abilita: { n: c.abilita.n, tra: R.listaAbilitaClasse(c) },
       equip: c.equip.map((e) => ({ nome: e.nome, armi: e.armi.map((a) => B.ARMI[a].nome), armatura: e.armatura ? B.ARMATURE[e.armatura].nome : null, scudo: !!e.scudo })),
       magia: c.magia ? { tipo: c.magia.tipo, car: c.magia.car, modo: c.magia.modo, trucchetti: c.magia.trucchetti || null, conosciuti: c.magia.conosciuti || null, mezzo: !!c.magia.mezzo, libro: c.magia.libro || 0, perLivello: c.magia.perLivello || 0, livMax: Array.from({ length: 20 }, (_, l) => slotPer(c.magia.tipo, l + 1).length) } : null,
       privilegi: c.privilegi.map((p) => ({ l: p.l, nome: p.nome, desc: p.desc, stile: !!p.stile, maestria: p.maestria || 0 })),
       sottoclasse: { nome: c.sottoclasse.nome, incantesimi: c.sottoclasse.incantesimi || {}, privilegi: c.sottoclasse.privilegi.map((p) => ({ l: p.l, nome: p.nome, desc: p.desc, stile: !!p.stile, abilitaScelte: p.abilitaScelte || 0 })) },
-      aumentiExtra: c.aumentiExtra || [],
+      aumentiExtra: c.aumentiExtra || [], base: c.base || id, icona: c.icona || null,
     };
   }
   const inc = {};
   for (const [id, x] of Object.entries(INCANTESIMI)) inc[id] = { nome: x.nome, liv: x.liv, scuola: x.scuola, classi: x.classiIds, tempo: x.tempo, gittata: x.gittata, durata: x.durata, conc: !!x.conc, rituale: !!x.rituale, desc: x.desc };
-  CATALOGO = {
-    caratteristiche: B.CARATTERISTICHE, ordine: B.ORDINE_CAR, abilita: B.ABILITA, stirpi: B.STIRPI, discendenze: B.DISCENDENZE, background: B.BACKGROUND,
-    classi, incantesimi: inc, stili: STILI, suppliche: SUPPLICHE, aspetto: R.ASPETTO, costoPunti: R.COSTO_PUNTI, standard: R.STANDARD, lingue: B.LINGUE,
+  CATALOGO[tema] = {
+    caratteristiche: B.CARATTERISTICHE, ordine: B.ORDINE_CAR, abilita: B.ABILITA, stirpi: tema ? { umano: B.STIRPI.umano } : B.STIRPI, discendenze: B.DISCENDENZE,
+    background: Object.fromEntries(Object.entries(B.BACKGROUND).filter(([, x]) => delTema(x))),
+    classi, incantesimi: inc, stili: STILI, suppliche: SUPPLICHE, aspetto: R.ASPETTO, costoPunti: R.COSTO_PUNTI, standard: R.STANDARD, lingue: B.LINGUE, tema,
   };
-  return CATALOGO;
+  return CATALOGO[tema];
 }
 // le informazioni sugli incantesimi che conosce il gruppo (per il pannello del combattimento e la scheda)
 function infoIncantesimi(pgs) {
@@ -619,7 +694,8 @@ module.exports = {
     descrizione: 'Il gioco di ruolo fantasy con l\'IA che fa da master: crea il tuo eroe, esplora un mondo che nasce mentre giocate e combatti sulla mappa tattica. Possibilità infinite.',
     alias: ['draghi e segrete', 'gioco di ruolo', 'gdr', 'dungeons', 'dungeon', 'dragons', 'd&d', 'dnd', 'master', 'avventura', 'fantasy', 'rpg'],
     opzioni: [
-      { id: 'ambientazione', nome: 'Ambientazione', valori: ['classica', 'oscura', 'pirati', 'citta', 'selvaggia', 'caso'], etichette: ['Fantasy classico', 'Oscura e horror', 'Mari e pirati', 'Intrighi in città', 'Terre selvagge', 'A sorpresa'], predefinito: 'classica' },
+      { id: 'ambientazione', nome: 'Ambientazione', valori: ['classica', 'oscura', 'pirati', 'citta', 'selvaggia', 'caso', 'sevastopol', 'pathos', 'manicomio'], etichette: ['Fantasy classico', 'Oscura e horror', 'Mari e pirati', 'Intrighi in città', 'Terre selvagge', 'A sorpresa (fantasy)', '🛰️ Stazione Sevastopol (Alien: Isolation)', '🌊 Base PATHOS-II (SOMA)', '🏚️ Manicomio Mount Massive (Outlast)'], predefinito: 'classica' },
+      { id: 'modalita', nome: 'Come si gioca (ambientazioni horror)', valori: ['turni', 'reale'], etichette: ['A turni, col master (classico)', '⏱️ In tempo reale: mappa enorme vista dall\'alto'], predefinito: 'turni' },
       { id: 'pazza', nome: '🤪 Modalità pazza (il master fa ridere)', valori: [false, true], etichette: ['No', 'Sì'], predefinito: false, casella: true },
       { id: 'livello', nome: 'Livello iniziale', valori: [1, 3, 5], etichette: ['1° livello (dall\'inizio)', '3° livello', '5° livello'], predefinito: 1 },
       { id: 'difficolta', nome: 'Difficoltà', valori: ['normale', 'storia', 'mortale'], etichette: ['Normale', 'Storia (combattimenti facili)', 'Mortale'], predefinito: 'normale' },
@@ -634,6 +710,10 @@ module.exports = {
       'COMBATTIMENTO: si passa alla mappa tattica a quadretti (1,5 metri). Iniziativa, poi a turno: movimento, un\'azione (attacco, incantesimo, scatto, disimpegno, schivata, aiuto, nascondersi, pozione…), un\'azione bonus e una reazione. Vantaggio e svantaggio, copertura, attacchi di opportunità, critici, condizioni, concentrazione, aree degli incantesimi: tutto come nelle regole. A 0 punti ferita si cade e si tira contro la morte.',
       'Dopo le battaglie e le missioni si guadagnano punti esperienza e si sale di livello (fino al 20°): più punti ferita, nuovi privilegi e incantesimi.',
       'La campagna dura finché il tavolo è aperto (non si salva). Chi ha aperto il tavolo può chiuderla quando vuole.',
+      'MORTE PERMANENTE: chi muore resta morto. Ma scrivendo !revive in chat (in tutte le modalità) i morti tornano in vita con tutti i punti ferita e le stesse cose che avevano.',
+      'AMBIENTAZIONI HORROR (dal menu Ambientazione): la stazione Sevastopol di Alien: Isolation, la base sottomarina PATHOS-II di SOMA, il manicomio Mount Massive di Outlast (senza armi da fuoco: videocamera e batterie). Solo umani, con classi a tema (addetto alla sicurezza, ingegnere, medico, tecnico informatico, sommozzatore, giornalista…). La mappa è fatta di settori collegati da porte, ascensori, tram e condotti; alcune porte si aprono solo con l\'oggetto giusto. Gli obiettivi si fanno uno dopo l\'altro fino al finale.',
+      'La CREATURA non si può uccidere: si evita, ci si nasconde negli armadietti, la si distrae col rumore o la si scaccia col fuoco. Il rumore (spari, corse, frugare) la attira; il rilevatore di movimento dice quanto è vicina; al buio le batterie della torcia si scaricano e la paura sale (con 7 o più le prove hanno svantaggio). Con i materiali trovati si costruiscono kit medici, diversivi, molotov, bombe, mine EMP. Gli androidi sono lenti e resistenti, e il tecnico li può hackerare.',
+      'TEMPO REALE (opzione "Come si gioca"): tutta la stazione su una mappa enorme vista dall\'alto. Ti muovi con WASD o il joystick (Maiusc per correre, che fa rumore; C per accovacciarti), E per interagire (porte, casse, armadietti, terminali), F la torcia, Q il rilevatore, clic per attaccare o lanciare. I tiri per colpire e i danni sono quelli delle regole.',
     ],
   },
   crea: (o) => new Draghi(o),
