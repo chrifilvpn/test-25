@@ -30,7 +30,7 @@ function tira(espr, { critico = false, massimo = false, minimoDue = false } = {}
 }
 const media = (espr) => { const s = String(espr || '0'); let t = 0; for (const m of s.matchAll(/([+-]?)(\d*)d(\d+)|([+-]?)(\d+)/g)) { if (m[3]) t += (m[1] === '-' ? -1 : 1) * (Number(m[2]) || 1) * (Number(m[3]) + 1) / 2; else if (m[5]) t += (m[4] === '-' ? -1 : 1) * Number(m[5]); } return Math.floor(t); };
 // il d20 con vantaggio/svantaggio (si annullano) e la fortuna halfling (un 1 si ritira).
-// venti: il trucco segreto (!win banana) fa uscire un 20 naturale (con vantaggio l'altro dado è normale)
+// venti: il trucco segreto (!win + parola segreta) fa uscire un 20 naturale (con vantaggio l'altro dado è normale)
 function d20({ vantaggio = false, svantaggio = false, fortunato = false, venti = false } = {}) {
   if (venti) { const modo = vantaggio && !svantaggio ? 'vantaggio' : svantaggio && !vantaggio ? 'svantaggio' : 'normale'; return { valore: 20, dadi: modo === 'normale' ? [20] : modo === 'vantaggio' ? [20, d(20)] : [20, 20], modo }; }
   const uno = () => { let v = d(20); if (fortunato && v === 1) v = d(20); return v; };

@@ -6,7 +6,7 @@
 // Chi tiene la patata corre un po' più veloce degli altri.
 const { Arena, casuale } = require('../giochi/arena');
 const T = require('../giochi/trucco');
-// !win banana: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
+// !win + parola segreta: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
 function aggiornaWin(g, dt) {
   const w = g.winOn || (g.winOn = {}), tw = g.winT || (g.winT = {});
   for (let p = 0; p < g.n; p++) {

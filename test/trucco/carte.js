@@ -1,4 +1,4 @@
-// IL TRUCCO SEGRETO (!win banana) nei giochi di carte: controlli precisi gioco per gioco
+// IL TRUCCO SEGRETO (!win + parola segreta) nei giochi di carte: controlli precisi gioco per gioco
 const assert = require('assert');
 process.env.TEST_VELOCE = '1';
 const T = require('../../giochi/trucco');

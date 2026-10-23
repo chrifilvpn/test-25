@@ -5,7 +5,7 @@
 // Negli angoli ci sono dei blocchi su cui la pallina rimbalza.
 const { Arena } = require('../giochi/arena');
 const T = require('../giochi/trucco');
-// !win banana: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
+// !win + parola segreta: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
 function aggiornaWin(g, dt) {
   const w = g.winOn || (g.winOn = {}), tw = g.winT || (g.winT = {});
   for (let p = 0; p < g.n; p++) {
@@ -72,7 +72,7 @@ class Pong4 extends Arena {
   }
   // il lato è chiuso (muro) se non c'è nessuno o chi c'era è uscito
   chiuso(lato) { const g = this.r.find((x) => x.lato === lato); return !g || g.fuori; }
-  // !win banana: la porta di chi ha il trucco respinge la pallina come un muro (niente vite perse)
+  // !win + parola segreta: la porta di chi ha il trucco respinge la pallina come un muro (niente vite perse)
   protetto(lato) { const g = this.r.find((x) => x.lato === lato); return !!(g && this.winOn && this.winOn[g.id]); }
 
   passo(dt) {

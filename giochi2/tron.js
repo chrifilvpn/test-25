@@ -7,7 +7,7 @@
 // dopo riceve la scia intera.
 const { Arena } = require('../giochi/arena');
 const T = require('../giochi/trucco');
-// !win banana: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
+// !win + parola segreta: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
 function aggiornaWin(g, dt) {
   const w = g.winOn || (g.winOn = {}), tw = g.winT || (g.winT = {});
   for (let p = 0; p < g.n; p++) {
@@ -170,7 +170,7 @@ class MotoDiLuce extends Arena {
     }
     if (morti.length) this.cadono(morti);
   }
-  // !win banana: se la moto sta per schiantarsi gira da sola verso la strada più libera
+  // !win + parola segreta: se la moto sta per schiantarsi gira da sola verso la strada più libera
   salva(b) {
     const C = this.cols, R = this.righe, G = this.griglia;
     const libera = (d) => { const x = b.x + DX[d], y = b.y + DY[d]; return x >= 0 && y >= 0 && x < C && y < R && !G[y * C + x]; };

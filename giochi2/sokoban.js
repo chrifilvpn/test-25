@@ -275,7 +275,7 @@ class Casse extends SfidaRompicapo {
     return { ok: true };
   }
 
-  // !win banana: la strada fino alla prossima spinta giusta (come l'aiuto, ma gratis e senza muovere niente)
+  // !win + parola segreta: la strada fino alla prossima spinta giusta (come l'aiuto, ma gratis e senza muovere niente)
   suggerimentoWin(posto) {
     const t = this.tavole[posto];
     if (this.finita || !t || t.fatto != null || t.ritirato) return null;

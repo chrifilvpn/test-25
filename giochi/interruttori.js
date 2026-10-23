@@ -38,7 +38,7 @@ class Interruttori {
   }
   liberi() { return this.accesi.map((x, i) => (x === null ? i : -1)).filter((i) => i >= 0); }
 
-  // !win banana: nel tuo turno ti dice quale interruttore è collegato alla bomba (vale per questo pannello)
+  // !win + parola segreta: nel tuo turno ti dice quale interruttore è collegato alla bomba (vale per questo pannello)
   suggerimentoWin(posto) {
     if (this.finita || this.inAttesa || posto !== this.turno) return null;
     return `💡 La bomba è l'interruttore ${this.bomba + 1}: non toccarlo!`;

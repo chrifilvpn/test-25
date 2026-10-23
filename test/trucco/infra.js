@@ -3,7 +3,16 @@ const assert = require('assert');
 const T = require('../../giochi/trucco');
 const { GIOCHI } = require('../../giochi');
 
-assert.ok(T.eComando('!win banana') && T.eComando('  !WIN   Banana ') && !T.eComando('!win') && !T.eComando('!win mela') && !T.eComando('ciao !win banana'));
+// la parola segreta viene da TRUCCO_PAROLA (su Render); senza, il trucco è spento
+{
+  const prima = process.env.TRUCCO_PAROLA;
+  delete process.env.TRUCCO_PAROLA;
+  assert.ok(!T.attivo() && !T.eComando('!win') && !T.eComando('!win banana') && !T.eComando('!win '), 'senza la variabile non scatta mai');
+  process.env.TRUCCO_PAROLA = '  Pàtata  Fritta ';
+  assert.ok(T.attivo() && T.eComando('!win patata fritta') && T.eComando('  !WIN   Patata   FRITTA ') && T.eComando('!win pàtata fritta'), 'maiuscole, accenti e spazi non contano');
+  assert.ok(!T.eComando('!win') && !T.eComando('!win patata') && !T.eComando('!win banana') && !T.eComando('ciao !win patata fritta') && !T.eComando('!winpatata fritta'), 'solo la parola giusta');
+  if (prima === undefined) delete process.env.TRUCCO_PAROLA; else process.env.TRUCCO_PAROLA = prima;
+}
 {
   const g = {};
   assert.ok(!T.armato(g, 0) && !T.consuma(g, 0));

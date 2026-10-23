@@ -193,7 +193,7 @@ class Sblocca {
     }
     return { ok: true };
   }
-  // !win banana: le prossime mosse della strada più corta (gratis e solo per te)
+  // !win + parola segreta: le prossime mosse della strada più corta (gratis e solo per te)
   suggerimentoWin(posto) {
     const t = this.tavole[posto];
     if (this.finita || this.inAttesa || !t || t.fatto !== null) return null;

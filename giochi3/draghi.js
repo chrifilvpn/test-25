@@ -128,7 +128,7 @@ class Draghi {
     return cambiato;
   }
   livelloIA() { return { storia: 'facile', normale: 'medio', mortale: 'difficile' }[this.difficolta]; }
-  // !win banana: il prossimo d20 del personaggio (prova, tiro salvezza, attacco, azione libera) sarà un 20 naturale
+  // !win + parola segreta: il prossimo d20 del personaggio (prova, tiro salvezza, attacco, azione libera) sarà un 20 naturale
   // (lo spengono T.consuma in azioneProve/azioneLibera e combattimento.venti); a chi l'ha scritto un cenno segreto
   trucco(posto) { if (!(this.pg[posto] && this.pg[posto].morto)) T.sussurra(this, posto, '🍀 Il prossimo tiro di dado sarà un 20 naturale', 3000); }
   salta(p) { /* chi è via: il computer gioca per lui (bot) */ }
@@ -380,7 +380,7 @@ class Draghi {
     const x = this.prove.find((q) => q.posto === p && !q.esito && (a.id == null || q.id === Number(a.id)));
     if (!x) return { errore: 'Non hai tiri da fare' };
     const pg = this.pg[p];
-    // il trucco segreto (!win banana): questo tiro è un 20 naturale
+    // il trucco segreto (!win + parola segreta): questo tiro è un 20 naturale
     const opz = { cd: x.cd, vantaggio: x.vantaggio || (a.ispirazione && pg.ispirazione), svantaggio: x.svantaggio, venti: T.consuma(this, p) };
     if (a.ispirazione && pg.ispirazione) pg.ispirazione = false;
     const isp = (pg.effetti || []).find((e) => e.effetto === 'ispirato');

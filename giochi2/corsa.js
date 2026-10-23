@@ -8,7 +8,7 @@
 // pista la inventa il gioco.
 const { Arena } = require('../giochi/arena');
 const T = require('../giochi/trucco');
-// !win banana: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
+// !win + parola segreta: un vantaggio per il round in corso (al massimo 25 secondi di gioco), poi il trucco si spegne
 function aggiornaWin(g, dt) {
   const w = g.winOn || (g.winOn = {}), tw = g.winT || (g.winT = {});
   for (let p = 0; p < g.n; p++) {
@@ -249,7 +249,7 @@ class Corsa extends Arena {
     const [i, d] = this.vicino(c);
     const erba = d > this.mezza;
     c.erba = erba;
-    const win = c.id < this.n && this.winOn && this.winOn[c.id]; // !win banana: più veloce, e l'erba non frena
+    const win = c.id < this.n && this.winOn && this.winOn[c.id]; // !win + parola segreta: più veloce, e l'erba non frena
     const vmax = (erba && !win ? V_ERBA : V_MAX) * (liv ? LIV[liv].vmax : 1) * (win ? 1.18 : 1);
     // motore e freni
     if (gas > 0.05) { if (vf < vmax) vf = Math.min(vmax, vf + ACC * (win ? 1.3 : 1) * gas * dt * (vf < 0 ? 2 : 1)); }

@@ -185,7 +185,7 @@ class Mahjong extends SfidaRompicapo {
     return { errore: 'Mossa non valida' };
   }
 
-  // !win banana: la prossima coppia buona (quella della soluzione, se si può ancora), con il nome e dove sono
+  // !win + parola segreta: la prossima coppia buona (quella della soluzione, se si può ancora), con il nome e dove sono
   suggerimentoWin(posto) {
     const t = this.tavole[posto];
     if (this.finita || !t || t.fatto != null || t.ritirato) return null;

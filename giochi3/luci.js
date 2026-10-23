@@ -156,7 +156,7 @@ class Luci extends SfidaRompicapo {
     return { errore: 'Mossa non valida' };
   }
 
-  // !win banana: le caselle da toccare (la soluzione col minimo di tocchi da dove sei)
+  // !win + parola segreta: le caselle da toccare (la soluzione col minimo di tocchi da dove sei)
   suggerimentoWin(posto) {
     const t = this.tavole[posto];
     if (this.finita || !t || t.fatto != null || t.ritirato) return null;

@@ -163,7 +163,7 @@ class Sudoku {
     return { ok: true };
   }
 
-  // !win banana: il numero giusto della casella più facile, solo per chi l'ha chiesto (gratis, niente annunci)
+  // !win + parola segreta: il numero giusto della casella più facile, solo per chi l'ha chiesto (gratis, niente annunci)
   suggerimentoWin() {
     if (this.inserimento) return null;
     const { meglio } = this.casellaAiuto();

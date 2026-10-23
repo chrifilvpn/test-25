@@ -427,7 +427,7 @@ class Kakuro extends SfidaRompicapo {
     return { ok: true };
   }
 
-  // !win banana: la cifra giusta di una casella (prima uno sbaglio da correggere, poi la prossima del ragionamento)
+  // !win + parola segreta: la cifra giusta di una casella (prima uno sbaglio da correggere, poi la prossima del ragionamento)
   suggerimentoWin(posto) {
     const t = this.tavole[posto];
     if (this.finita || !t || t.fatto != null || t.ritirato) return null;
