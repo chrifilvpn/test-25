@@ -423,6 +423,11 @@
       else if (f.tipo === 'grata') suono([[140, 0.08], [160, 0.08]], { tipo: 'square', volume: 0.025 });
     }
     if (d.fx.length) RT.fxVisti = Math.max(RT.fxVisti || 0, ...d.fx.map((f) => f.n));
+    // il cuore batte più forte quando la creatura è vicina
+    const ogni = [0, 1300, 850, 520][d.vicina || 0] * (d.inseguito ? 0.7 : 1);
+    if (ogni && performance.now() - (RT.cuoreT || 0) > ogni) { RT.cuoreT = performance.now(); suono([[55, 0.07], [0, 0.08], [48, 0.09]], { tipo: 'sine', volume: 0.05 + 0.02 * d.vicina }); }
+    if (d.inseguito && !RT.inseguito) suono([[90, 0.12], [1200, 0.05], [80, 0.3]], { tipo: 'sawtooth', volume: 0.07 });
+    RT.inseguito = d.inseguito;
     // il bip del rilevatore: più vicino è, più acuto
     if (d.blip && performance.now() - RT.bipT > 1000) {
       RT.bipT = performance.now();
@@ -656,8 +661,12 @@
       righe.forEach((r, k) => { g.fillStyle = 'rgba(0,0,0,.6)'; g.fillRect(W - 150, 8 + k * 22, 142, 20); g.fillStyle = k === 0 && pg.pf / pg.pfMax < 0.35 ? '#ff7060' : '#e8e8e0'; g.fillText(r, W - 14, 23 + k * 22); });
       g.restore();
     }
+    // vicina ma non vi vede: i bordi si scuriscono e pulsano piano
+    if (!d.allarme && d.vicina >= 2) { const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.7); vg.addColorStop(0, 'rgba(80,0,0,0)'); vg.addColorStop(1, `rgba(90,0,0,${(d.vicina === 3 ? 0.3 : 0.16) + 0.08 * Math.sin(t / 260)})`); g.fillStyle = vg; g.fillRect(0, 0, W, H); }
     // allarme: la creatura vi insegue
     if (d.allarme) { const vg = g.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.3, W / 2, H / 2, Math.max(W, H) * 0.7); vg.addColorStop(0, 'rgba(255,0,0,0)'); vg.addColorStop(1, `rgba(200,0,0,${0.35 + 0.15 * Math.sin(t / 120)})`); g.fillStyle = vg; g.fillRect(0, 0, W, H); }
+    // inseguito: la scritta che lampeggia
+    if (d.inseguito && !occhi.morto) { g.save(); g.globalAlpha = 0.75 + 0.25 * Math.sin(t / 90); g.fillStyle = 'rgba(60,0,0,.7)'; g.fillRect(W / 2 - 170, 52, 340, 34); g.fillStyle = '#ffd0c8'; g.font = 'bold 16px system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('🏃 TI HA VISTO! Scappa e nasconditi', W / 2, 75); g.restore(); }
     if (occhi.morto || d.occhi !== d.io) { g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(0, H / 2 - 22, W, 44); g.fillStyle = '#f0d8d0'; g.font = 'bold 16px system-ui, sans-serif'; g.textAlign = 'center'; g.fillText('💀 Sei morto: guardi i compagni. Scrivete !revive in chat per tornare.', W / 2, H / 2 + 6); }
   }
 

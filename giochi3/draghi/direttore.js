@@ -21,7 +21,7 @@ const ABITUDINI = {
 const IMPARA = { armadietto: 0.16, sotto: 0.2, corsa: 0.08, fuoco: 0.25, diversivo: 0.3, buio: 0.1 };
 // la tensione della direttrice: soglie per tempo reale (secondi) e a turni (mosse)
 const PICCO = 85;
-const CALMA_MAX = { storia: 70, normale: 42, difficile: 32, mortale: 26 };
+const CALMA_MAX = { storia: 40, normale: 20, difficile: 15, mortale: 12 };
 const CALMA_TURNI = { storia: 7, normale: 5, difficile: 4, mortale: 3 };
 
 function nuovaMente() {
@@ -54,14 +54,14 @@ function zonaPreferita(m, aree) {
 // info: { dMin (distanza dal personaggio più vicino, Infinity nei condotti), caccia, vede, fuori, difficolta, gruppo {x, y} }
 function direttrice(m, dt, t, info) {
   const { dMin, caccia, vede, fuori } = info;
-  let d = -4;
+  let d = -6;
   if (fuori && dMin < 6) d = 18; else if (fuori && dMin < 12) d = 8; else if (dMin < 10) d = 3; // anche nei condotti, vicina, mette ansia
   if (caccia) d += 14;
   if (vede) d += 6;
   m.tensione = Math.max(0, Math.min(100, m.tensione + d * dt));
   if (dMin < 13) m.calma = 0; else m.calma += dt;
   // troppa tensione: tregua (la creatura deve andarsene appena smette di inseguire)
-  if (m.tensione >= PICCO && m.tregua <= t) { m.tregua = t + 22 + Math.random() * 16; m.indizio = null; return 'tregua'; }
+  if (m.tensione >= PICCO && m.tregua <= t) { m.tregua = t + 12 + Math.random() * 8; m.indizio = null; return 'tregua'; }
   if (m.tregua > t) { if (m.tensione < 25) m.tregua = Math.min(m.tregua, t + 4); return 'tregua'; }
   // troppa calma: un indizio sulla zona del gruppo (più è calmo, più è preciso)
   const max = CALMA_MAX[info.difficolta] || CALMA_MAX.normale;

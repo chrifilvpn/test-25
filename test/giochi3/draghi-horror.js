@@ -116,6 +116,7 @@ function nuova(amb, opz = {}) {
       if (g.fase === 'caduti') { morti++; assert.ok(g.revive() > 0); rev++; assert.strictEqual(g.fase, 'reale', '!revive torna al tempo reale'); }
       const a = Date.now(); g.tick(ora); const v = g.vistaTick(0); maxMs = Math.max(maxMs, Date.now() - a);
       if (v.blip) blip++;
+      if (k === 20 * 30) assert.ok(R.creatura && g.incubo.caccia.attiva, `${amb}: in tempo reale la creatura arriva da sola dopo poco`);
       if (k === 20 * 60) { R.svegliaCreatura(); g.incubo.caccia.attiva = true; }
     }
     assert.ok(g.incubo.fatti.length >= 1, `${amb}: in tempo reale si completano obiettivi`);
