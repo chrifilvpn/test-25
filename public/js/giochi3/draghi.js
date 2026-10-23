@@ -6,7 +6,7 @@
 // ha la sua schermata (draghi-master.js).
 (() => {
   const { esc, suono, primaVolta, trascorso } = window.Nuovi;
-  const A = () => window.DraghiArte, MP = () => window.DraghiMappe, CR = () => window.DraghiCrea, CB = () => window.DraghiCampo, IN = () => window.DraghiIncubo, DM = () => window.DraghiMaster;
+  const A = () => window.DraghiArte, MP = () => window.DraghiMappe, CR = () => window.DraghiCrea, CB = () => window.DraghiCampo, IN = () => window.DraghiIncubo, DM = () => window.DraghiMaster, MU = () => window.DraghiMusica;
   const ATMOSFERA = { calma: ['🌙', 'Calma'], tensione: ['⚠️', 'Tensione'], battaglia: ['⚔️', 'Battaglia'], mistero: ['🔮', 'Mistero'], festa: ['🎉', 'Festa'], orrore: ['💀', 'Orrore'], viaggio: ['🧭', 'In viaggio'] };
   const AMBIENTI = { classica: 'Fantasy classico', oscura: 'Oscura e horror', pirati: 'Mari e pirati', citta: 'Intrighi in città', selvaggia: 'Terre selvagge' };
   const NOMI_CAR = { for: 'Forza', des: 'Destrezza', cos: 'Costituzione', int: 'Intelligenza', sag: 'Saggezza', car: 'Carisma' };
@@ -321,6 +321,7 @@
     },
     dopo(ctx) {
       ctx = locale(ctx);
+      MU().aggiorna(ctx);
       if (sipario(ctx)) return;
       const p = ctx.partita, ui = ctx.ui;
       CB().dopo(ctx);
@@ -367,7 +368,7 @@
       if (p.fase === 'caduti') return '💀 Scrivete !revive';
       return null;
     },
-    tick(ctx, d) { IN().tick(ctx, d); },
+    tick(ctx, d) { IN().tick(ctx, d); MU().tick(ctx, d); },
     statoAttesa() { return null; },
     punteggio() { return ''; },
     infoPosto(ctx, posto) { const pg = ctx.partita.pg[posto]; return pg ? `${esc(pg.nome)} · ${pg.pf}/${pg.pfMax} PF` : posto === ctx.partita.dm ? '🎩 il master' : 'crea il personaggio'; },
