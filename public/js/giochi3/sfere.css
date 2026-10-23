@@ -1,0 +1,5 @@
+/* CATENA DI BIGLIE: il campo è il canvas del motore comune (Arena); sopra solo il pulsante per scambiare la biglia,
+   tondo nell'angolo in alto a destra (lì il percorso non passa mai) */
+.panno-sfere .ar-tela { cursor: crosshair; touch-action: none; }
+.sf-scambia { position: absolute; right: 6px; top: 6px; width: 44px; height: 44px; padding: 0; border-radius: 50%; border: 2px solid rgba(255,255,255,.55); background: rgba(30,40,25,.75); color: #fff; font-size: 20px; line-height: 1; cursor: pointer; }
+.sf-scambia:hover { background: rgba(60,80,50,.9); }

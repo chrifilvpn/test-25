@@ -83,7 +83,7 @@ const metodi = {
     const prima = this.areaDi(cp.obiettivi[0].area) || cp.aree[0];
     const partenza = cp.aree.find((a) => vicini(cp, a.id).some((v) => v.id === prima.id) && a.gx === 0 && a.gy === 0) || cp.aree.find((a) => a.gx === 0 && a.gy === 0) || prima;
     this.entraIn(partenza.id, { silenzio: true });
-    this.scrivi('sistema', `${cp.icona} ${cp.nome} — ${cp.sottotitolo}. La squadra: ${this.pg.map((x) => `${x.nome} (${CLASSI[x.classe].nome.toLowerCase()} ${x.livello}°)`).join(', ')}.`);
+    this.scrivi('sistema', `${cp.icona} ${cp.nome} — ${cp.sottotitolo}. La squadra: ${this.pg.filter(Boolean).map((x) => `${x.nome} (${CLASSI[x.classe].nome.toLowerCase()} ${x.livello}°)`).join(', ')}.`);
     this.scrivi('sistema', `🎯 Obiettivo: ${this.obiettivoOra.titolo}. ${this.obiettivoOra.testo}`);
     this.chiediMaster('inizio', `Comincia la campagna horror "${cp.nome}" (${cp.luogo}). Il gruppo arriva in ${partenza.nome}: ${partenza.desc}. ${this.idea ? `Idea scritta dal tavolo: «${this.idea}». Seguila se si può.` : ''} Presenta l'arrivo, l'atmosfera e il primo obiettivo (${this.obiettivoOra.titolo}: ${this.obiettivoOra.testo}). Non far ancora comparire la creatura: solo segni della sua presenza.`);
     inc.inizio = Date.now();

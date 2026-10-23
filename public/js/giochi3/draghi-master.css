@@ -1,0 +1,65 @@
+/* DRAGHI E SEGRETE — la schermata del master umano (draghi-master.js): la consolle sotto il racconto, il consigliere,
+   il bestiario e la guida a fianco. Stessi colori del tavolo (le variabili sono quelle di .dr in draghi.css). */
+.dr-dm .dr-dm-carta { --cc: #6a4a9a; }
+.dr-dm .dr-dm-cappello { display: block; font-size: 4.2rem; line-height: 1.1; margin: .2rem auto .4rem; filter: drop-shadow(0 8px 14px rgba(0, 0, 0, .6)); }
+.dr-dm .dr-dm-carta > p { font-size: .9rem; line-height: 1.45; margin: .5rem 0; }
+.dr-dm .dr-dm-punti { text-align: left; margin: .6rem 0; padding-left: 1.1rem; display: grid; gap: .3rem; font-size: .86rem; }
+
+/* la consolle */
+.dr-dm .dr-dm-consolle { max-height: 70%; }
+.dr-dm .dr-dm-rich { border: 1px solid var(--dr-oro3); border-radius: 10px; padding: .55rem .7rem; background: linear-gradient(rgba(216, 178, 90, .16), rgba(216, 178, 90, .05)); box-shadow: 0 0 18px rgba(216, 178, 90, .15); }
+.dr-dm .dr-dm-rich h3 { font-size: 1rem; color: var(--dr-oro2); display: inline; margin-right: .5rem; }
+.dr-dm .dr-dm-rich small { color: rgba(239, 228, 204, .7); font-size: .76rem; }
+.dr-dm .dr-dm-rich-testo { margin-top: .35rem; font-size: .88rem; max-height: 9.5rem; overflow-y: auto; }
+.dr-dm .dr-dm-rich-testo p, .dr-dm .dr-dm-msg p, .dr-dm .dr-dm-segreti p { margin: .15rem 0; }
+.dr-dm .dr-dm-stato { padding: .45rem .6rem; border-radius: 8px; background: rgba(255, 255, 255, .05); border: 1px dashed var(--dr-bordo); font-size: .88rem; display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+.dr-dm .dr-dm-stato small { flex-basis: 100%; color: rgba(239, 228, 204, .62); font-size: .76rem; }
+.dr-dm textarea, .dr-dm input, .dr-dm select {
+  font: inherit; font-size: .88rem; color: var(--dr-inch); background: var(--dr-perg); border: 1px solid var(--dr-oro3); border-radius: 8px; padding: .4rem .55rem; min-width: 0;
+}
+.dr-dm select { background: #2a1e14; color: #f0e2c0; padding: .35rem .4rem; }
+.dr-dm .dr-dm-testo { min-height: 5.6em; flex: none; }
+.dr-dm textarea { width: 100%; resize: vertical; font-family: var(--dr-libro); font-size: .98rem; line-height: 1.35; box-sizing: border-box; }
+.dr-dm textarea:focus, .dr-dm input:focus, .dr-dm select:focus { outline: 2px solid var(--dr-oro); outline-offset: 1px; }
+.dr-dm .dr-dm-riga { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
+.dr-dm .dr-dm-riga input { flex: 1 1 9rem; }
+.dr-dm .dr-dm-riga select { flex: 0 1 auto; width: auto; max-width: 100%; }
+.dr-dm .dr-dm-str-corpo { padding: .5rem; border-radius: 8px; background: rgba(0, 0, 0, .22); border: 1px solid rgba(216, 178, 90, .2); display: grid; gap: .35rem; }
+.dr-dm .dr-dm-str-corpo .dr-nota { margin: 0; }
+.dr-dm .dr-dm-aggiunti .dr-chip { display: inline-flex; align-items: center; gap: .1rem; }
+.dr-dm .dr-dm-aggiunti .dr-link { padding: 0 .15rem; text-decoration: none; font-size: .8rem; }
+.dr-dm .dr-dm-bottoni { display: flex; flex-wrap: wrap; gap: .45rem; align-items: center; }
+.dr-dm .dr-dm-piede { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .3rem; align-items: center; }
+.dr-dm .dr-dm-pensa { font-style: italic; color: var(--dr-oro2); font-size: .85rem; animation: dr-dm-pulsa 1.4s ease-in-out infinite; }
+@keyframes dr-dm-pulsa { 50% { opacity: .45; } }
+.dr-dm .dr-dm-narra { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .4rem; align-items: center; }
+
+/* a fianco */
+.dr-dm .dr-dm-cb { display: grid; gap: .5rem; }
+.dr-dm .dr-dm-libera { padding: .6rem; border-radius: 10px; border: 1px solid var(--dr-oro); background: rgba(216, 178, 90, .1); display: grid; gap: .4rem; animation: dr-dm-pulsa 2s ease-in-out 2; }
+.dr-dm .dr-dm-libera h4 { font-size: .9rem; color: var(--dr-oro2); }
+.dr-dm .dr-dm-libera p { margin: 0; font-size: .88rem; }
+.dr-dm .dr-dm-d20 { white-space: nowrap; color: var(--dr-oro2); margin-left: .3rem; }
+.dr-dm .dr-dm-consiglio { display: flex; flex-direction: column; gap: .5rem; height: 100%; min-height: 0; }
+.dr-dm .dr-dm-msgs { flex: 1; min-height: 8rem; overflow-y: auto; display: flex; flex-direction: column; gap: .45rem; }
+.dr-dm .dr-dm-msg { max-width: 92%; padding: .45rem .65rem; border-radius: 12px; font-size: .86rem; line-height: 1.38; }
+.dr-dm .dr-dm-msg.io { align-self: flex-end; background: linear-gradient(#e8c46a, #c0923e); color: #2a1806; border-bottom-right-radius: 3px; }
+.dr-dm .dr-dm-msg.ia { align-self: flex-start; background: var(--dr-perg); color: var(--dr-inch); border-bottom-left-radius: 3px; font-family: var(--dr-libro); font-size: .95rem; }
+.dr-dm .dr-dm-punto { padding-left: .2rem; }
+.dr-dm .dr-dm-chiedi { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .4rem; align-items: center; }
+.dr-dm .dr-dm-best li { display: flex; align-items: center; gap: .5rem; }
+.dr-dm .dr-dm-best li > div { flex: 1; min-width: 0; display: grid; }
+.dr-dm .dr-dm-best li small { opacity: .7; font-size: .74rem; }
+.dr-dm .dr-dm-guida { font-size: .86rem; line-height: 1.45; }
+.dr-dm .dr-dm-guida ol, .dr-dm .dr-dm-guida ul { padding-left: 1.1rem; margin: .2rem 0; display: grid; gap: .2rem; }
+.dr-dm .dr-dm-guida p { margin: .2rem 0; }
+.dr-dm .dr-dm-tab { border-collapse: collapse; }
+.dr-dm .dr-dm-tab td { padding: .1rem .6rem .1rem 0; }
+.dr-dm .dr-dm-tab td:first-child { font-weight: 700; color: var(--dr-oro2); text-align: right; }
+.dr-dm .dr-dm-segreti { padding: .5rem .6rem; border-radius: 8px; background: rgba(120, 20, 20, .22); border: 1px solid rgba(220, 80, 60, .4); font-size: .8rem; white-space: normal; }
+
+@media (max-width: 760px) {
+  .dr-dm .dr-dm-consolle { max-height: none; }
+  .dr-dm .dr-dm-rich-testo { max-height: 7rem; }
+  .dr-dm .dr-dm-riga select, .dr-dm .dr-dm-riga input { flex: 1 1 45%; }
+}

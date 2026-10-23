@@ -1,0 +1,2 @@
+/* AFFETTA LA FRUTTA: il campo è il canvas del motore comune (Arena); qui solo il cursore a lama */
+.panno-frutta .ar-tela { cursor: crosshair; touch-action: none; }

@@ -1,0 +1,20 @@
+/* DIFESA DELLA TORRE: il campo è il canvas del motore comune (Arena); sopra il menu della casella scelta e il
+   pulsante "Pronto!" tra un'ondata e l'altra */
+.panno-difesa .ar-tela { cursor: pointer; touch-action: manipulation; }
+.dt-menu { position: absolute; min-width: 170px; padding: 8px; border-radius: 12px; background: rgba(28,36,24,.92); color: #fff; box-shadow: 0 6px 18px rgba(0,0,0,.4); display: grid; gap: 5px; }
+.dt-tit { margin: 0 22px 2px 2px; font: 700 13px system-ui; }
+.dt-nota { margin: 0; font-size: 12px; opacity: .75; }
+.dt-bt { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 6px 9px; border-radius: 8px; border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.08); color: #fff; font: 600 13px system-ui; cursor: pointer; text-align: left; }
+.dt-bt:hover:not([disabled]) { background: rgba(255,255,255,.2); }
+.dt-bt[disabled] { opacity: .4; cursor: not-allowed; }
+.dt-bt b { color: #ffd23f; white-space: nowrap; }
+.dt-x { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #fff; cursor: pointer; font-size: 13px; }
+.dt-pronto { position: absolute; right: 8px; bottom: 8px; padding: 9px 14px; border-radius: 999px; border: 2px solid rgba(255,255,255,.6); background: #2e8f3e; color: #fff; font: 800 14px system-ui; cursor: pointer; box-shadow: 0 3px 10px rgba(0,0,0,.35); }
+.dt-pronto.dt-si { background: rgba(30,60,30,.8); cursor: default; }
+/* sul telefono il menu sta in basso al centro del campo, su due colonne, e "Pronto!" in alto a destra */
+@media (max-width: 600px) {
+  .dt-menu { left: 50% !important; top: auto !important; bottom: 4px; transform: translateX(-50%) !important; grid-template-columns: 1fr 1fr; min-width: 0; width: 92%; padding: 5px; gap: 4px; }
+  .dt-tit { grid-column: 1 / -1; font-size: 12px; }
+  .dt-bt { font-size: 11px; padding: 4px 6px; gap: 4px; }
+  .dt-pronto { top: 4px; bottom: auto; right: 4px; padding: 5px 9px; font-size: 11px; }
+}
