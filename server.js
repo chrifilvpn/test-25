@@ -15,7 +15,8 @@ const FICHE_INIZIALI = 1000; // fiche di ogni giocatore a inizio tavolo (blackja
 const VOTO_FINE_MS = 30000; // quanto dura la votazione per terminare la partita
 const ESECUZIONE_MS = 7000; // quanto dura l'esecuzione pubblica (67): il tavolo si ferma per tutti
 const ESECUZIONE_ATTESA_MS = 12000; // tra un'esecuzione e l'altra, per non bloccare il tavolo di continuo
-const { eSessantasette } = require('./esecuzione');
+const { eSessantasette, eEnricoPapi } = require('./esecuzione');
+const PAPI_MS = 6600; // quanto dura il video di Enrico Papi (chi scrive "enrico papi" in chat): il tavolo si ferma per tutti
 const { censura } = require('./censura'); // viagano/viaganò in chat diventa ******** // "67", "sessantasette", "sessanta sette"
 const NOMI_BOT = ['Ada', 'Alan', 'Grace', 'Linus', 'Tim', 'Margaret', 'Dennis', 'Barbara'];
 
@@ -134,7 +135,7 @@ function invia(s) {
       inPausa: inPausa(s),
       ricaricaConsigliata: !!(s.partita && s.partita.ficheDi && !g.bot && s.partita.ficheDi(posto) <= 0 && !(s.partita.ficheInGioco && s.partita.ficheInGioco(posto) > 0)),
       votoFine: s.votoFine ? { tipo: s.votoFine.tipo, da: s.votoFine.da, si: s.votoFine.si, no: s.votoFine.no, servono: s.votoFine.servono, votanti: s.votoFine.votanti, resta: Math.max(0, s.votoFine.scade - Date.now()) } : null,
-      esecuzione: inEsecuzione(s) ? s.esecuzioneFino - Date.now() : 0,
+      esecuzione: inEsecuzione(s) ? s.esecuzioneFino - Date.now() : 0, esecuzioneTipo: inEsecuzione(s) ? s.esecuzioneTipo || 'vulcano' : null,
       sfida: s.sfida && s.sfida.gioco === s.gioco ? { data: s.sfida.data, prova: !!s.sfida.prova } : null,
       torneo: tornei.vistaTorneo(s), serata: tornei.vistaSerata(s),
       partita: s.partita ? s.partita.vista(posto) : null,
@@ -163,7 +164,7 @@ function inviaSpettatori(s) {
       spettatori: [...s.spettatori.values()].map((x) => x.nome),
       torneo: tornei.vistaTorneo(s), serata: tornei.vistaSerata(s),
       inPausa: inPausa(s), ricaricaConsigliata: false, votoFine: null,
-      esecuzione: inEsecuzione(s) ? s.esecuzioneFino - Date.now() : 0,
+      esecuzione: inEsecuzione(s) ? s.esecuzioneFino - Date.now() : 0, esecuzioneTipo: inEsecuzione(s) ? s.esecuzioneTipo || 'vulcano' : null,
       partita: s.partita ? s.partita.vista(posto) : null,
       chat: s.chat.filter((m) => !m.per || m.per.includes(posto)).slice(-40),
     });
@@ -406,8 +407,25 @@ function esecuzione(s, posto) {
   }
   s.esecuzioneFino = ora + ESECUZIONE_MS;
   messaggioSistema(s, `🌋 ESECUZIONE PUBBLICA: ${g.nome} ha detto la parola proibita ed è stato gettato nel vulcano`);
+  s.esecuzioneTipo = 'vulcano';
   io.to(s.codice).emit('esecuzione', { posto, nome: g.nome, durata: ESECUZIONE_MS });
   aggiorna(s); // ferma timer, computer e giochi in tempo reale (impostaPausa)
+}
+
+// ENRICO PAPI: chi scrive "enrico papi" in chat fa partire il video per tutto il tavolo (come il 67, il gioco si ferma)
+function videoPapi(s, posto) {
+  const g = s.posti[posto];
+  if (!g) return;
+  const ora = Date.now();
+  if (s.esecuzioneFino && ora < s.esecuzioneFino + ESECUZIONE_ATTESA_MS) {
+    messaggioSistema(s, `🚗 Enrico Papi sta ancora comprando auto… ${g.nome}, riprova tra poco`);
+    return invia(s);
+  }
+  s.esecuzioneFino = ora + PAPI_MS;
+  s.esecuzioneTipo = 'papi';
+  messaggioSistema(s, `🚗 ${g.nome} ha chiamato Enrico Papi`);
+  io.to(s.codice).emit('papi', { nome: g.nome, durata: PAPI_MS });
+  aggiorna(s);
 }
 
 // VOTAZIONI: "Termina" (pulsante in alto) o "!restart" (comando in chat). Votano le persone al tavolo (i computer
@@ -698,6 +716,16 @@ io.on('connection', (socket) => {
       ultimaEsecuzioneGlobale = ora;
       for (const [sid, y] of presenze) y.socket.emit('esecuzione', { nome: chi, sonoIo: sid === socket.id, durata: ESECUZIONE_MS, globale: true });
       pubblicaGlobale({ nome: '🌋', testo: `${chi} ha pronunciato il numero proibito ed è stato gettato nel vulcano`, sistema: true });
+      return;
+    }
+    // "enrico papi" nella chat globale: il video parte per tutto il sito
+    if (eEnricoPapi(grezzo) && spento) socket.emit('avvisoPrivato', avvisoBlocco());
+    else if (eEnricoPapi(grezzo)) {
+      const ora = Date.now();
+      if (ora - ultimaEsecuzioneGlobale < ESECUZIONE_ATTESA_MS) return;
+      ultimaEsecuzioneGlobale = ora;
+      for (const [, y] of presenze) y.socket.emit('papi', { nome: chi, durata: PAPI_MS, globale: true });
+      pubblicaGlobale({ nome: '🚗', testo: `${chi} ha chiamato Enrico Papi`, sistema: true });
       return;
     }
     const t = censura(grezzo);
@@ -1077,6 +1105,7 @@ io.on('connection', (socket) => {
     }
     // con i comandi spenti il 67 resta un messaggio normale (senza animazione)
     if (eSessantasette(testo)) { if (spento) socket.emit('avvisoPrivato', avvisoBlocco()); else { esecuzione(s, i); return; } }
+    if (eEnricoPapi(testo)) { if (spento) socket.emit('avvisoPrivato', avvisoBlocco()); else { videoPapi(s, i); return; } }
     testo = censura(testo);
     // giochi che leggono la chat (es. Disegna e indovina: le parole indovinate non si mostrano a tutti)
     // (r.nascondi: il messaggio non si mostra; r.privato: avviso solo a chi l'ha scritto; r.cambiato: la partita è cambiata)
