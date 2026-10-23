@@ -78,5 +78,22 @@ window.Esecuzione = (() => {
     setTimeout(() => el.classList.add('via'), durata - 600);
     setTimeout(() => el.remove(), durata);
   }
-  return { avvia };
+  // ENRICO PAPI: il video a tutto schermo per tutti (sulle dispense no; col suono spento parte muto)
+  function papi({ nome, durata = 6600 }) {
+    if (window.Boss && Boss.attivo) return;
+    document.querySelector('.ex-papi')?.remove();
+    const el = document.createElement('div');
+    el.className = 'ex-papi';
+    el.setAttribute('role', 'alert');
+    el.innerHTML = `<video playsinline preload="auto"><source src="/video/enrico-papi.webm" type="video/webm"><source src="/video/enrico-papi.mp4" type="video/mp4"></video><p>🚗 ${esc(nome || '')} ha chiamato Enrico Papi</p>`;
+    document.body.append(el);
+    const v = el.querySelector('video');
+    v.muted = muto();
+    // senza un clic recente il browser può bloccare l'audio: allora si riprova muto
+    v.play().catch(() => { v.muted = true; v.play().catch(() => {}); });
+    const togli = () => { el.classList.add('via'); setTimeout(() => el.remove(), 500); };
+    v.addEventListener('ended', togli);
+    setTimeout(() => { if (el.isConnected) togli(); }, durata + 400);
+  }
+  return { avvia, papi };
 })();

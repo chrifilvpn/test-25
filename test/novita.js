@@ -104,3 +104,14 @@ const leggi = (f) => fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
   assert.ok(/const k = `\$\{p\.k\}-\$\{t\.fase\}-\$\{t\.nPausa\}-\$\{!!t\.pausa\}/.test(leggi('public/js/giochi/benchmark.js')), 'Human Benchmark: alla ripresa la prova si rimonta');
   console.log('✓ Mahjong: la finestra di "Esci" non è più coperta dalle tessere; Human Benchmark: dopo le dispense la pausa finisce');
 }
+
+// ---- ENRICO PAPI: "enrico papi" in chat fa partire il video per tutti ----
+{
+  const { eEnricoPapi: e } = require('../esecuzione');
+  for (const si of ['enrico papi', 'ENRICO  PAPI!', 'ciao enrico.papi', 'Enrìco Papì', 'enricopapi']) assert.ok(e(si), `"${si}" fa partire il video`);
+  for (const no of ['enrico', 'papi', 'federico papi', 'enrico papini', 'ciao']) assert.ok(!e(no), `"${no}" no`);
+  const server = leggi('server.js'), js = leggi('public/js/esecuzione.js');
+  assert.ok(/if \(eEnricoPapi\(testo\)\)/.test(server) && /emit\('papi'/.test(server) && fs.existsSync(path.join(__dirname, '..', 'public', 'video', 'enrico-papi.mp4')), 'al tavolo e nella chat globale, con il video');
+  assert.ok(/function papi\(/.test(js) && /Boss\.attivo\) return/.test(js), 'sulle dispense il video non parte');
+  console.log('✓ Enrico Papi: "enrico papi" in chat (anche globale) fa partire il video per tutti, il tavolo si ferma, non sulle dispense');
+}

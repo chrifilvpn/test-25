@@ -117,6 +117,8 @@
   });
   socket.on('prof', () => Boss.attiva({ subito: true }));
   // esecuzione pubblica (qualcuno ha scritto 67 in chat): il nome finisce nel vulcano
+  // "enrico papi" in chat: parte il video per tutti
+  socket.on('papi', (d) => { if (window.Esecuzione) Esecuzione.papi(d || {}); });
   socket.on('esecuzione', (d) => { if (window.Esecuzione) Esecuzione.avvia({ ...d, sonoIo: d.sonoIo !== undefined ? d.sonoIo : !!(stato && d.posto === stato.mioPosto) }); });
   // giochi in tempo reale: lo stato leggero arriva a ogni tick
   socket.on('tick', (d) => { const T = stato && stato.partita && Tavoli[stato.partita.gioco]; if (T && T.tick) T.tick(ctx, d); });
@@ -908,7 +910,7 @@
     stringiMano();
     const inStudio = stato.giocatori.map((g, i) => (g && g.nascosto && i !== stato.mioPosto ? nomeDi(i) : null)).filter(Boolean);
     $('#pausa-studio').hidden = !stato.inPausa;
-    $('#pausa-studio').textContent = stato.esecuzione ? '🌋 Esecuzione pubblica in corso: il gioco è fermo per tutti'
+    $('#pausa-studio').textContent = stato.esecuzione ? (stato.esecuzioneTipo === 'papi' ? '🚗 Enrico Papi: il gioco è fermo per tutti' : '🌋 Esecuzione pubblica in corso: il gioco è fermo per tutti')
       : stato.inPausa ? `⏸ Partita in pausa: ${inStudio.join(', ') || 'qualcuno'} ha aperto le dispense` : '';
     evidenziaPescate(p);
     const az = T.azioni ? T.azioni(ctx) : '';

@@ -425,6 +425,8 @@ public/js/tavoli-tabellone.js
 public/js/tavoli.js
 public/nuovi.css
 public/style.css
+public/video/enrico-papi.mp4
+public/video/enrico-papi.webm
 server.js
 sfida.js
 sicurezza.js
