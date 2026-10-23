@@ -432,6 +432,7 @@ server.js
 sfida.js
 sicurezza.js
 test/browser.js
+test/fortuna.js
 test/giochi2.js
 test/giochi2/affari.js
 test/giochi2/anagrammi.js

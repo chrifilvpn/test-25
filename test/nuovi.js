@@ -1,8 +1,10 @@
 // Controlli delle regole dei giochi nuovi (chiamato da test/simula.js)
 const assert = require('assert');
 const { GIOCHI } = require('../giochi');
+const { fissa } = require('./fortuna'); // la fortuna riparte a ogni gruppo di controlli (vedi test/fortuna.js)
 
 // ======================= CHI È L'IMPOSTORE =======================
+fissa('CHI È L\'IMPOSTORE');
 {
   const M = GIOCHI.impostore;
   const { normalizza, indovinata } = M._test;
@@ -77,6 +79,7 @@ const { GIOCHI } = require('../giochi');
 }
 
 // ======================= COCCODRILLO =======================
+fissa('COCCODRILLO');
 {
   const M = GIOCHI.coccodrillo;
   const g = M.crea({ n: 3, primo: 0, opzioni: {} });
@@ -100,6 +103,7 @@ const { GIOCHI } = require('../giochi');
 }
 
 // ======================= BLOCK BLAST =======================
+fissa('BLOCK BLAST');
 {
   const M = GIOCHI.blockblast;
   const { metti, punteggio, L } = M._test;
@@ -147,6 +151,7 @@ const { GIOCHI } = require('../giochi');
 }
 
 // ======================= LA PEPPA TENCIA =======================
+fissa('LA PEPPA TENCIA');
 {
   const M = GIOCHI.peppa;
   const { COPPIE } = M._test;
@@ -195,6 +200,7 @@ const { GIOCHI } = require('../giochi');
   console.log('✓ La Peppa Tencia: mazzo da 20 a 34 coppie, 4 carte iniziali, mazzo poi avversari, 1 punto a coppia, −3 con la Peppa, 300 partite tra computer senza carte perse, carta pescata segreta');
 }
 // ======================= FAST WEST =======================
+fissa('FAST WEST');
 {
   const M = GIOCHI.fastwest;
   const { PISTOLERI } = M._test;
@@ -374,6 +380,7 @@ const { GIOCHI } = require('../giochi');
 }
 
 // ======================= WORDLE =======================
+fissa('WORDLE');
 {
   const M = GIOCHI.wordle;
   const { valuta } = M._test;
@@ -398,6 +405,7 @@ const { GIOCHI } = require('../giochi');
 }
 
 // ======================= GUESS THE ANGLE =======================
+fissa('GUESS THE ANGLE');
 {
   const M = GIOCHI.angolo;
   const g = M.crea({ n: 2, opzioni: { round: 5, modo: 'indovina' } });
@@ -415,6 +423,7 @@ const { GIOCHI } = require('../giochi');
 }
 
 // ======================= SUDOKU =======================
+fissa('SUDOKU');
 {
   const M = GIOCHI.sudoku;
   const { genera, risolvi, DIFFICOLTA } = M._test;
@@ -443,6 +452,7 @@ const { GIOCHI } = require('../giochi');
 }
 
 // ======================= SNAKE (tempo reale) =======================
+fissa('SNAKE (tempo reale)');
 {
   const M = GIOCHI.snake;
   // partite tra computer, simulando il tempo che passa
@@ -478,6 +488,7 @@ const { GIOCHI } = require('../giochi');
 }
 
 // ======================= TETRIS BATTLE (tempo reale) =======================
+fissa('TETRIS BATTLE (tempo reale)');
 {
   const M = GIOCHI.tetris;
   const { Tabellone, gravita, W, H } = M._test;
@@ -509,6 +520,7 @@ const { GIOCHI } = require('../giochi');
 }
 
 // ======================= AIR HOCKEY (tempo reale) =======================
+fissa('AIR HOCKEY (tempo reale)');
 {
   const M = GIOCHI.airhockey;
   const partita = (n, bot) => {
@@ -547,6 +559,7 @@ const { GIOCHI } = require('../giochi');
 }
 
 // ======================= GHOST TRIS (variante del tris) =======================
+fissa('GHOST TRIS (variante del tris)');
 {
   const M = GIOCHI.tris;
   const g = M.crea({ n: 2, primo: 0, opzioni: { variante: 'classico', fantasma: 'si' } });
@@ -575,6 +588,7 @@ const { GIOCHI } = require('../giochi');
 }
 
 // ======================= POMPA IL PALLONE =======================
+fissa('POMPA IL PALLONE');
 {
   const M = GIOCHI.pallone;
   const g = M.crea({ n: 3, primo: 0, opzioni: { round: 3 } });
@@ -618,6 +632,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= INTERRUTTORI =======================
+fissa('INTERRUTTORI');
 {
   const M = GIOCHI.interruttori;
   const g = M.crea({ n: 3, primo: 0, opzioni: { quanti: 5 } });
@@ -636,6 +651,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= CASELLE E BOMBE =======================
+fissa('CASELLE E BOMBE');
 {
   const M = GIOCHI.casellebombe;
   const g = M.crea({ n: 2, primo: 0, opzioni: { griglia: 'piccola' } });
@@ -658,6 +674,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= SCAVA IL TESORO =======================
+fissa('SCAVA IL TESORO');
 {
   const M = GIOCHI.tesoro;
   const { vicini } = M._test;
@@ -687,6 +704,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= NUMERI COPERTI =======================
+fissa('NUMERI COPERTI');
 {
   const M = GIOCHI.coperti;
   const g = M.crea({ n: 2, primo: 0, opzioni: { quanti: 4 } });
@@ -705,6 +723,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= AGGIORNAMENTI DEI GIOCHI D'AZIONE =======================
+fissa('AGGIORNAMENTI DEI GIOCHI D\'AZIONE');
 {
   const giro = (g, secondi, ogni) => { let ora = Date.now(); const fine = ora + secondi * 1000; while (!g.finita && ora < fine) { ora += 33; if (g.fase !== 'gioco') g.fineFase = Math.min(g.fineFase, ora); g.tick(ora); if (ogni) ogni(g); } };
   // Palloncini: la difficoltà cambia davvero il cielo; le sbarre hanno un varco
@@ -767,6 +786,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= 1, 2, 3 STELLA =======================
+fissa('1, 2, 3 STELLA');
 {
   const M = GIOCHI.stella, { TOLLERANZA } = M._test;
   const parti = (g) => { let ora = Date.now(); while (g.fase !== 'gioco') { ora += 33; g.fineFase = ora; g.tick(ora); } };
@@ -804,6 +824,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= TIRO ALLA FUNE =======================
+fissa('TIRO ALLA FUNE');
 {
   const M = GIOCHI.fune, { BORDO } = M._test;
   const parti = (g) => { let ora = Date.now(); while (g.fase !== 'gioco') { ora += 33; g.fineFase = ora; g.tick(ora); } return ora; };
@@ -827,6 +848,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= DALGONA =======================
+fissa('DALGONA');
 {
   const M = GIOCHI.dalgona, { PUNTI, FORME, RARA } = M._test;
   assert.deepStrictEqual(Object.keys(FORME).sort(), ['cerchio', 'eiffel', 'fiocco', 'ingranaggio', 'mano', 'ombrello', 'seppia', 'stella', 'triangolo'], 'quattro forme normali e cinque impossibili');
@@ -861,6 +883,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= OCCHI NEL BUIO =======================
+fissa('OCCHI NEL BUIO');
 {
   const M = GIOCHI.buio, { BENDATO, VISTA_N } = M._test;
   const parti = (g) => { let ora = Date.now(); while (g.fase !== 'gioco') { ora += 33; g.fineFase = ora; g.tick(ora); } return ora; };
@@ -895,6 +918,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= CHI È L'ALIENO =======================
+fissa('CHI È L\'ALIENO');
 {
   const M = GIOCHI.alieno, { maxAlieni } = M._test;
   assert.ok(!M.meta.soloPersone && M.meta.giocatori[0] === 4 && M.meta.giocatori.at(-1) === 10, 'da 4 a 10, anche con il computer');
@@ -964,6 +988,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= SHUT THE BOX =======================
+fissa('SHUT THE BOX');
 {
   const M = GIOCHI.shutbox, { combinazioni, atteso } = M._test;
   assert.deepStrictEqual(combinazioni(0b111111111, 8, 9).length, 6, 'con 8: 8, 7+1, 6+2, 5+3, 5+2+1, 4+3+1');
@@ -988,6 +1013,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= SBLOCCA IL BLOCCO (Unblock Me) =======================
+fissa('SBLOCCA IL BLOCCO (Unblock Me)');
 {
   const M = GIOCHI.sblocca, { risolvi, posizioni, RACCOLTA, LIVELLI } = M._test;
   const dec = (x) => x.split(':')[0].match(/.{4}/g).map((b) => ({ o: b[0], l: Number(b[1]), r: Number(b[2]), c: Number(b[3]) }));
@@ -1018,6 +1044,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= WANTED! =======================
+fissa('WANTED!');
 {
   const M = GIOCHI.wanted, { SCHEMI, TIPI } = M._test;
   const parti = (g) => { let ora = Date.now(); while (g.fase !== 'gioco') { ora += 50; g.fineFase = ora; g.tick(ora); } return ora; };
@@ -1074,6 +1101,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= DUELLO SULLE PIATTAFORME =======================
+fissa('DUELLO SULLE PIATTAFORME');
 {
   const M = GIOCHI.duello;
   const parti = (g) => { let ora = Date.now(); while (g.fase !== 'gioco') { ora += 33; g.fineFase = ora; g.tick(ora); } return ora; };
@@ -1161,6 +1189,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= SASSO CARTA FORBICE: MENO UNO =======================
+fissa('SASSO CARTA FORBICE: MENO UNO');
 {
   const M = GIOCHI.morra;
   const g = M.crea({ n: 2, opzioni: { modo: 'meno1', meglio: 3 } });
@@ -1187,6 +1216,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= DUBITO (Liar's Bar) =======================
+fissa('DUBITO (Liar\'s Bar)');
 {
   const M = GIOCHI.dubito;
   const { mazzo } = M._test;
@@ -1292,6 +1322,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= NASCONDINO =======================
+fissa('NASCONDINO');
 {
   const M = GIOCHI.nascondino;
   const { mosseCaccia, mosseNascosto, cella, direzione, LATO, CENTRO } = M._test;
@@ -1336,6 +1367,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= LA MAPPA NASCOSTA =======================
+fissa('LA MAPPA NASCOSTA');
 {
   const M = GIOCHI.mappa;
   const { nuovaMappa, intorno, probabilita } = M._test;
@@ -1363,6 +1395,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= TASTI IN ORDINE (tempo reale) =======================
+fissa('TASTI IN ORDINE (tempo reale)');
 {
   const M = GIOCHI.tasti;
   const g = M.crea({ n: 2, opzioni: { lunghezza: 6, round: 3 }, bot: [null, null] });
@@ -1399,6 +1432,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= OGGETTI SULLA MENSOLA =======================
+fissa('OGGETTI SULLA MENSOLA');
 {
   const M = GIOCHI.mensola;
   const g = M.crea({ n: 2, opzioni: { modo: 'ordine', round: 3 } });
@@ -1438,6 +1472,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= ESECUZIONE PUBBLICA (67 in chat) =======================
+fissa('ESECUZIONE PUBBLICA (67 in chat)');
 {
   const { eSessantasette: e } = require('../esecuzione');
   for (const si of ['67', 'ahah 67', '67!', 'SESSANTASETTE', 'sessanta sette', 'Sessanta-sette', 'sessantasette?', 'è 67.']) assert.ok(e(si), `"${si}" deve far scattare l'esecuzione`);
@@ -1446,6 +1481,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= THE MIND =======================
+fissa('THE MIND');
 {
   const M = GIOCHI.mind;
   assert.ok(M.meta.pausaBoss && M.meta.senzaLivelli && !M.meta.soloPersone, 'collaborazione: pausa con le dispense e computer senza livelli');
@@ -1514,6 +1550,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= FLIP 7 =======================
+fissa('FLIP 7');
 {
   const M = GIOCHI.flip7;
   const { mazzoFlip7, puntiRound } = M._test;
@@ -1612,6 +1649,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= CIRULLA =======================
+fissa('CIRULLA');
 {
   const M = GIOCHI.cirulla;
   const { presePossibili, accuso, quindiciIniziale, conta, MATTA } = M._test;
@@ -1674,6 +1712,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= SOLITARIO KLONDIKE =======================
+fissa('SOLITARIO KLONDIKE');
 {
   const M = GIOCHI.solitario;
   const { puoSuColonna } = M._test;
@@ -1736,6 +1775,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= ALLEGRO CHIRURGO =======================
+fissa('ALLEGRO CHIRURGO');
 {
   const M = GIOCHI.chirurgo;
   const { generaPercorso, vicino, larghezza, PARAM, LIVELLI } = M._test;
@@ -1804,6 +1844,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= HUMAN BENCHMARK 1v1 =======================
+fissa('HUMAN BENCHMARK 1v1');
 {
   const M = GIOCHI.benchmark;
   const { PROVE } = M._test;
@@ -1866,6 +1907,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= CENSURA IN CHAT =======================
+fissa('CENSURA IN CHAT');
 {
   const { censura } = require('../censura');
   for (const t of ['viagano', 'Viaganò', 'VIAGANO', 'ViAgAnÓ', 'v i a g a n o', 'vi.a.ga.no', 'viaaagano', 'Via Ganò', 'vigano', 'Viganò', 'VIGANÓ', 'v.i.g.a.n.o', 'Vi Ga Nò', 'vigan0', 'Vigano\u0300']) assert.ok(!/[a-zà-ú]{4}/i.test(censura(t).replace(/\*/g, '')), `non censurato: ${t}`);
@@ -1878,6 +1920,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= DISEGNA E INDOVINA =======================
+fissa('DISEGNA E INDOVINA');
 {
   const M = GIOCHI.disegna;
   const { pulisci, PAROLE } = M._test;
@@ -1932,6 +1975,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= PUTT PARTY 2D =======================
+fissa('PUTT PARTY 2D');
 {
   const M = GIOCHI.putt;
   const { B, V_MAX, V_BUCA, POTERI, MAX_POTERI } = M._test;
@@ -2063,6 +2107,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= ELENCO DEI FILE (per il controllo all'avvio su Render) =======================
+fissa('ELENCO DEI FILE (per il controllo all\'avvio su Render)');
 {
   const fs = require('fs'), path = require('path');
   const radice = path.join(__dirname, '..');
@@ -2081,6 +2126,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= CARTELLE SOTTO I 100 FILE (limite del caricamento su GitHub dal browser) =======================
+fissa('CARTELLE SOTTO I 100 FILE (limite del caricamento su GitHub dal browser)');
 {
   const fs = require('fs'), path = require('path');
   const radice = path.join(__dirname, '..');
@@ -2095,6 +2141,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= DIFESE DEL SITO =======================
+fissa('DIFESE DEL SITO');
 {
   const S = require('../sicurezza');
   const d = S.pulisciDato(JSON.parse('{"a":1,"__proto__":{"x":1},"constructor":{"prototype":{"y":2}},"b":[1,2,{"__proto__":{}}]}'));
@@ -2135,6 +2182,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= AMMIRAGLIATO =======================
+fissa('AMMIRAGLIATO');
 {
   const { eComandoAdmin, impronta } = require('../admin');
   const src = require('fs').readFileSync(require('path').join(__dirname, '..', 'admin.js'), 'utf8');
@@ -2148,6 +2196,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= GIOCHI D'AZIONE (motore comune) =======================
+fissa('GIOCHI D\'AZIONE (motore comune)');
 {
   // partite tra computer con tick finti: ogni gioco finisce e il difficile vince più del facile
   const simula = (id, n, partite, opz = {}) => {
@@ -2191,6 +2240,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= TROVA LE DIFFERENZE =======================
+fissa('TROVA LE DIFFERENZE');
 {
   const M = GIOCHI.differenze;
   const { scena, modifica, CAMBI } = M._test;
@@ -2214,6 +2264,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= ATTRAVERSA LA STRADA =======================
+fissa('ATTRAVERSA LA STRADA');
 {
   const M = GIOCHI.strada, { PARTENZA, M: SM } = M._test;
   const parti = (g) => { let ora = Date.now(); while (g.fase !== 'gioco') { ora += 40; g.fineFase = ora; g.tick(ora); } return ora; };
@@ -2273,6 +2324,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= MIGLIORIE: CASELLE COLORATE, DALGONA, WANTED!, SALTA E CORRI =======================
+fissa('MIGLIORIE: CASELLE COLORATE, DALGONA, WANTED!, SALTA E CORRI');
 {
   const parti = (g, passo = 33) => { let ora = Date.now(); while (g.fase !== 'gioco') { ora += passo; g.fineFase = ora; g.tick(ora); } return ora; };
   // caselle colorate: quando il pavimento cade i potenziamenti saltano su una casella giusta e restano prendibili
@@ -2312,6 +2364,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= TIRO AL BERSAGLIO =======================
+fissa('TIRO AL BERSAGLIO');
 {
   const M = GIOCHI.bersaglio, { punteggio, posBersaglio, posAsse, deriva, volo } = M._test;
   const parti = (g) => { let ora = Date.now(); while (g.fase !== 'gioco') { ora += 40; g.fineFase = ora; g.tick(ora); } };
@@ -2340,6 +2393,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= MANGIATUTTO =======================
+fissa('MANGIATUTTO');
 {
   const M = GIOCHI.mangiatutto, { LAB, DIST, passa, idx } = M._test;
   const parti = (g) => { let ora = Date.now(); while (g.fase !== 'gioco') { ora += 40; g.fineFase = ora; g.tick(ora); } };
@@ -2371,6 +2425,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= TIGERBALL =======================
+fissa('TIGERBALL');
 {
   const M = GIOCHI.tigerball, { L } = M._test;
   const parti = (g) => { let ora = Date.now(); while (g.fase !== 'gioco') { ora += 33; g.fineFase = ora; g.tick(ora); } return ora; };
@@ -2410,6 +2465,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= ROULETTE MAGGIONI =======================
+fissa('ROULETTE MAGGIONI');
 {
   const M = GIOCHI.roulette, { PUNTATE, RUOTA, colore } = M._test;
   assert.ok(RUOTA.length === 37 && new Set(RUOTA).size === 37, 'ruota europea: 37 numeri, un solo zero');
@@ -2448,6 +2504,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= CHI È L'ALIENO: MAPPE, COMPITI NUOVI, SCHERMATA FINALE =======================
+fissa('CHI È L\'ALIENO: MAPPE, COMPITI NUOVI, SCHERMATA FINALE');
 {
   const M = GIOCHI.alieno, { MAPPE, ELENCO, FINE } = M._test;
   const { controlla, LIVELLO } = require('../giochi/alieno-mappe');
@@ -2501,6 +2558,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= DISPENSE: ARGOMENTI, ESERCITAZIONI, VERIFICHE =======================
+fissa('DISPENSE: ARGOMENTI, ESERCITAZIONI, VERIFICHE');
 {
   const fs = require('fs'), path = require('path'), vm = require('vm');
   const cartella = path.join(__dirname, '..', 'public', 'js');
@@ -2587,6 +2645,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= DIFESE: GUARDIA E BAN AUTOMATICO =======================
+fissa('DIFESE: GUARDIA E BAN AUTOMATICO');
 {
   const { Guardia, MappaLimitata, ipDaCatena, indirizzo, eScansione, origineValida, PUNTI } = require('../guardia');
   const sic = require('../sicurezza');
@@ -2829,6 +2888,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= PONTE FRAGILE =======================
+fissa('PONTE FRAGILE');
 {
   const M = GIOCHI.ponte;
   const { LUNGHEZZE, BONUS_ARRIVO } = M._test;
@@ -2871,6 +2931,7 @@ function giocaTutta(M, n, livelli, opzioni = {}) {
 }
 
 // ======================= MIGLIORIE AI GIOCHI (ottobre) =======================
+fissa('MIGLIORIE AI GIOCHI (ottobre)');
 {
   // sblocca: annulla (vale una mossa) e aiuto (la prossima mossa della strada più corta, costa 2 mosse)
   const S = GIOCHI.sblocca, g = S.crea({ n: 1, opzioni: { livello: 'facile' } }), t = g.tavole[0];

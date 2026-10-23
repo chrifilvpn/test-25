@@ -27,6 +27,7 @@ assert.ok(!votoBot('cose', 'cxzq'), 'parola inventata');
 {
   const g = M.crea({ n: 2, primo: 0, opzioni: { categorie: 'classiche', round: 3 }, bot: [null, null] });
   g.lettera = 'c';
+  g.lettere = ['c', ...g.lettere.filter((l) => l !== 'c')]; // la C è la lettera di questo giro: nei giri dopo non torna
   assert.ok(g.azione(0, { tipo: 'stop' }).errore, 'STOP solo con tutte le caselle piene');
   const mie = { nomi: 'Carlo', cose: 'cappellino', citta: 'Como', animali: 'cane', frutta: 'ciliegia', mestieri: 'cuoco' };
   for (const [cat, testo] of Object.entries(mie)) assert.ok(g.azione(0, { tipo: 'risposta', cat, testo }).ok);

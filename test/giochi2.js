@@ -2,7 +2,8 @@
 // (chiamato da test/simula.js)
 const fs = require('fs');
 const path = require('path');
+const { fissa } = require('./fortuna'); // ogni file con la sua fortuna fissa (vedi test/fortuna.js)
 for (const nome of ['giochi2', 'giochi3']) {
   const dir = path.join(__dirname, nome);
-  for (const f of (fs.existsSync(dir) ? fs.readdirSync(dir) : []).filter((x) => x.endsWith('.js')).sort()) require(path.join(dir, f));
+  for (const f of (fs.existsSync(dir) ? fs.readdirSync(dir) : []).filter((x) => x.endsWith('.js')).sort()) { fissa(`${nome}/${f}`); require(path.join(dir, f)); }
 }

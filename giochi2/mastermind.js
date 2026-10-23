@@ -2,6 +2,7 @@
 // la risposta dice quanti pioli sono del colore giusto al posto giusto (neri) e quanti del colore giusto ma al posto
 // sbagliato (bianchi), senza dire quali. Da soli, oppure in sfida (come lo scontro di Wordle): tutti cercano lo
 // STESSO codice, ognuno per conto suo; vince chi usa meno tentativi e, a parità, chi finisce prima.
+const { ora } = require('../giochi/orologio'); // orologio vero (nel sito) o finto (nei test)
 const TENTATIVI = 10;
 const NOMI_COLORI = ['rosso', 'blu', 'verde', 'giallo', 'arancio', 'viola', 'azzurro', 'rosa'];
 
@@ -50,7 +51,7 @@ class CodiceSegreto {
     this.segreto = tutti[Math.floor(Math.random() * tutti.length)].slice();
     this.righe = Array.from({ length: n }, () => []); // { codice, neri, bianchi }
     this.fatto = new Array(n).fill(null);               // null = gioca ancora, { vinto, tentativi, ms }
-    this.inizio = Date.now();
+    this.inizio = ora();
     this.pausaBoss = n === 1; // da soli: con le dispense aperte la partita aspetta
     this.turno = null; this.inAttesa = false; this.finita = false; this.risultato = null; this.evento = null; this.nEv = 0;
     this.menti = {};
@@ -72,7 +73,7 @@ class CodiceSegreto {
     const vinto = neri === this.pioli;
     if (vinto || this.righe[p].length >= TENTATIVI) {
       const t = this.righe[p].length;
-      this.fatto[p] = { vinto, tentativi: t, ms: Date.now() - this.inizio };
+      this.fatto[p] = { vinto, tentativi: t, ms: ora() - this.inizio };
       if (this.n > 1) this.annuncia(p, vinto ? `ha trovato il codice in ${t}!` : 'ha finito i tentativi', vinto ? `codice trovato in ${t}! 🎉` : 'tentativi finiti…', vinto);
       else this.annuncia(p, '', vinto ? `codice trovato in ${t} ${t === 1 ? 'tentativo' : 'tentativi'}! 🎉` : 'tentativi finiti…', true);
       if (!this.attesi().length) this.chiudi();
@@ -83,7 +84,7 @@ class CodiceSegreto {
   // nella sfida chi resta via troppo a lungo si ritira (da soli la partita aspetta)
   salta(p) {
     if (this.finita || this.fatto[p]) return;
-    this.fatto[p] = { vinto: false, tentativi: this.righe[p].length, ms: Date.now() - this.inizio, ritirato: true };
+    this.fatto[p] = { vinto: false, tentativi: this.righe[p].length, ms: ora() - this.inizio, ritirato: true };
     if (!this.attesi().length) this.chiudi();
   }
 

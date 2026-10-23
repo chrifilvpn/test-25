@@ -5,6 +5,7 @@
 // Vince chi resta senza carte. Le carte hanno id "7c" e "7cb" (secondo mazzo).
 const { mescola } = require('../giochi/carte');
 const T = require('../giochi/trucco');
+const { ora } = require('../giochi/orologio'); // orologio vero (nel sito) o finto (nei test)
 
 const SEMI = ['c', 'q', 'f', 'p'];
 const NOMI_SEMI = { c: 'cuori', q: 'quadri', f: 'fiori', p: 'picche' };
@@ -59,7 +60,7 @@ function contiDa(carte) { const c = new Int8Array(56); for (const x of carte) c[
 
 function cercaMossa(tavolo, mano, ms, conRimescolo = true) {
   const tav = contiDa(tavolo.flat()), man = contiDa(mano);
-  const fino = Date.now() + ms;
+  const fino = ora() + ms;
   let nodi = 0, scaduto = false;
   const memo = new Map();
   // prende una carta (s, r): prima dalla tavola, poi dalla mano. Ritorna 't' o 'm' o null
@@ -105,7 +106,7 @@ function cercaMossa(tavolo, mano, ms, conRimescolo = true) {
 
   // migliore copertura dallo stato attuale: { v: carte della mano usate, g: gruppi } oppure null se impossibile
   function risolvi(fase2) {
-    if ((++nodi & 255) === 0 && Date.now() > fino) scaduto = true;
+    if ((++nodi & 255) === 0 && ora(0.5) > fino) scaduto = true;
     if (scaduto) return null;
     let k = -1;
     if (!fase2) for (let i = 0; i < 56; i++) if (tav[i] > 0) { k = i; break; }
@@ -163,7 +164,7 @@ function cercaMossa(tavolo, mano, ms, conRimescolo = true) {
 }
 
 // la tavola non si tocca: combinazioni nuove dalla mano (le più lunghe possibili) e carte attaccate alle combinazioni
-function mossaSemplice(tavolo, mano, fino = Date.now() + 30, soloNuove = false) {
+function mossaSemplice(tavolo, mano, fino = ora() + 30, soloNuove = false) {
   const gruppi = tavolo.map((g) => g.map((c) => c.id));
   let resto = [...mano];
   // nuove combinazioni: ricerca con la tavola vuota
@@ -183,11 +184,11 @@ function mossaSemplice(tavolo, mano, fino = Date.now() + 30, soloNuove = false) 
   return { gruppi: gruppi.map((g) => valuta(g.map(daId)).carte.map((c) => c.id)), usate };
 }
 // combinazioni fatte solo con carte della mano (il maggior numero di carte possibile)
-function cercaNuove(mano, fino) { return cercaMossaInterna(mano, Math.max(1, fino - Date.now())).g; }
+function cercaNuove(mano, fino) { return cercaMossaInterna(mano, Math.max(1, fino - ora())).g; }
 // versione della ricerca che restituisce direttamente i gruppi di id (senza la mossa semplice di riserva)
 function cercaMossaInterna(mano, ms) {
   const man = contiDa(mano);
-  const fino = Date.now() + ms;
+  const fino = ora() + ms;
   let nodi = 0, scaduto = false;
   const memo = new Map();
   const soloMano = (s, r) => { const k = K(s, r); if (man[k] > 0) { man[k]--; return 'm'; } return null; };
@@ -212,7 +213,7 @@ function cercaMossaInterna(mano, ms) {
     }
   }
   function risolvi() {
-    if ((++nodi & 255) === 0 && Date.now() > fino) scaduto = true;
+    if ((++nodi & 255) === 0 && ora(0.5) > fino) scaduto = true;
     if (scaduto) return { v: 0, g: [] };
     let j = -1;
     for (let i = 0; i < 56; i++) if (man[i] > 0) { j = i; break; }
@@ -386,7 +387,7 @@ function bot(g, p, livello) {
   let m;
   if (livello === 'facile') {
     // una sola combinazione nuova per turno, fatta con le sue carte; ogni tanto attacca una carta. Niente rimescolamenti
-    const nuove = mano.length >= 3 ? cercaNuove(mano, Date.now() + 5) : [];
+    const nuove = mano.length >= 3 ? cercaNuove(mano, ora() + 5) : [];
     const gruppi = tav.map((x) => x.map((c) => c.id));
     let usate = 0;
     if (nuove.length) { const scelta = nuove[Math.floor(Math.random() * nuove.length)]; gruppi.push(scelta); usate = scelta.length; }
@@ -398,7 +399,7 @@ function bot(g, p, livello) {
     }
     m = { gruppi, usate };
   } else if (livello === 'medio') {
-    m = mossaSemplice(tav, mano, Date.now() + (veloce ? 5 : 60));
+    m = mossaSemplice(tav, mano, ora() + (veloce ? 5 : 60));
   } else {
     m = cercaMossa(tav, mano, veloce ? 6 : 220, true);
   }

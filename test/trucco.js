@@ -7,6 +7,7 @@ const path = require('path');
 process.env.TEST_VELOCE = '1';
 const { GIOCHI } = require('../giochi');
 const T = require('../giochi/trucco');
+const { fissa } = require('./fortuna'); // ogni gioco con la sua fortuna fissa (vedi test/fortuna.js)
 
 // gioca una partita (o un pezzo) con i computer; il posto 0 attiva il trucco all'inizio e dopo ogni effetto
 function prova(id, { n, passiMax = 4000, opzioni = {}, riarma = 3 } = {}) {
@@ -40,6 +41,7 @@ for (const id of Object.keys(GIOCHI)) {
   const mod = GIOCHI[id];
   if (!mod.bot) continue;
   let e;
+  fissa(id);
   try { e = prova(id); } catch (err) { Date.now = veroNow; throw new Error(`${id}: ${err.stack}`); }
   Date.now = veroNow;
   provati++;
@@ -47,7 +49,7 @@ for (const id of Object.keys(GIOCHI)) {
 }
 // i controlli precisi gioco per gioco
 const cartella = path.join(__dirname, 'trucco');
-if (fs.existsSync(cartella)) for (const f of fs.readdirSync(cartella).filter((x) => x.endsWith('.js')).sort()) require(path.join(cartella, f));
+if (fs.existsSync(cartella)) for (const f of fs.readdirSync(cartella).filter((x) => x.endsWith('.js')).sort()) { fissa(f); require(path.join(cartella, f)); }
 if (process.env.TRUCCO_ELENCO) console.log('senza effetto:', senza.join(' '));
 assert.deepStrictEqual(senza, [], `!win non fa niente in: ${senza.join(', ')}`);
 console.log(`✓ Trucco segreto (!win + parola segreta): ${provati} giochi provati con i computer, in tutti ha effetto (${veroNow() - t0} ms)`);
