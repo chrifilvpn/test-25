@@ -210,6 +210,9 @@ giochi3/freecell.js
 giochi3/frutta.js
 giochi3/hex.js
 giochi3/hockey.js
+giochi3/isolation.js
+giochi3/isolation/alieno.js
+giochi3/isolation/mappa.js
 giochi3/luci.js
 giochi3/navale-dati.js
 giochi3/navale-logica.js
@@ -445,6 +448,8 @@ public/js/giochi3/frutta.js
 public/js/giochi3/hex.css
 public/js/giochi3/hex.js
 public/js/giochi3/hockey.js
+public/js/giochi3/isolation.css
+public/js/giochi3/isolation.js
 public/js/giochi3/luci.css
 public/js/giochi3/luci.js
 public/js/giochi3/navale.css
@@ -460,8 +465,12 @@ public/js/giochi3/sfere.js
 public/js/giochi3/tela-fissa.js
 public/js/giochi3/xiangqi.css
 public/js/giochi3/xiangqi.js
+public/js/isolation/motore.js
+public/js/isolation/texture.js
+public/js/isolation/xenomorfo.js
 public/js/tavoli-tabellone.js
 public/js/tavoli.js
+public/modelli/xenomorfo.bin
 public/nuovi.css
 public/style.css
 public/video/enrico-papi.mp4
@@ -541,6 +550,7 @@ test/giochi3/freecell.js
 test/giochi3/frutta.js
 test/giochi3/hex.js
 test/giochi3/hockey.js
+test/giochi3/isolation.js
 test/giochi3/luci.js
 test/giochi3/navale.js
 test/giochi3/nurikabe.js

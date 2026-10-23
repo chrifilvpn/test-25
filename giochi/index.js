@@ -107,7 +107,7 @@ for (const g of Object.values(GIOCHI)) if (!g.meta.categoria) g.meta.categoria =
 // tastiera insieme, 'uno' = basta l'uno o l'altro; tutti gli altri si giocano col solo mouse ('mouse')
 const CONTROLLI = {
   tastiera: ['snake', 'tetris', 'tasti', 'battitura', 'colori', 'bumper', 'fuga', 'monete', 'arcobaleno', 'pioggia', 'piattaforme', 'duello', 'mangiatutto', 'bomberman', 'hockey', 'patata', 'tron', 'stella', 'buio', 'calamaro', 'asteroidi', 'catena', 'nomicose', 'anagrammi', 'numero'],
-  entrambi: ['paintball', 'carri', 'gattotopi', 'alieno', 'disegna', 'impostore', 'codenames', 'cruciverba', 'benchmark', 'draghi', 'angolo'],
+  entrambi: ['paintball', 'carri', 'gattotopi', 'alieno', 'isolation', 'disegna', 'impostore', 'codenames', 'cruciverba', 'benchmark', 'draghi', 'angolo'],
   uno: ['airhockey', 'massi', 'strada', 'pong4', 'slither', 'palloncini', 'calcetto', 'sudoku', 'wordle', 'impiccato', 'quiz', 'bandiere', 'capitali', 'sagome', 'monumenti', 'paroliere', 'duemila', 'mind', 'ponte'],
 };
 for (const [c, ids] of Object.entries(CONTROLLI)) for (const id of ids) if (GIOCHI[id]) GIOCHI[id].meta.controlli = c;

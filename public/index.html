@@ -38,6 +38,7 @@
       <div class="saluto" id="saluto">
         <span>Ciao, <b id="nome-mostrato"></b>!</span>
         <input id="nome" type="hidden">
+        <button type="button" class="bottone mini-bt" id="cambia-nome">✏️ Cambia nome</button>
         <button type="button" class="bottone mini-bt" id="apri-statistiche">📊 Le mie statistiche</button>
         <button type="button" class="bottone mini-bt" id="suono-home" aria-label="Audio del sito"></button>
       </div>
@@ -254,10 +255,11 @@
   <div id="benvenuto" class="velo benvenuto" hidden>
     <form class="scheda" id="form-nome" novalidate>
       <h2 id="benvenuto-titolo">Benvenuto su Informatica Facile!</h2>
-      <p id="benvenuto-testo">Come ti chiami? È il nome che vedranno gli altri giocatori, e non si potrà cambiare: sceglilo bene!</p>
+      <p id="benvenuto-testo">Come ti chiami? È il nome che vedranno gli altri giocatori (potrai cambiarlo dalla home con «Cambia nome»).</p>
       <input id="nome-ingresso" maxlength="18" autocomplete="nickname" placeholder="Il tuo nome" aria-label="Il tuo nome">
       <p id="nome-errore" class="nome-errore" role="alert" hidden></p>
-      <button class="bottone primario" type="submit">Entra 🎮</button>
+      <button class="bottone primario" type="submit" id="nome-ok">Entra 🎮</button>
+      <button class="bottone" type="button" id="nome-annulla" hidden>Annulla</button>
     </form>
   </div>
 
