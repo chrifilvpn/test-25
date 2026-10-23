@@ -855,8 +855,14 @@ io.on('connection', (socket) => {
     if (!mod) return errore('Gioco sconosciuto');
     if (!mod.meta.giocatori.includes(posti)) return errore(`${mod.meta.nome} si gioca in ${mod.meta.giocatori.join(', ')}`);
     if (controComputer && mod.meta.soloPersone && posti > 1) return errore(`${mod.meta.nome} si gioca solo con altre persone: apri un tavolo e invita gli amici`);
+    const opz = pulisciOpzioni(gioco, opzioni);
+    // Draghi e Segrete sullo stesso computer: servono tanti posti quanti giocatori, e si parte subito
+    if (gioco === 'draghi' && opz.modalita !== 'reale' && Number(opz.stessoPc) > 1) {
+      posti = Math.max(posti, Math.min(Math.max(...mod.meta.giocatori), Number(opz.stessoPc)));
+      controComputer = controComputer || 'medio';
+    }
     const s = {
-      codice: nuovoCodice(), gioco, opzioni: pulisciOpzioni(gioco, opzioni),
+      codice: nuovoCodice(), gioco, opzioni: opz,
       posti: new Array(posti).fill(null), vittorie: new Array(posti).fill(0),
       partita: null, host: id, primo: 0, chat: [], nChat: 0, ip: ipSocket,
     };
