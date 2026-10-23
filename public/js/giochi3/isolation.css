@@ -1,0 +1,6 @@
+/* ALIEN: ISOLATION 3D: il pulsante dello schermo intero sopra la scena */
+.is-strato { position: absolute; inset: 0; pointer-events: none; }
+.is-strato .is-bt { pointer-events: auto; border: 1px solid rgba(160, 220, 160, .45); background: rgba(10, 18, 12, .55); color: #d8f0d8; font: 600 1.25rem/1 "Courier New", monospace; border-radius: 12px; min-width: 3rem; min-height: 3rem; touch-action: none; user-select: none; -webkit-user-select: none; }
+.is-strato .is-bt:active { background: rgba(60, 120, 70, .7); }
+.is-strato .is-pieno { position: absolute; top: .6rem; right: .6rem; min-width: 2.4rem; min-height: 2.4rem; font-size: 1.1rem; opacity: .75; }
+.is-schermo:fullscreen { background: #000; display: grid; place-items: center; }

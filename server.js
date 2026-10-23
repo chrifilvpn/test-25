@@ -62,6 +62,9 @@ app.get('/js/navale-regole.js', (_q, r) => r.sendFile(path.join(__dirname, 'gioc
 app.get('/js/putt-buche.js', (_q, r) => r.sendFile(path.join(__dirname, 'giochi', 'putt-buche.js')));
 app.get('/js/strada-mondo.js', (_q, r) => r.sendFile(path.join(__dirname, 'giochi', 'strada-mondo.js')));
 app.get('/js/tigerball-livelli.js', (_q, r) => r.sendFile(path.join(__dirname, 'giochi', 'tigerball-livelli.js')));
+// Alien: Isolation 3D: la mappa (la stessa del server) e three.js (dalla dipendenza npm, niente CDN)
+app.get('/js/isolation-mappa.js', (_q, r) => r.sendFile(path.join(__dirname, 'giochi3', 'isolation', 'mappa.js')));
+app.get('/js/three.module.min.js', (_q, r) => r.type('application/javascript').sendFile(path.join(__dirname, 'node_modules', 'three', 'build', 'three.module.min.js')));
 // giochi nuovi: tutti i file di public/js/giochi2 e giochi3 (e i loro stili) in un colpo solo, così aggiungere un
 // gioco non richiede di toccare index.html
 function unisciCartella(cartella, est) {
