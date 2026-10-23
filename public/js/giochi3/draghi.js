@@ -239,9 +239,11 @@
       const p = ctx.partita, ui = ctx.ui, tel = telefono();
       if (!p.catalogo && p.fase === 'creazione') return '<div class="dr"><p class="dr-vuoto">Caricamento…</p></div>';
       const scheda1 = ui.drScheda ? scheda(ctx, ui.drScheda) : '';
+      // lo scenario dello sfondo (sagome dell'ambientazione, modalità pazza)
+      const scena = `dr-amb-${esc(p.ambientazione || 'classica')} ${p.pazza ? 'dr-pazza' : ''}`;
       if (p.fase === 'creazione') {
-        if (mioPg(ctx) || ctx.stato.spettatore) return `<div class="dr dr-fase-pronti">${mioPg(ctx) ? pronto(ctx) : latoCreazione(ctx)}${scheda1}</div>`;
-        return `<div class="dr dr-fase-crea">${CR().html(ctx, latoCreazione(ctx))}${scheda1}</div>`;
+        if (mioPg(ctx) || ctx.stato.spettatore) return `<div class="dr dr-fase-pronti ${scena}">${mioPg(ctx) ? pronto(ctx) : latoCreazione(ctx)}${scheda1}</div>`;
+        return `<div class="dr dr-fase-crea ${scena}">${CR().html(ctx, latoCreazione(ctx))}${scheda1}</div>`;
       }
       const cb = p.combattimento;
       if (cb && ui.drCbVisto !== cb.scena.g.length + cb.scena.stile) { ui.drCbVisto = cb.scena.g.length + cb.scena.stile; ui.drTab = 'battaglia'; ui.drLato = 'turno'; }
@@ -260,7 +262,7 @@
       if (tel && tab === 'mondo' && cb && ui.drLato === 'turno') ui.drLato = 'racconto';
       const nav = (cb ? [['battaglia', '⚔️', 'Battaglia'], ['mondo', '🗺️', 'Mondo'], ['gruppo', '👥', 'Gruppo']] : [['storia', '📖', 'Storia'], ['mondo', '🗺️', 'Mondo'], ['gruppo', '👥', 'Gruppo']])
         .map(([id, ic, n]) => `<button type="button" class="${tab === id ? 'sel' : ''}" data-az="dr-tab" data-id="${id}"><span>${ic}</span>${n}${id === 'battaglia' && CB().mioTurno(ctx) ? '<i class="dr-pallino"></i>' : ''}${id === 'storia' && (p.fase === 'prove' && p.prove.some((x) => x.posto === ctx.mio && !x.esito)) ? '<i class="dr-pallino"></i>' : ''}</button>`).join('');
-      return `<div class="dr ${cb ? 'dr-in-cb' : ''} dr-tab-${tab} dr-atm-${esc(p.atmosfera || 'calma')}">${gruppo(ctx)}${centro}${lato(ctx, schede)}<nav class="dr-nav">${nav}</nav>${scheda1}</div>`;
+      return `<div class="dr ${scena} ${cb ? 'dr-in-cb' : ''} dr-tab-${tab} dr-atm-${esc(p.atmosfera || 'calma')}">${gruppo(ctx)}${centro}${lato(ctx, schede)}<nav class="dr-nav">${nav}</nav>${scheda1}</div>`;
     },
     dopo(ctx) {
       const p = ctx.partita, ui = ctx.ui;
