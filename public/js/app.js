@@ -34,7 +34,8 @@
   let ultimaChat = 0;
   let chatLetta = Number(mem.get('chatLetta', 0));
   let eraMioTurno = false;
-  let suono = mem.get('suono', '1') === '1';
+  // audio del sito: spento finché non lo accendi tu (così a scuola non parte nessun rumore); la scelta resta salvata
+  let suono = mem.get('audio', 'no') === 'si';
 
   // ---------- utilità ----------
   const meta = (id) => giochi.find((g) => g.id === id);
@@ -84,8 +85,14 @@
       o.stop(audio.currentTime + dur);
     } catch {}
   }
-  function aggiornaSuono() { $('#suono').textContent = suono ? '🔔' : '🔕'; $('#suono').setAttribute('aria-pressed', String(suono)); }
-  $('#suono').addEventListener('click', () => { suono = !suono; mem.set('suono', suono ? '1' : '0'); aggiornaSuono(); bip(); });
+  // due pulsanti (nella home e nella barra del gioco) per lo stesso interruttore
+  function aggiornaSuono() {
+    $('#suono').textContent = suono ? '🔊' : '🔇';
+    $('#suono-home').textContent = suono ? '🔊 Audio acceso' : '🔇 Audio spento';
+    for (const b of [$('#suono'), $('#suono-home')]) { b.setAttribute('aria-pressed', String(suono)); b.title = suono ? 'Audio acceso: tocca per spegnerlo' : 'Audio spento: tocca per accenderlo'; }
+    if (window.Boss && Boss.silenzio) Boss.silenzio(!suono);
+  }
+  for (const b of [$('#suono'), $('#suono-home')]) b.addEventListener('click', () => { suono = !suono; mem.set('audio', suono ? 'si' : 'no'); aggiornaSuono(); bip(); });
   aggiornaSuono();
 
   // ---------- regole ----------
