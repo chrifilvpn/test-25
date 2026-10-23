@@ -150,13 +150,19 @@
     mem.set('nome', n);
     socket.emit('presenza', { id: mioId, imp: impronta, nome: n });
   }
-  // il nome si sceglie una volta sola, alla prima visita, e poi non si cambia
-  function chiediNome() {
+  // il nome si sceglie alla prima visita; poi si può cambiare dalla home (vale dal prossimo tavolo)
+  function chiediNome(cambia = false) {
     $('#nome-errore').hidden = true;
-    $('#nome-ingresso').value = '';
+    $('#nome-ingresso').value = cambia ? mem.get('nome', '') : '';
+    $('#benvenuto-titolo').textContent = cambia ? 'Cambia nome' : 'Benvenuto su Informatica Facile!';
+    $('#benvenuto-testo').textContent = cambia ? 'Il nuovo nome si vede dal prossimo tavolo in cui ti siedi.' : 'Come ti chiami? È il nome che vedranno gli altri giocatori (potrai cambiarlo dalla home con «Cambia nome»).';
+    $('#nome-ok').textContent = cambia ? 'Salva ✔️' : 'Entra 🎮';
+    $('#nome-annulla').hidden = !cambia;
     $('#benvenuto').hidden = false;
-    setTimeout(() => $('#nome-ingresso').focus(), 30);
+    setTimeout(() => { $('#nome-ingresso').focus(); $('#nome-ingresso').select(); }, 30);
   }
+  $('#cambia-nome').addEventListener('click', () => chiediNome(true));
+  $('#nome-annulla').addEventListener('click', () => { $('#benvenuto').hidden = true; });
   $('#form-nome').addEventListener('submit', (e) => {
     e.preventDefault();
     const n = $('#nome-ingresso').value.replace(/\s+/g, ' ').trim();
