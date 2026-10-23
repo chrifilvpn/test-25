@@ -8,6 +8,8 @@
 //   trova nessuno se ne va; anche gli altri nemici, dopo due turni senza bersagli, smettono di cercare
 // - gli oggetti: kit medico (il doppio se lo usa un medico), diversivo e razzo (attirano), fumogeno (nasconde), molotov,
 //   bomba a tubo, mina EMP; il tecnico hackera gli androidi vicini e li spegne; il flesher compare alle spalle
+// - SENZA ARMI (cb.senzaArmi, il manicomio): non si attacca; ci si nasconde, si distrae o si SCAPPA (prova di
+//   Atletica): quando tutti quelli in piedi sono scappati lo scontro finisce con «fuga»; il Dr. Trager taglia le dita
 const R = require('./regole');
 const B = require('./base');
 const { CLASSI } = require('./classi');
@@ -16,7 +18,7 @@ const H = require('./horror');
 const { Combattimento, CELLA } = require('./combattimento');
 
 const P = Combattimento.prototype;
-const prima = { danneggia: P.danneggia, attacchiDi: P.attacchiDi, attacca: P.attacca, bersaglioPreferito: P.bersaglioPreferito, iaMostro: P.iaMostro, muovi: P.muovi, azioneSemplice: P.azioneSemplice, vista: P.vista, iniziaTurno: P.iniziaTurno };
+const prima = { danneggia: P.danneggia, attacchiDi: P.attacchiDi, attacca: P.attacca, bersaglioPreferito: P.bersaglioPreferito, iaMostro: P.iaMostro, muovi: P.muovi, azioneSemplice: P.azioneSemplice, vista: P.vista, iniziaTurno: P.iniziaTurno, controllaFine: P.controllaFine, iaPersonaggio: P.iaPersonaggio };
 const tratto = (c, t) => (c.ref.tratti || []).includes(t);
 const RUMORE_ARRIVA = 6;
 
@@ -46,6 +48,7 @@ P.attacchiDi = function (c) {
 };
 P.attacca = function (id, bersaglioId, opz = {}) {
   const ber = this.c(bersaglioId);
+  if (this.horror && this.senzaArmi && this.attivo && this.attivo.pg) return { errore: 'Qui non hai armi: nasconditi, distraili o scappa' };
   if (this.horror && ber && ber.armadietto) return { errore: `${ber.ref.nome} è chiuso in un armadietto` };
   const c = this.attivo;
   const r = prima.attacca.call(this, id, bersaglioId, opz);
@@ -54,7 +57,28 @@ P.attacca = function (id, bersaglioId, opz = {}) {
     if (def && def.munizioni) H.togli(c.ref, def.munizioni, 1);
     if (def && (def.prop.includes('rumorosa') || def.prop.includes('fiamma'))) this.fai(def.prop.includes('rumorosa') ? 3 : 1);
   }
+  // il Dr. Trager: se ti prende, ti taglia un dito (ogni due dita perse, un punto di Destrezza in meno)
+  if (this.horror && r.ok && c && !c.pg && r.ev && r.ev.colpito && tratto(c, 'tagliaDita') && ber && ber.pg && Math.random() < 0.6) { const t = H.tagliaDito(ber.ref); if (t) R.ricalcola(ber.ref); if (t) this.evento({ tipo: 'nota', id: ber.id, testo: t }); }
   return r;
+};
+// tutti quelli ancora in piedi sono scappati: lo scontro finisce senza vincitori (chi resta a terra non si salva)
+P.controllaFine = function () {
+  if (this.horror && !this.finito) {
+    const gruppo = this.creature.filter((x) => x.lato === 'gruppo');
+    if (gruppo.some((x) => x.scappato) && !gruppo.some((x) => !x.scappato && this.inPiedi(x))) {
+      this.finito = 'fuga'; this.fineAnnunciata = true;
+      this.evento({ tipo: 'fine', esito: 'fuga', testo: 'Siete scappati: per ora siete vivi.' });
+      return;
+    }
+  }
+  return prima.controllaFine.call(this);
+};
+// i compagni del computer senza armi: nascondersi, se no scappare
+P.iaPersonaggio = function (c, furbo) {
+  if (!this.horror || !this.senzaArmi) return prima.iaPersonaggio.call(this, c, furbo);
+  if (c.armadietto || !c.turno.azione) return false;
+  if (!this.azioneSemplice(c.id, 'armadietto').errore) return true;
+  return !this.azioneSemplice(c.id, 'scappa').errore;
 };
 P.fai = function (rumore) { this.rumore = Math.min(10, (this.rumore || 0) + rumore); };
 // chi è nell'armadietto o nel fumo non si vede
@@ -129,7 +153,7 @@ P.entra = function (ref) {
   return c;
 };
 P.azioneSemplice = function (id, tipo, extra = {}) {
-  if (!this.horror || !['armadietto', 'oggetto', 'hackera'].includes(tipo)) return prima.azioneSemplice.call(this, id, tipo, extra);
+  if (!this.horror || !['armadietto', 'oggetto', 'hackera', 'scappa'].includes(tipo)) return prima.azioneSemplice.call(this, id, tipo, extra);
   const c = this.attivo;
   if (!c || c.id !== id) return { errore: 'Non è il tuo turno' };
   const p = c.ref;
@@ -141,6 +165,17 @@ P.azioneSemplice = function (id, tipo, extra = {}) {
     if (!c.turno.azione) return { errore: 'Hai già usato l\'azione' };
     c.turno.azione = false; c.armadietto = true;
     this.evento({ tipo: 'nota', id, testo: `${p.nome} si chiude in un nascondiglio e trattiene il respiro.` });
+    return { ok: true };
+  }
+  if (tipo === 'scappa') {
+    if (!c.pg) return { errore: 'Solo i personaggi scappano' };
+    if (!c.turno.azione) return { errore: 'Hai già usato l\'azione' };
+    c.turno.azione = false;
+    const addosso = this.creature.some((x) => x.lato !== c.lato && this.inPiedi(x) && this.dist(c, x) <= CELLA);
+    const cd = 11 + (addosso ? 3 : 0);
+    const pr = R.prova(p, 'atletica', { cd, venti: this.ventiPer(c) });
+    if (pr.riuscita) { c.scappato = true; c.fuggito = true; c.armadietto = false; this.evento({ tipo: 'fuga', id, testo: `${p.nome} corre via e si infila in un corridoio buio: è scappato! (Atletica ${pr.totale} contro ${cd})` }); this.controllaFine(); }
+    else this.evento({ tipo: 'nota', id, testo: `${p.nome} prova a scappare ma inciampa (Atletica ${pr.totale} contro ${cd}).` });
     return { ok: true };
   }
   if (tipo === 'hackera') {
