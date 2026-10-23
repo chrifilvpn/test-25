@@ -5,7 +5,7 @@
 // incontrati e il diario. La scheda completa di ogni personaggio si apre toccandolo.
 (() => {
   const { esc, suono, primaVolta, trascorso } = window.Nuovi;
-  const A = () => window.DraghiArte, MP = () => window.DraghiMappe, CR = () => window.DraghiCrea, CB = () => window.DraghiCampo;
+  const A = () => window.DraghiArte, MP = () => window.DraghiMappe, CR = () => window.DraghiCrea, CB = () => window.DraghiCampo, IN = () => window.DraghiIncubo;
   const ATMOSFERA = { calma: ['🌙', 'Calma'], tensione: ['⚠️', 'Tensione'], battaglia: ['⚔️', 'Battaglia'], mistero: ['🔮', 'Mistero'], festa: ['🎉', 'Festa'], orrore: ['💀', 'Orrore'], viaggio: ['🧭', 'In viaggio'] };
   const AMBIENTI = { classica: 'Fantasy classico', oscura: 'Oscura e horror', pirati: 'Mari e pirati', citta: 'Intrighi in città', selvaggia: 'Terre selvagge' };
   const NOMI_CAR = { for: 'Forza', des: 'Destrezza', cos: 'Costituzione', int: 'Intelligenza', sag: 'Saggezza', car: 'Carisma' };
@@ -18,8 +18,45 @@
   const segno = (n) => (n >= 0 ? `+${n}` : `${n}`);
   const telefono = () => window.matchMedia && window.matchMedia('(max-width: 760px)').matches;
   const colClasse = (cl) => (A().COLORE_CLASSE[cl] || ['#c8a060'])[0];
+  // le classi delle ambientazioni horror hanno i loro nomi (li manda il gioco)
+  let nomiTema = {};
+  const NC = new Proxy(NOMI_CLASSE, { get: (o, k) => o[k] || nomiTema[k] || String(k) });
   const mioPg = (ctx) => ctx.partita.pg[ctx.mio] || null;
-  const sonoHost = (ctx) => ctx.partita.host === ctx.mio && !ctx.stato.spettatore;
+  const sonoHost = (ctx) => (ctx.partita.host === ctx.mio || ctx.locale) && !ctx.stato.spettatore;
+
+  // ---------- in più sullo stesso computer: ci si passa il computer ----------
+  // Il gioco aspetta la mossa di uno dei posti "locali": il browser fa finta di essere lui (ctx.mio, le mosse partono
+  // con "per") e prima mostra il sipario «passate il computer a…», così nessuno vede scheda e scelte degli altri.
+  // Ognuno ha i suoi pezzi di ctx.ui (la creazione a metà, le selezioni), ma il testo che si sta scrivendo è uno solo.
+  const UI_LOC = {};
+  const condiviso = (k) => typeof k === 'string' && (k.startsWith('t_') || k === 'fuoco' || k === 'drVisto' || k === 'drChi');
+  function chiTocca(p) {
+    const L = p.locali;
+    if (p.fase === 'creazione') return L.find((k) => !p.pg[k]);
+    if (p.fase === 'avventura' && !p.attesaIA) return L.find((k) => p.pg[k] && !p.pg[k].morto && p.dichiarazioni[k] == null);
+    if (p.fase === 'prove') return L.find((k) => p.prove.some((x) => x.posto === k && !x.esito));
+    if (p.fase === 'combattimento' && p.combattimento) return L.find((k) => p.pg[k] && p.pg[k].uid === p.combattimento.attivo);
+    return undefined;
+  }
+  function locale(ctx) {
+    const p = ctx.partita;
+    if (ctx.locale || !p || !p.locali || p.locali.length < 2 || ctx.stato.spettatore || ctx.mio !== p.host || p.fase === 'reale') return ctx;
+    const ui = ctx.ui, ora = chiTocca(p);
+    if (ora != null) ui.drChi = ora; else if (!p.locali.includes(ui.drChi)) ui.drChi = p.locali[0];
+    const k = ui.drChi;
+    if (!UI_LOC[k]) UI_LOC[k] = new Proxy({}, { get: (o, x) => (condiviso(x) || !(x in o) ? ui[x] : o[x]), set: (o, x, v) => { if (condiviso(x)) ui[x] = v; else o[x] = v; return true; }, has: (o, x) => x in o || x in ui });
+    const partita = { ...p, ...((p.perPosto || {})[k] || {}) };
+    return Object.create(ctx, { base: { value: ctx }, locale: { value: true }, mio: { value: k }, partita: { value: partita }, ui: { value: UI_LOC[k] }, invia: { value: (a) => ctx.invia({ ...a, per: k }) } });
+  }
+  const nomeLocale = (p, k) => (p.pg[k] ? p.pg[k].nome : `Giocatore ${p.locali.indexOf(k) + 1}`);
+  function sipario(ctx) {
+    const p = ctx.partita, k = ctx.mio;
+    if (!ctx.locale || ctx.ui.drVisto === k || chiTocca(p) !== k) return '';
+    const cosa = p.fase === 'creazione' ? 'crea il tuo personaggio' : p.fase === 'prove' ? 'tira i tuoi dadi' : p.fase === 'combattimento' ? 'è il tuo turno di combattimento' : 'scrivi cosa fa il tuo personaggio';
+    return `<div class="dr-sipario"><div class="dr-sip-box"><span class="dr-sip-ic">🔄</span><h2>Tocca a ${esc(nomeLocale(p, k))}</h2><p>Passate il computer a <b>${esc(nomeLocale(p, k))}</b>: ${cosa}. Gli altri non guardino!</p>
+      <button type="button" class="dr-bt dr-bt-oro dr-bt-grande" data-az="dr-sipario" data-id="${k}">Sono ${esc(nomeLocale(p, k))}: gioco</button>
+      <small>Siete in ${p.locali.length} sullo stesso computer: ${p.locali.map((x) => esc(nomeLocale(p, x))).join(' · ')}</small></div></div>`;
+  }
 
   // ---------- testo del master: paragrafi, dialoghi, grassetti, nomi dei personaggi ----------
   function formatta(testo, p) {
@@ -42,7 +79,7 @@
     const chi = p.bot[posto] ? 'computer' : esc(ctx.nome(posto));
     return `<button type="button" class="dr-pg ${posto === ctx.mio ? 'mio' : ''} ${pf <= 0 ? 'giu' : ''} ${pg.morto ? 'morto' : ''}" data-az="dr-scheda" data-id="${pg.uid}" style="--cc:${colClasse(pg.classe)}">
       <span class="dr-pg-ritr">${A().ritratto(pg, { cornice: false })}<i class="dr-pg-liv">${pg.livello}</i></span>
-      <span class="dr-pg-info"><b>${esc(pg.nome)}</b><small>${NOMI_STIRPE[pg.stirpe]} ${NOMI_CLASSE[pg.classe].toLowerCase()} · ${chi}</small>
+      <span class="dr-pg-info"><b>${esc(pg.nome)}</b><small>${NOMI_STIRPE[pg.stirpe]} ${NC[pg.classe].toLowerCase()} · ${chi}</small>
         <span class="dr-pf ${q <= 0.3 ? 'basso' : q <= 0.6 ? 'medio' : ''}"><i style="width:${q * 100}%"></i><span>${pg.morto ? '💀 morto' : `❤️ ${pf}/${pfMax}${pg.pfTemp ? ` +${pg.pfTemp}` : ''}`}</span></span>
         <span class="dr-pg-mini"><span title="Classe armatura">🛡️ ${pg.ca}</span>${pg.ispirazione ? '<span title="Ispirazione">✨</span>' : ''}${pg.concentrazione ? '<span title="Concentrazione">🔮</span>' : ''}${cond}</span></span>${stato}</button>`;
   }
@@ -75,7 +112,8 @@
   function luogoAttuale(p) { return p.mondo && p.mondo.luoghi.find((l) => l.id === p.mondo.posizione); }
   function testaStoria(ctx) {
     const p = ctx.partita, l = luogoAttuale(p), [ic, nome] = ATMOSFERA[p.atmosfera] || ['🧭', p.atmosfera || ''];
-    return `<header class="dr-testa-storia"><div class="dr-luogo-att">${l ? `<svg viewBox="-16 -16 32 32" width="30" height="30" aria-hidden="true">${A().iconaLuogo(l.tipo)}</svg><span><b>${esc(l.nome)}</b><small>${esc(l.tipo)}</small></span>` : '<span><b>Draghi e Segrete</b></span>'}</div>
+    const ar = p.incubo && p.incubo.aree && p.incubo.aree.find((a) => a.id === p.incubo.area);
+    return `<header class="dr-testa-storia"><div class="dr-luogo-att">${ar ? `<span class="dr-in-luogo">${esc(p.incubo.icona)}</span><span><b>${esc(ar.nome)}</b><small>${esc(p.incubo.nome)}</small></span>` : l ? `<svg viewBox="-16 -16 32 32" width="30" height="30" aria-hidden="true">${A().iconaLuogo(l.tipo)}</svg><span><b>${esc(l.nome)}</b><small>${esc(l.tipo)}</small></span>` : '<span><b>Draghi e Segrete</b></span>'}</div>
       <span class="dr-atmosfera dr-atm-${esc(p.atmosfera)}" title="Atmosfera">${ic} ${esc(nome)}</span></header>`;
   }
 
@@ -87,6 +125,7 @@
     if (p.erroreIA && !p.attesaIA) return `<div class="dr-sotto"><div class="dr-errore">⚠️ Il master non risponde (${esc(p.erroreIA)}). Riprovo da solo tra poco… <button type="button" class="dr-bt" data-az="dr-riprova">↻ Riprova ora</button></div></div>`;
     if (p.attesaIA) return '<div class="dr-sotto"><div class="dr-attende"><span class="dr-candela"></span>Il master sta pensando a cosa succede…</div></div>';
     if (p.fase === 'prove') return prove(ctx);
+    if (p.fase === 'caduti') return '<div class="dr-sotto"><p class="dr-fine-camp">💀 Siete tutti morti. Scrivete <b>!revive</b> in chat per tornare in vita con tutto quello che avevate (altrimenti la campagna si chiude tra 15 minuti).</p></div>';
     if (p.fase !== 'avventura') return '';
     if (!pg || pg.morto) return `<div class="dr-sotto"><p class="dr-nota">${pg ? `💀 ${esc(pg.nome)} è morto. Puoi continuare a seguire la storia.` : ''}</p></div>`;
     const altri = p.pg.map((x, i) => (x && !x.morto && !p.bot[i] && i !== ctx.mio ? i : -1)).filter((i) => i >= 0);
@@ -101,7 +140,7 @@
     return `<div class="dr-sotto"><div class="dr-scrivi" style="--cc:${colClasse(pg.classe)}"><span class="dr-scrivi-ritr">${A().ritratto(pg, { cornice: false })}</span>
       <textarea data-tieni="dich" maxlength="1500" rows="2" placeholder="Cosa fa ${esc(pg.nome)}? Scrivi azioni, parole, idee… (Invio per mandare)">${esc(ui.t_dich || '')}</textarea>
       <button type="button" class="dr-bt dr-bt-oro dr-invia" data-az="dr-dichiara" aria-label="Manda">➤</button></div>
-      <div class="dr-suggerimenti"><span class="dr-sugg-tit">Idee del master — oppure scrivi tu qualsiasi cosa:</span>${sugg}<button type="button" class="dr-sugg tu" data-az="dr-scrivitu">✍️ Scegli tu</button>${rapidi}<button type="button" class="dr-sugg niente" data-az="dr-segui" title="Non fai niente di particolare">🚶 Seguo il gruppo</button></div>${chiAspetta}${manda && !mancano.includes(ctx.mio) ? '' : ''}</div>`;
+      ${p.incubo ? IN().azioni(ctx) : ''}<div class="dr-suggerimenti"><span class="dr-sugg-tit">Idee del master — oppure scrivi tu qualsiasi cosa:</span>${sugg}<button type="button" class="dr-sugg tu" data-az="dr-scrivitu">✍️ Scegli tu</button>${rapidi}<button type="button" class="dr-sugg niente" data-az="dr-segui" title="Non fai niente di particolare">🚶 Seguo il gruppo</button></div>${chiAspetta}${manda && !mancano.includes(ctx.mio) ? '' : ''}</div>`;
   }
   function prove(ctx) {
     const p = ctx.partita, pg = mioPg(ctx);
@@ -160,7 +199,7 @@
   function lato(ctx, schede) {
     const ui = ctx.ui;
     if (!schede.some((s) => s[0] === ui.drLato)) ui.drLato = schede[0][0];
-    const corpo = { mappa, missioni, diario, turno: (c) => CB().pannello(c), racconto: (c) => `${racconto(c, { soloLettura: true })}` }[ui.drLato](ctx);
+    const corpo = { mappa, stazione: (c) => IN().pannello(c), missioni, diario, turno: (c) => CB().pannello(c), racconto: (c) => `${racconto(c, { soloLettura: true })}` }[ui.drLato](ctx);
     return `<aside class="dr-lato"><nav class="dr-schede">${schede.map(([id, ic, n]) => `<button type="button" class="${ui.drLato === id ? 'sel' : ''}" data-az="dr-lato" data-id="${id}">${ic}<span>${n}</span></button>`).join('')}</nav><div class="dr-lato-corpo" data-scorri="lato-${ui.drLato}">${corpo}</div></aside>`;
   }
 
@@ -181,7 +220,7 @@
         ${Object.entries(per).map(([lv, l]) => `<h5>${Number(lv) ? `${lv}° livello` : 'Trucchetti'}</h5><ul class="dr-sc-inc">${l.map(([id, x]) => `<li><b>${esc(x.nome)}</b>${x.conc ? ' <i>C</i>' : ''}${pg.magia.sempre.includes(id) ? ' <i>sempre</i>' : ''}<small>${esc(x.tempo)} · ${esc(String(x.gittata))}${/^\d+$/.test(String(x.gittata)) ? ' m' : ''} · ${esc(x.durata)}</small><p>${esc(x.desc)}</p></li>`).join('')}</ul>`).join('')}</section>`;
     }
     const risorse = Object.values(pg.risorse || {}).map((r) => `<span class="dr-ris"><b>${esc(r.nome)}</b> ${r.punti ? `${r.max - r.usati}/${r.max}` : Array.from({ length: Math.min(r.max, 12) }, (_, k) => `<i class="${k < r.max - r.usati ? 'on' : ''}"></i>`).join('')}</span>`).join('');
-    const priv = [...pg.privilegi.map((x) => ({ ...x, tipo: x.da === 'sottoclasse' ? pg.sottoclasse : NOMI_CLASSE[pg.classe] })), ...pg.tratti.map((x) => ({ ...x, tipo: NOMI_STIRPE[pg.stirpe] }))].map((x) => `<li><b>${esc(x.nome)}</b> <small>${esc(x.tipo)}</small><p>${esc(x.desc)}</p></li>`).join('');
+    const priv = [...pg.privilegi.map((x) => ({ ...x, tipo: x.da === 'sottoclasse' ? pg.sottoclasse : NC[pg.classe] })), ...pg.tratti.map((x) => ({ ...x, tipo: NOMI_STIRPE[pg.stirpe] }))].map((x) => `<li><b>${esc(x.nome)}</b> <small>${esc(x.tipo)}</small><p>${esc(x.desc)}</p></li>`).join('');
     const nomiA = p.nomiArmature || {};
     const armature = [...new Set([...(pg.armatureAvute || []), ...(pg.armatura ? [pg.armatura] : [])])];
     const puoEquip = mia && p.fase === 'avventura' && !p.attesaIA;
@@ -193,7 +232,7 @@
     const morte = pg.pf <= 0 && !pg.morto ? `<p class="dr-sc-morte">A terra! Tiri contro la morte: ${'✔'.repeat(pg.morte.successi)}${'·'.repeat(3 - pg.morte.successi)} / ${'✖'.repeat(pg.morte.fallimenti)}${'·'.repeat(3 - pg.morte.fallimenti)}${pg.stabile ? ' — stabile' : ''}</p>` : '';
     return `<div class="dr-velo" data-az="dr-chiudi-scheda"><div class="dr-scheda" data-az="dr-niente" style="--cc:${colClasse(pg.classe)}" role="dialog" aria-label="Scheda di ${esc(pg.nome)}">
       <button type="button" class="dr-x" data-az="dr-chiudi-scheda" aria-label="Chiudi">✕</button>
-      <header class="dr-sc-testa"><span class="dr-sc-ritr">${A().ritratto(pg)}</span><div><h2>${esc(pg.nome)}</h2><p>${NOMI_STIRPE[pg.stirpe]} · ${NOMI_CLASSE[pg.classe]} ${pg.livello}° livello · ${esc(pg.sottoclasse)}</p>
+      <header class="dr-sc-testa"><span class="dr-sc-ritr">${A().ritratto(pg)}</span><div><h2>${esc(pg.nome)}</h2><p>${NOMI_STIRPE[pg.stirpe]} · ${NC[pg.classe]} ${pg.livello}° livello · ${esc(pg.sottoclasse)}</p>
         <p class="dr-sc-px"><span>⭐ ${pg.px} PX${prossimo ? ` / ${prossimo}` : ''}</span><i><b style="width:${quota * 100}%"></b></i></p>
         <div class="dr-sc-num"><span><small>CA</small><b>${pg.ca}</b></span><span><small>PF</small><b>${Math.max(0, pg.pf)}/${pg.pfMax}</b></span><span><small>Velocità</small><b>${String(pg.velocita).replace('.', ',')} m</b></span><span><small>Iniziativa</small><b>${segno(pg.iniziativa)}</b></span><span><small>Competenza</small><b>+${pg.comp}</b></span><span><small>Percezione</small><b>${pg.percezionePassiva}</b></span><span><small>Dadi vita</small><b>${pg.dadiVita.restanti}d${pg.dadiVita.dado}</b></span><span><small>Oro</small><b>${pg.oro}</b></span></div>${morte}</div></header>
       <div class="dr-sc-corpo"><div class="dr-sc-col"><div class="dr-sc-cars">${car}</div><section class="dr-sc-sez"><h4>🎯 Abilità</h4><ul class="dr-sc-ab">${ab}</ul></section>
@@ -206,7 +245,7 @@
   // ---------- la creazione: chi è pronto e l'idea della campagna ----------
   function latoCreazione(ctx) {
     const p = ctx.partita;
-    const chi = p.pg.map((pg, i) => `<li class="${pg ? 'pronto' : ''}">${pg ? `<span class="dr-mini-ritr">${A().ritratto(pg, { cornice: false })}</span>` : `<span class="dr-mini-ritr vuoto">${p.bot[i] ? '🤖' : '✍️'}</span>`}<span><b>${pg ? esc(pg.nome) : p.bot[i] ? 'Compagno del computer' : esc(ctx.nome(i))}</b><small>${pg ? `${NOMI_STIRPE[pg.stirpe]} ${NOMI_CLASSE[pg.classe].toLowerCase()}` : p.bot[i] ? 'lo crea il computer' : 'sta creando il personaggio…'}</small></span></li>`).join('');
+    const chi = p.pg.map((pg, i) => `<li class="${pg ? 'pronto' : ''}">${pg ? `<span class="dr-mini-ritr">${A().ritratto(pg, { cornice: false })}</span>` : `<span class="dr-mini-ritr vuoto">${p.bot[i] ? '🤖' : '✍️'}</span>`}<span><b>${pg ? esc(pg.nome) : p.bot[i] ? 'Compagno del computer' : esc(ctx.nome(i))}</b><small>${pg ? `${NOMI_STIRPE[pg.stirpe]} ${NC[pg.classe].toLowerCase()}` : p.bot[i] ? 'lo crea il computer' : 'sta creando il personaggio…'}</small></span></li>`).join('');
     const idea = sonoHost(ctx)
       ? `<div class="dr-idea"><h4>💡 Idea per la campagna</h4><textarea data-tieni="idea" rows="4" maxlength="2000" placeholder="Facoltativa: un tema, un cattivo, un luogo… Es.: «Una città portuale dove spariscono i bambini e il culto della Marea Nera…». Vuota: inventa tutto il master.">${esc(ctx.ui.t_idea != null ? ctx.ui.t_idea : p.idea || '')}</textarea><button type="button" class="dr-bt" data-az="dr-idea">${p.idea ? '✓ Idea salvata · aggiorna' : 'Salva l\'idea'}</button></div>
         <button type="button" class="dr-bt dr-bt-oro dr-bt-grande dr-inizia" data-az="dr-inizia">⚔️ Inizia l'avventura</button><small class="dr-nota">Chi non ha finito il personaggio lo completa il computer.</small>`
@@ -216,7 +255,7 @@
   function pronto(ctx) {
     const p = ctx.partita, pg = mioPg(ctx);
     return `<div class="dr-pronto"><div class="dr-pronto-carta" style="--cc:${colClasse(pg.classe)}"><span class="dr-pronto-ritr">${A().ritratto(pg)}</span>
-      <h2>${esc(pg.nome)}</h2><p>${NOMI_STIRPE[pg.stirpe]} · ${NOMI_CLASSE[pg.classe]} ${pg.livello}° livello</p>
+      <h2>${esc(pg.nome)}</h2><p>${NOMI_STIRPE[pg.stirpe]} · ${NC[pg.classe]} ${pg.livello}° livello</p>
       <div class="dr-ant-car">${Object.keys(NOMI_CAR).map((k) => `<span><small>${BREVI_CAR[k]}</small><b>${pg.car[k]}</b></span>`).join('')}</div>
       <p class="dr-righe"><span>❤️ <b>${pg.pfMax}</b> PF</span><span>🛡️ CA <b>${pg.ca}</b></span><span>🏃 <b>${String(pg.velocita).replace('.', ',')}</b> m</span></p>
       <div class="dr-pronto-bt"><button type="button" class="dr-bt" data-az="dr-scheda" data-id="${pg.uid}">📜 Scheda completa</button><button type="button" class="dr-bt" data-az="dr-rifai">↺ Rifai il personaggio</button></div></div>
@@ -236,7 +275,11 @@
       const cr = document.querySelector('#panno .dr-cr-corpo'); if (cr) ui.drScorriCrea = { passo: cr.dataset.passo, top: cr.scrollTop };
     },
     panno(ctx) {
+      ctx = locale(ctx);
+      const tenda = sipario(ctx);
+      if (tenda) return `<div class="dr dr-fase-sipario dr-amb-${esc(ctx.partita.ambientazione || 'classica')}">${tenda}</div>`;
       const p = ctx.partita, ui = ctx.ui, tel = telefono();
+      nomiTema = p.nomiClasse || {};
       if (!p.catalogo && p.fase === 'creazione') return '<div class="dr"><p class="dr-vuoto">Caricamento…</p></div>';
       const scheda1 = ui.drScheda ? scheda(ctx, ui.drScheda) : '';
       // lo scenario dello sfondo (sagome dell'ambientazione, modalità pazza)
@@ -245,6 +288,7 @@
         if (mioPg(ctx) || ctx.stato.spettatore) return `<div class="dr dr-fase-pronti ${scena}">${mioPg(ctx) ? pronto(ctx) : latoCreazione(ctx)}${scheda1}</div>`;
         return `<div class="dr dr-fase-crea ${scena}">${CR().html(ctx, latoCreazione(ctx))}${scheda1}</div>`;
       }
+      if (p.reale && (p.fase === 'reale' || p.fase === 'caduti')) return `${IN().realeHtml(ctx)}${scheda1}`;
       const cb = p.combattimento;
       if (cb && ui.drCbVisto !== cb.scena.g.length + cb.scena.stile) { ui.drCbVisto = cb.scena.g.length + cb.scena.stile; ui.drTab = 'battaglia'; ui.drLato = 'turno'; }
       if (!cb && ui.drTab === 'battaglia') ui.drTab = 'storia';
@@ -256,8 +300,9 @@
         const narr = ultima && ultima.combattimento ? `<div class="dr-cb-narr ${trascorso(ui, `dr-v${ultima.id}`) < 1500 ? 'nuova' : ''}" title="Il master racconta">${formatta(ultima.testo, p)}</div>` : '';
         centro = `<section class="dr-centro dr-centro-cb">${CB().filaIniziativa(ctx)}<div id="dr-campo-posto" class="dr-campo-posto"></div>${narr}</section>`;
       } else centro = `<section class="dr-centro">${testaStoria(ctx)}${racconto(ctx)}${composer(ctx)}</section>`;
-      const schede = cb ? (tel ? [['turno', '🎲', 'Turno'], ['racconto', '💬', 'Racconto'], ['mappa', '🗺️', 'Mappa'], ['missioni', '📜', 'Missioni'], ['diario', '📖', 'Diario']] : [['turno', '🎲', 'Turno'], ['racconto', '💬', 'Racconto'], ['mappa', '🗺️', 'Mappa'], ['missioni', '📜', 'Missioni']])
-        : [['mappa', '🗺️', 'Mappa'], ['missioni', '📜', 'Missioni'], ['diario', '📖', 'Diario']];
+      const MAPPA = p.incubo ? ['stazione', '🛰️', 'Stazione'] : ['mappa', '🗺️', 'Mappa'];
+      const schede = cb ? (tel ? [['turno', '🎲', 'Turno'], ['racconto', '💬', 'Racconto'], MAPPA, ['missioni', '📜', 'Missioni'], ['diario', '📖', 'Diario']] : [['turno', '🎲', 'Turno'], ['racconto', '💬', 'Racconto'], MAPPA, ['missioni', '📜', 'Missioni']])
+        : [MAPPA, ['missioni', '📜', 'Missioni'], ['diario', '📖', 'Diario']];
       if (tel && cb && tab === 'battaglia') ui.drLato = 'turno';
       if (tel && tab === 'mondo' && cb && ui.drLato === 'turno') ui.drLato = 'racconto';
       const nav = (cb ? [['battaglia', '⚔️', 'Battaglia'], ['mondo', '🗺️', 'Mondo'], ['gruppo', '👥', 'Gruppo']] : [['storia', '📖', 'Storia'], ['mondo', '🗺️', 'Mondo'], ['gruppo', '👥', 'Gruppo']])
@@ -265,8 +310,11 @@
       return `<div class="dr ${scena} ${cb ? 'dr-in-cb' : ''} dr-tab-${tab} dr-atm-${esc(p.atmosfera || 'calma')}">${gruppo(ctx)}${centro}${lato(ctx, schede)}<nav class="dr-nav">${nav}</nav>${scheda1}</div>`;
     },
     dopo(ctx) {
+      ctx = locale(ctx);
+      if (sipario(ctx)) return;
       const p = ctx.partita, ui = ctx.ui;
       CB().dopo(ctx);
+      IN().dopo(ctx);
       // scorrimento: il racconto resta in fondo se lo era (o se c'è una voce nuova del master)
       const ultimo = p.racconto.length ? p.racconto[p.racconto.length - 1].id : 0;
       const nuove = ultimo > (ui.drUltimaVoce || 0);
@@ -294,22 +342,30 @@
       if (p.evento && p.evento.forte && primaVolta(ui, `dr-ev-${p.evento.id}`)) suono([[523, 0.1], [659, 0.1], [784, 0.1], [1047, 0.2]], { tipo: 'triangle', volume: 0.05 });
     },
     stato(ctx) {
+      ctx = locale(ctx);
       const p = ctx.partita;
+      if (sipario(ctx)) return `🔄 Tocca a ${nomeLocale(p, ctx.mio)}`;
       if (p.finita) return null;
       if (p.fase === 'creazione') return mioPg(ctx) ? 'Personaggio pronto' : 'Crea il tuo personaggio';
       if (p.attesaIA) return 'Il master scrive…';
       if (p.fase === 'prove') return p.prove.some((x) => x.posto === ctx.mio && !x.esito) ? '🎲 Tira i dadi!' : 'Si tirano i dadi…';
       if (p.fase === 'combattimento') { const cb = p.combattimento; if (!cb) return 'Combattimento'; if (CB().mioTurno(ctx)) return '⚔️ Tocca a te!'; const a = cb.creature.find((c) => c.id === cb.attivo); return a ? `Tocca a ${a.nome}` : 'Combattimento'; }
       if (p.fase === 'avventura') return p.dichiarazioni[ctx.mio] != null ? 'Aspettando gli altri…' : 'Cosa fai?';
+      if (p.fase === 'reale') return '⏱️ Tempo reale';
+      if (p.fase === 'caduti') return '💀 Scrivete !revive';
       return null;
     },
+    tick(ctx, d) { IN().tick(ctx, d); },
     statoAttesa() { return null; },
     punteggio() { return ''; },
     infoPosto(ctx, posto) { const pg = ctx.partita.pg[posto]; return pg ? `${esc(pg.nome)} · ${pg.pf}/${pg.pfMax} PF` : 'crea il personaggio'; },
     clic(ctx, el) {
+      ctx = locale(ctx);
       const az = el.dataset.az, id = el.dataset.id, ui = ctx.ui, p = ctx.partita;
+      if (az === 'dr-sipario') { const base = ctx.base.ui; base.drVisto = Number(id); for (const x of Object.keys(base)) if (x.startsWith('t_')) base[x] = null; base.fuoco = null; return ctx.ridisegna(); }
       if (az.startsWith('dr-cr-')) return CR().clic(ctx, el);
       if (az.startsWith('dr-cb-')) return CB().clic(ctx, el);
+      if (az.startsWith('dr-in-') || az.startsWith('dr-re-')) return IN().clic(ctx, el);
       switch (az) {
         case 'dr-niente': return undefined;
         case 'dr-scheda': ui.drScheda = id; ui.t_note = null; return ctx.ridisegna();

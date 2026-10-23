@@ -81,7 +81,9 @@ const MOSTRI = {
   diavoloSpinato: { nome: 'Diavolo barbuto', tipo: 'immondo', taglia: 'Media', ca: 13, pf: '8d8+16', vel: 9, car: c(16, 15, 15, 9, 11, 11), gs: 3, multi: 2, attacchi: [a('Barba', 5, '1d8+2', 'perforante', { veleno: { ts: 'cos', cd: 12, condizione: 'avvelenato' } }), a('Glaive', 5, '1d10+3', 'taglio')], resistente: ['freddo', 'arma'], immune: ['fuoco', 'veleno'], aspetto: { s: '👿', col: '#7a2010' } },
   aboleth: { nome: 'Aboleth', tipo: 'aberrazione', taglia: 'Grande', ca: 17, pf: '18d10+36', vel: 3, car: c(21, 9, 15, 18, 15, 18), gs: 10, multi: 3, attacchi: [a('Tentacolo', 9, '2d6+5', 'contundente', { malattia: true })], tratti: ['schiavitu', 'leggendario3'], aspetto: { s: '🐙', col: '#3a5a7a' } },
 };
-for (const [id, m] of Object.entries(MOSTRI)) { m.id = id; m.px = PX[m.gs] || 0; }
+// i mostri delle ambientazioni horror (horror.js): le creature che non si possono uccidere danno pochi PX (si scacciano)
+Object.assign(MOSTRI, require('./horror').MOSTRI);
+for (const [id, m] of Object.entries(MOSTRI)) { m.id = id; m.px = m.px != null ? m.px : PX[m.gs] || 0; }
 
 // cosa fanno i tratti (il motore ne applica alcuni; gli altri li legge il master)
 const TRATTI = {
@@ -129,6 +131,16 @@ const TRATTI = {
   coraggioso: 'Coraggioso: vantaggio contro la paura.',
   furtivo4d6: 'Attacco furtivo: +4d6 una volta per turno con vantaggio o un alleato vicino.',
   elusione: 'Elusione: nessun danno con un tiro salvezza su Destrezza riuscito.',
+  immortale: 'Non si può uccidere: quando le sue ferite arrivano in fondo non muore, si ritira (fugge e tornerà).',
+  cacciatore: 'La creatura dell\'ambientazione: sente ogni rumore e dà la caccia a chi non è nascosto.',
+  temeFuoco: 'Teme il fuoco: se subisce danni da fuoco scappa subito.',
+  sensiAcuti: 'Sensi acuti: vantaggio a Percezione, sente chi corre e chi spara anche lontano.',
+  androide: 'Androide: resiste alle armi, il fulmine (manganello, EMP) lo spegne per un turno; il tecnico lo può hackerare.',
+  gentile: 'Gentile: parla con calma e cortesia mentre ti fa del male.',
+  nonGuardarlo: 'Non guardarlo: se lo guardi da vicino urla e ti carica.',
+  sfondaPorte: 'Sfonda le porte: le porte chiuse non lo fermano.',
+  teletrasporto: 'Sparisce e ricompare: si teletrasporta vicino a chi lo guarda.',
+  facehugger: 'Ti salta in faccia: chi è afferrato non respira (tiro salvezza su Costituzione o 2d6 a turno).',
 };
 
 module.exports = { MOSTRI, TRATTI, PX };

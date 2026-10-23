@@ -134,9 +134,15 @@
     montagna: ['#7a7468', '#6e685c'], foresta: ['#4f6a34', '#48612f'], palude: ['#4a5a3a', '#435234'], strada: ['#7a8a4a', '#728244'],
     villaggio: ['#6a8a42', '#62803d'], taverna: ['#7a5432', '#6e4a2c'],
   };
+  // le scene delle ambientazioni horror le disegna draghi-incubo.js (metallo, piastrelle, resina, fango)
   function stratoScena(sc) {
     const chiave = `${sc.stile}:${sc.w}x${sc.h}:${sc.g}`;
     if (cacheScena.has(chiave)) return cacheScena.get(chiave);
+    if (window.DraghiIncubo && window.DraghiIncubo.STILI.includes(sc.stile)) {
+      const cv = window.DraghiIncubo.strato(sc, CELL);
+      cacheScena.set(chiave, cv); if (cacheScena.size > 6) cacheScena.delete(cacheScena.keys().next().value);
+      return cv;
+    }
     const W = sc.w * CELL, H = sc.h * CELL;
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
     const g = cv.getContext('2d');
@@ -265,7 +271,7 @@
   }
 
   // la vista del gruppo: le celle che vede almeno un personaggio in piedi (linea di vista, entro un raggio)
-  const OPACO = new Set(['#', 'T', 'r', 'c']);
+  const OPACO = new Set(['#', 'T', 'r', 'c', 'a', 'k', 'L']);
   function vede(sc, x0, y0, x1, y1) {
     const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0)) * 3;
     for (let k = 1; k < n; k++) { const x = Math.round(x0 + ((x1 - x0) * k) / n), y = Math.round(y0 + ((y1 - y0) * k) / n); if ((x === x1 && y === y1) || (x === x0 && y === y0)) continue; if (OPACO.has(sc.g[y * sc.w + x])) return false; }

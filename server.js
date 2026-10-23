@@ -356,6 +356,7 @@ const AIUTO_COMANDI = {
   '!prof': 'apre la pagina delle dispense a tutti i giocatori del tavolo (dalla chat globale: a tutto il sito)',
   '!restart': 'propone di ricominciare la partita da capo (se qualcosa è andato storto): decide la maggioranza del tavolo',
   '!fantasia': 'seguito da una domanda (per esempio !fantasia chi ha inventato il computer?): risponde fantasIA, la mini IA del sito. Una domanda ogni 20 secondi, al massimo 100 al giorno per tutto il sito',
+  '!revive': 'in Draghi e Segrete riporta in vita i personaggi morti, con tutti i punti ferita e le stesse cose che avevano',
   '!comandi': 'mostra questo elenco',
   // il 67 non si elenca: è un easter egg che si scopre giocando
 };
@@ -375,6 +376,12 @@ const COMANDI = {
     if (s.partita && s.partita.ricarica) s.partita.ricarica(posto, FICHE_INIZIALI);
     messaggioSistema(s, `💰 ${g.nome} riceve ${FICHE_INIZIALI} fiche`);
   },
+  '!revive': (s, posto) => {
+    const g = s.partita;
+    if (!g || g.finita || typeof g.revive !== 'function') { messaggioSistema(s, '!revive funziona solo durante una partita di Draghi e Segrete'); return; }
+    const n = g.revive();
+    messaggioSistema(s, n ? `✨ ${s.posti[posto].nome} ha usato !revive: ${n === 1 ? 'un personaggio torna' : `${n} personaggi tornano`} in vita` : 'Non c\'è nessun personaggio morto da riportare in vita');
+  },
   '!comandi': (s) => {
     messaggioSistema(s, `Comandi della chat: ${Object.entries(AIUTO_COMANDI).map(([c, d]) => `${c} ${d}`).join(' · ')}`);
   },
@@ -387,7 +394,7 @@ const COMANDI = {
 
 // BLOCCO DEI COMANDI (dall'Ammiragliato): l'admin può spegnere per un po' i comandi della chat (il 67, !comandi,
 // !restart…) se qualcuno ne abusa. !prof e !ricarica funzionano sempre. Vale per tutto il sito.
-const SEMPRE_ATTIVI = ['!prof', '!ricarica'];
+const SEMPRE_ATTIVI = ['!prof', '!ricarica', '!revive']; // funzionano anche con i comandi spenti
 let comandiBloccatiFino = 0; // ora (ms) fino a cui sono spenti; Infinity = fino al riavvio del server
 const comandiBloccati = () => Date.now() < comandiBloccatiFino;
 function avvisoBlocco() {

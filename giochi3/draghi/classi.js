@@ -345,4 +345,18 @@ const SUPPLICHE = {
   lunghezza: 'Lancia occulta: la deflagrazione mistica arriva a 90 metri.',
 };
 
+// le classi a tema delle ambientazioni horror (horror.js): ognuna ha le regole di una classe di qui (base), con nome,
+// abilità, dotazione e privilegi rinominati; "orig" tiene il nome del privilegio originale (il motore ne riconosce alcuni)
+for (const [id, h] of Object.entries(require('./horror').CLASSI)) {
+  const b = CLASSI[h.base];
+  const rinomina = (lista, mappa = {}) => lista.map((p) => (mappa[p.nome] ? { ...p, orig: p.nome, nome: mappa[p.nome][0], desc: mappa[p.nome][1] } : { ...p, orig: p.nome }));
+  const risorse = {};
+  for (const [k, r] of Object.entries(b.risorse || {})) risorse[k] = { ...r, nome: (h.risorse && h.risorse[k]) || (h.rinomina[r.nome] ? h.rinomina[r.nome][0] : r.nome) };
+  CLASSI[id] = {
+    ...b, nome: h.nome, icona: h.icona, desc: h.desc, abilita: h.abilita, equip: h.equip, base: h.base, tema: h.tema, risorse,
+    privilegi: rinomina(b.privilegi, h.rinomina), sottoclasse: { ...b.sottoclasse, nome: h.sottoclasse, privilegi: rinomina(b.sottoclasse.privilegi, h.rinominaSotto) },
+    costruisce: !!h.costruisce, hacker: !!h.hacker, cura: h.cura || 1,
+  };
+}
+
 module.exports = { CLASSI, STILI, SUPPLICHE, SLOT_PIENI, slotPer, COMPETENZA, AUMENTI };

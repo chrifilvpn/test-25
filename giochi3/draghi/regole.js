@@ -167,7 +167,7 @@ function creaPersonaggio(s) {
   pg.armatura = eq.armatura || null;
   pg.scudo = !!eq.scudo;
   pg.oggetti = [];
-  const aggiungi = (id) => { const nomeO = B.OGGETTI[id] || id; const x = pg.oggetti.find((o) => o.nome === nomeO); if (x) x.n++; else pg.oggetti.push({ nome: nomeO, n: 1 }); };
+  const aggiungi = (id) => { const nomeO = B.OGGETTI[id] || id; const x = pg.oggetti.find((o) => o.nome === nomeO); if (x) x.n++; else pg.oggetti.push({ id, nome: nomeO, n: 1 }); };
   for (const id of (B.PACCHETTI[eq.pacchetto] || { oggetti: [] }).oggetti) aggiungi(id);
   for (const id of (eq.extra || []).filter((x) => !B.ARMI[x])) aggiungi(id);
   for (const id of bg.equip) aggiungi(id);
@@ -344,7 +344,7 @@ function prova(pg, tipo, opz = {}) {
   if (tipo === 'furtivita' && pg.effetti.some((e) => e.effetto === 'senzaTracce')) { bonus += 10; extra.push('senza tracce +10'); }
   const t = d20({ vantaggio, svantaggio, fortunato: haEffetto(pg, 'fortunato'), venti: !!opz.venti });
   let valore = t.valore;
-  if (ab && pg.livello >= 11 && pg.classe === 'ladro' && pg.abilita.includes(tipo)) valore = Math.max(10, valore); // dote affidabile
+  if (ab && pg.livello >= 11 && (pg.classe === 'ladro' || CLASSI[pg.classe].base === 'ladro') && pg.abilita.includes(tipo)) valore = Math.max(10, valore); // dote affidabile
   const totale = valore + bonus + (opz.bonusExtra || 0);
   const cd = Number(opz.cd) || null;
   return { chi: pg.nome, tipo, nomeTipo: ab ? ab.nome : B.CARATTERISTICHE[car].nome, d20: t, bonus, totale, cd, riuscita: cd ? totale >= cd : null, extra, naturale: t.valore };
@@ -552,14 +552,20 @@ const PRIORITA_CAR = {
   mago: ['int', 'cos', 'des', 'sag', 'car', 'for'], monaco: ['des', 'sag', 'cos', 'for', 'int', 'car'], paladino: ['for', 'car', 'cos', 'sag', 'des', 'int'],
   ranger: ['des', 'sag', 'cos', 'for', 'int', 'car'], stregone: ['car', 'cos', 'des', 'sag', 'int', 'for'], warlock: ['car', 'cos', 'des', 'sag', 'int', 'for'],
 };
+// le classi a tema delle ambientazioni horror usano le priorità della classe su cui si basano
+const prioritaCar = (cl) => PRIORITA_CAR[cl] || PRIORITA_CAR[CLASSI[cl] && CLASSI[cl].base] || PRIORITA_CAR.guerriero;
 const caso = (a) => a[Math.floor(Math.random() * a.length)];
 const mescola = (a) => { const b = a.slice(); for (let i = b.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [b[i], b[j]] = [b[j], b[i]]; } return b; };
 // completa le scelte mancanti in modo sensato (non cambia quelle già fatte e valide)
 function completaScelte(s = {}) {
   const out = { ...s };
+  // tema: un'ambientazione horror (solo umani, solo le sue classi e i suoi passati); senza tema niente cose a tema
+  const delTema = (x) => (s.tema ? (x.tema || []).includes(s.tema) : !x.tema);
+  if (s.tema) out.stirpe = 'umano';
   if (!B.STIRPI[out.stirpe]) out.stirpe = caso(Object.keys(B.STIRPI));
-  if (!CLASSI[out.classe]) out.classe = caso(Object.keys(CLASSI));
-  if (!B.BACKGROUND[out.background]) out.background = caso(Object.keys(B.BACKGROUND));
+  if (!CLASSI[out.classe] || (s.tema && !delTema(CLASSI[out.classe]))) out.classe = caso(Object.keys(CLASSI).filter((k) => delTema(CLASSI[k])));
+  if (!B.BACKGROUND[out.background] || (s.tema && !delTema(B.BACKGROUND[out.background]))) out.background = caso(Object.keys(B.BACKGROUND).filter((k) => delTema(B.BACKGROUND[k])));
+  delete out.tema;
   if (!['m', 'f', 'n'].includes(out.genere)) out.genere = caso(['m', 'f']);
   const st = B.STIRPI[out.stirpe], cl = CLASSI[out.classe], bg = B.BACKGROUND[out.background];
   if (!out.nome || !String(out.nome).trim()) out.nome = caso(st.nomi[out.genere === 'f' ? 'f' : 'm']);
@@ -568,9 +574,9 @@ function completaScelte(s = {}) {
   if (!out.metodo || controllaCaratteristiche(out.base, out.metodo, out.tirati)) {
     const valori = out.metodo === 'dadi' && out.tirati && out.tirati.length === 6 ? out.tirati.slice().sort((x, y) => y - x) : STANDARD;
     out.metodo = out.metodo === 'dadi' && out.tirati && out.tirati.length === 6 ? 'dadi' : 'standard';
-    out.base = {}; PRIORITA_CAR[out.classe].forEach((k, i) => { out.base[k] = valori[i]; });
+    out.base = {}; prioritaCar(out.classe).forEach((k, i) => { out.base[k] = valori[i]; });
   }
-  if (st.bonusScelti && (!Array.isArray(out.bonusScelti) || out.bonusScelti.length !== st.bonusScelti)) out.bonusScelti = PRIORITA_CAR[out.classe].filter((k) => k !== 'car').slice(0, st.bonusScelti);
+  if (st.bonusScelti && (!Array.isArray(out.bonusScelti) || out.bonusScelti.length !== st.bonusScelti)) out.bonusScelti = prioritaCar(out.classe).filter((k) => k !== 'car').slice(0, st.bonusScelti);
   if ((out.stirpe === 'dragonide' || out.classe === 'stregone') && !B.DISCENDENZE[out.discendenza]) out.discendenza = caso(Object.keys(B.DISCENDENZE));
   const fisse = new Set([...bg.abilita, ...st.tratti.flatMap((t) => t.abilita || [])]);
   const lista = listaAbilitaClasse(cl).filter((a) => !fisse.has(a));

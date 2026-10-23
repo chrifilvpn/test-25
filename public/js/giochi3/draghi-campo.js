@@ -8,7 +8,7 @@
   const { esc, suono } = window.Nuovi;
   const M = () => window.DraghiMappe, A = () => window.DraghiArte;
   const C = 32, CELLA = 1.5;
-  const BLOCCA = new Set(['#', 'T', 'r', 't', 'w', 'c', 'S', 'f']), DIFFICILE = new Set(['~', 'b', ':']);
+  const BLOCCA = new Set(['#', 'T', 'r', 't', 'w', 'c', 'S', 'f', 'a', 'l', 'k', 'u', 'L', 'o']), DIFFICILE = new Set(['~', 'b', ':']);
   const passabile = (ch) => !BLOCCA.has(ch);
   const ICONE_COND = { prono: '🛌', avvelenato: '🤢', spaventato: '😱', stordito: '💫', paralizzato: '⚡', privo: '💤', affascinato: '💕', accecato: '🙈', trattenuto: '🕸️', afferrato: '✊', invisibile: '👻', incapacitato: '😵', illuminato: '✨', rallentato: '🐌', assordato: '🙉', pietrificato: '🗿', esausto: '😩' };
   const ICONE_EFF = { Ira: '😡', Benedizione: '🙏', Nascosto: '👤', Scudo: '🛡️', 'Scudo della fede': '🛡️', Velocità: '⚡', 'Ispirazione bardica': '🎵', Santuario: '🕊️', 'Armatura magica': '🔷', Eroismo: '🦁' };
@@ -193,12 +193,12 @@
       if (come === 'direzione' && c.x === me.x && c.y === me.y) return ctx.avviso('Tocca una casella nella direzione in cui lanciare');
       const punto = { x: c.x, y: c.y };
       if (sel.tipo === 'inc') return lancia(ctx, sel, { punto });
-      return azione(ctx, { az: sel.az, punto });
+      return azione(ctx, { az: sel.az, punto, ...(sel.extra || {}) });
     }
     if (chi && sel && (come === 'nemico' || come === 'alleato')) {
       if (!bersaglioOk(ctx, sel, chi)) return ctx.avviso(chi.lato === me.lato && come === 'nemico' ? 'È dalla tua parte!' : chi.lato !== me.lato && come === 'alleato' ? 'Scegli un alleato' : 'Troppo lontano o non lo vedi');
       if (sel.tipo === 'arma') return attacca(ctx, chi.id);
-      if (sel.tipo === 'az') return azione(ctx, { az: sel.az, bersaglio: chi.id });
+      if (sel.tipo === 'az') return azione(ctx, { az: sel.az, bersaglio: chi.id, ...(sel.extra || {}) });
       if (sel.tipo === 'inc') {
         const inf = ctx.partita.incantesimi[sel.id], max = Math.max(1, inf.bersagli || 1);
         sel.bersagli = sel.bersagli.includes(chi.id) ? sel.bersagli.filter((x) => x !== chi.id) : [...sel.bersagli, chi.id];
@@ -299,11 +299,11 @@
     const occhi = cb.creature.filter((c) => c.lato === 'gruppo' && vivo(c)).map((c) => ({ x: c.x, y: c.y }));
     const chiave = `${sc.g.length}:${occhi.map((o) => `${o.x},${o.y}`).join(';')}:${sc.luce}`;
     if (F.chiaveNebbia === chiave) return F.nebbia;
-    const vis = M().campoVisivo(sc, occhi, sc.luce === 'buio' ? 8 : 11);
+    const vis = M().campoVisivo(sc, occhi, sc.luce === 'buio' ? 8 : sc.luce === 'emergenza' ? 9 : 11);
     F.vis = vis;
     const cv = F.nebbia || document.createElement('canvas'); cv.width = sc.w; cv.height = sc.h;
     const g = cv.getContext('2d'), img = g.createImageData(sc.w, sc.h);
-    const a = sc.luce === 'buio' ? 200 : 125;
+    const a = sc.luce === 'buio' ? 200 : sc.luce === 'emergenza' ? 170 : 125;
     for (let i = 0; i < vis.length; i++) { img.data[i * 4] = 6; img.data[i * 4 + 1] = 4; img.data[i * 4 + 2] = 12; img.data[i * 4 + 3] = vis[i] ? 0 : a; }
     g.putImageData(img, 0, 0);
     F.nebbia = cv; F.chiaveNebbia = chiave;
@@ -326,6 +326,8 @@
     const me = io(ctx), mio = mioTurno(ctx);
     const fog = nebbia(F, cb);
     if (fog) { g.imageSmoothingEnabled = true; g.drawImage(fog, 0, 0, sc.w * C, sc.h * C); for (const c of cb.creature) if (c.lato === 'gruppo' && vivo(c)) { const p = posizione(s, c, t); const gr = g.createRadialGradient((p.x + 0.5) * C, (p.y + 0.5) * C, C, (p.x + 0.5) * C, (p.y + 0.5) * C, C * 5); gr.addColorStop(0, 'rgba(255,190,90,.16)'); gr.addColorStop(1, 'rgba(255,190,90,0)'); g.fillStyle = gr; g.fillRect((p.x - 5) * C, (p.y - 5) * C, C * 11, C * 11); } }
+    // la luce rossa d'emergenza delle ambientazioni horror
+    if (sc.luce === 'emergenza') { g.fillStyle = `rgba(190,20,10,${0.1 + 0.06 * Math.sin(t / 420)})`; g.fillRect(0, 0, sc.w * C, sc.h * C); }
     // caselle raggiungibili e percorso
     let rag = null;
     if (mio && me && me.turno && !s.sel && me.turno.movimento > 0) {
@@ -395,6 +397,7 @@
     g.save();
     const alBuio = vis && c.lato !== 'gruppo' && !vis[c.y * cb.scena.w + c.x];
     if (morto) g.globalAlpha = 0.5; else if (alBuio) g.globalAlpha = 0.45;
+    if (c.armadietto || c.fumo) g.globalAlpha = 0.35; // nell'armadietto o nel fumo: non si vede
     // ombra
     g.fillStyle = 'rgba(0,0,0,.45)'; g.beginPath(); g.ellipse(x, y + r * 0.78, r * 0.95, r * 0.38, 0, 0, 7); g.fill();
     // alone dell'attivo e dei bersagli possibili
@@ -542,6 +545,7 @@
       <div class="dr-cb-sez"><h4>⚔️ Attacchi</h4><div class="dr-cb-armi">${armi}</div>${extraArmi}</div>
       ${magie}
       <div class="dr-cb-sez"><h4>🎲 Azioni</h4><div class="dr-cb-azioni">${azioni}${classe}</div></div>
+      ${cb.horror && window.DraghiIncubo ? window.DraghiIncubo.azioniCombattimento(ctx, pg, me, t, s) : ''}
       <div class="dr-cb-sez"><h4>✍️ Azione libera <small>qualsiasi cosa ti venga in mente: decide il master</small></h4><div class="dr-cb-libera"><textarea data-tieni="libera" rows="2" maxlength="600" placeholder="Es.: rovescio il braciere addosso al goblin, poi gli urlo di arrendersi…">${esc(ctx.ui.t_libera || '')}</textarea><button type="button" class="dr-bt dr-bt-oro" data-az="dr-cb-libera" aria-label="Fallo" ${t.azione && !p.attesaLibera ? '' : 'disabled'}>➤</button></div>${p.attesaLibera ? '<small class="dr-nota">🪶 Il master sta decidendo cosa succede…</small>' : !t.azione ? '<small class="dr-nota">Serve l\'azione: l\'hai già usata in questo turno.</small>' : ''}</div>
       <div class="dr-cb-fine"><button type="button" class="dr-bt" data-az="dr-cb-auto" title="Il computer gioca questo turno per te">🤖 Gioca per me</button><button type="button" class="dr-bt dr-bt-oro" data-az="dr-cb-fine">Fine turno ⏭</button></div>
       ${registro}</div>`;
@@ -556,7 +560,7 @@
       if (come === 'nemico' || come === 'alleato') return `🎯 Tocca ${come === 'nemico' ? 'il nemico' : 'l\'alleato (anche te stesso)'}${max > 1 ? ` — fino a ${max} bersagli (${sel.bersagli.length} scelti)` : ''}.`;
       return `Pronto a lanciare <b>${esc(inf.nome)}</b>.`;
     }
-    if (sel.tipo === 'az') return come === 'direzione' ? '🧭 Tocca la direzione del soffio.' : come === 'alleato' ? '🎯 Tocca l\'alleato (o te stesso).' : '🎯 Tocca il nemico.';
+    if (sel.tipo === 'az') return come === 'punto' ? '🎯 Tocca il punto dove lanciarlo (al massimo 12 metri).' : come === 'direzione' ? '🧭 Tocca la direzione del soffio.' : come === 'alleato' ? '🎯 Tocca l\'alleato (o te stesso).' : '🎯 Tocca il nemico.';
     return '';
   }
   function dettaglioInc(ctx, pg, slotLib) {
@@ -590,11 +594,12 @@
       case 'dr-cb-annulla': s.sel = null; return ctx.ridisegna();
       case 'dr-cb-az': {
         const chi = el.dataset.chi;
-        if (!chi) return azione(ctx, { az: id, ...(el.dataset.bonus ? { bonus: true } : {}) });
-        if (s.sel && s.sel.tipo === 'az' && s.sel.az === id) { s.sel = null; return ctx.ridisegna(); }
+        const extra = el.dataset.ogg ? { oggetto: el.dataset.ogg } : null;
+        if (!chi) return azione(ctx, { az: id, ...(el.dataset.bonus ? { bonus: true } : {}), ...(extra || {}) });
+        if (s.sel && s.sel.tipo === 'az' && s.sel.az === id && (!extra || (s.sel.extra && s.sel.extra.oggetto === extra.oggetto))) { s.sel = null; return ctx.ridisegna(); }
         const pg = pgDi(ctx, ctx.partita.mioId);
         const area = id === 'soffio' && pg ? (['rosso', 'oro', 'verde', 'bianco', 'argento'].includes(pg.discendenza) ? { forma: 'cono', m: 4.5 } : { forma: 'linea', m: 9 }) : null;
-        s.sel = { tipo: 'az', az: id, chi, portata: Number(el.dataset.portata) || CELLA, area };
+        s.sel = { tipo: 'az', az: id, chi, portata: Number(el.dataset.portata) || CELLA, area, extra };
         return ctx.ridisegna();
       }
       case 'dr-cb-libera': {
