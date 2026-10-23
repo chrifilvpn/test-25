@@ -267,6 +267,7 @@
       <div class="dr-re-schermo"><div id="dr-re-posto" class="dr-re-posto"></div>
         <div class="dr-re-alto"><div class="dr-re-ob">${ob ? `<small>🎯 ${inc.fatti + 1}/${inc.totale} · ${esc(ob.area)}</small><b>${esc(ob.titolo)}</b><span>${esc(ob.testo)}</span>` : ''}</div><div id="dr-re-msg" class="dr-re-msg"></div></div>
         ${tocco() ? `<div class="dr-re-joy" data-re="joy"><i></i></div><div class="dr-re-tasti"><button type="button" data-re="att" class="grande">⚔️</button><button type="button" data-re="usa">✋</button><button type="button" data-re="acc" class="${RT.accToggle ? 'sel' : ''}">🫣</button><button type="button" data-re="ril" class="${RT.rilToggle ? 'sel' : ''}">📡</button><button type="button" data-re="torcia">🔦</button><button type="button" data-re="zaino">🎒</button></div>` : ''}
+        <div class="dr-re-scrivi"><input type="text" data-tieni="reale" maxlength="300" enterkeyhint="send" autocomplete="off" value="${esc(ctx.ui.t_reale || '')}" placeholder="${tocco() ? 'Scrivi un\'azione: parlo con lui, salto…' : 'T o Invio: scrivi un\'azione (parlo con lui, ascolto, salto…). Il gioco non si ferma'}"><button type="button" class="dr-bt" data-az="dr-re-manda" aria-label="Manda">➤</button></div>
         ${caduti}</div>
       <aside class="dr-re-lato ${RT.zaino ? 'aperto' : ''}">${tocco() ? '<button type="button" class="dr-x" data-az="dr-re-zaino" aria-label="Chiudi">✕</button>' : ''}
         <h4 class="dr-sez-tit">👥 La squadra</h4><ul class="dr-re-gruppo">${gruppo}</ul>
@@ -287,6 +288,13 @@
     if (az === 'dr-re-ricarica') { RT.seq.ricarica++; invia(true); return undefined; }
     if (az === 'dr-re-hack') { RT.seq.hack++; invia(true); return undefined; }
     if (az === 'dr-re-zaino') { RT.zaino = !RT.zaino; return ctx.ridisegna(); }
+    if (az === 'dr-re-manda') {
+      const el2 = document.querySelector('#panno [data-tieni="reale"]'), testo = (el2 ? el2.value : ctx.ui.t_reale || '').trim();
+      if (!testo) { if (el2) el2.focus(); return undefined; }
+      ctx.ui.t_reale = ''; if (el2) { el2.value = ''; el2.blur(); }
+      ctx.invia({ tipo: 'scrivi', testo });
+      return undefined;
+    }
     return undefined;
   }
   // ---------- i comandi ----------
@@ -316,6 +324,15 @@
     RT.inp.corre = t.has('shift'); RT.inp.ril = t.has('q');
   }
   const scrive = (e) => e.target && e.target.matches && e.target.matches('input, textarea, select, [contenteditable]');
+  document.addEventListener('keydown', (e) => {
+    if (!attivo()) return;
+    if (e.target && e.target.dataset && e.target.dataset.tieni === 'reale') {
+      if (e.key === 'Enter') { e.preventDefault(); const b = document.querySelector('#panno [data-az="dr-re-manda"]'); if (b) b.click(); }
+      if (e.key === 'Escape') { e.preventDefault(); e.target.blur(); }
+      return;
+    }
+    if (!scrive(e) && !e.ctrlKey && !e.metaKey && (e.key === 't' || e.key === 'T' || e.key === 'Enter')) { const el = document.querySelector('#panno [data-tieni="reale"]'); if (el) { e.preventDefault(); RT.tasti.clear(); aggiornaTasti(); invia(true); el.focus(); } }
+  });
   document.addEventListener('keydown', (e) => {
     if (!attivo() || scrive(e) || e.ctrlKey && e.key.toLowerCase() !== 'control' || e.metaKey) return;
     const k = e.key.toLowerCase();

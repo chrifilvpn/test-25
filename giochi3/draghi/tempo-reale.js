@@ -13,6 +13,8 @@
 //   sulla vostra zona se è tutto troppo calmo) e la MENTE della creatura impara le vostre abitudini
 // - gli altri nemici dei settori (androidi lenti e resistenti, sopravvissuti armati, pazienti…): girano, inseguono,
 //   attaccano; il tecnico li hackera da vicino, la mina EMP li ferma
+// - le AZIONI SCRITTE («parlo con l'androide», «salto», «ascolto»…): le racconta il master (o quello di riserva) mentre
+//   il gioco va avanti; urla e salti fanno rumore subito
 // - i compagni del computer seguono il gruppo, si nascondono quando arriva la creatura, attaccano i nemici vicini
 // Il gioco manda a ognuno solo quello che il suo personaggio vede (vistaTick); la mappa e le cose che cambiano di rado
 // vanno nella vista normale (vistaFissa). Obiettivi, chiavi, esperienza e finale sono quelli della campagna (incubo.js).
@@ -23,6 +25,7 @@ const { CLASSI } = require('./classi');
 const { MOSTRI } = require('./mostri');
 const S = require('./stazione');
 const D = require('./direttore');
+const MASTER = require('./master');
 const T = require('../../giochi/trucco');
 
 const DT = 0.05;
@@ -31,6 +34,7 @@ const RAGGIO = 0.34;
 const CADUTO_MS = 20000; // a terra: 20 secondi per farsi rialzare
 const LUCE_VISTA = { accesa: 13, emergenza: 9, buio: 3.2 };
 const caso = (a) => a[Math.floor(Math.random() * a.length)];
+const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const angolo = (a, b) => Math.atan2(b.y - a.y, b.x - a.x);
 const diffAng = (a, b) => { let d = a - b; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return Math.abs(d); };
@@ -226,7 +230,7 @@ class TempoReale {
     this.avvisa(`💥 ${pg.nome} subisce ${sub} danni da ${da}.`, 'tiro', p.posto);
     this.effetto({ tipo: 'sangue', x: p.x, y: p.y });
     this.g.paura(p.posto, 1);
-    if (pg.pf <= 0 && prima > 0 && !pg.morto) { p.caduto = this.ora + CADUTO_MS; p.armadietto = null; this.avvisa(`🩸 ${pg.nome} è a terra! Un compagno vicino può rialzarlo con E.`, 'master'); }
+    if (pg.pf <= 0 && prima > 0 && !pg.morto) { p.caduto = this.ora + CADUTO_MS; p.armadietto = null; this.avvisa(`🩸 ${pg.nome} è a terra! Un compagno vicino può ${pg.genere === 'f' ? 'rialzarla' : 'rialzarlo'} con E.`, 'master'); }
     if (pg.morto) this.muore(p);
   }
   muore(p, testo = null) {
@@ -704,7 +708,84 @@ class TempoReale {
     }
   }
   // dal pannello normale (azione del gioco): per ora niente, si gioca con input()
-  azione(p, a) { if (a && a.tipo === 'input') { this.input(p, a.dati || {}); return { ok: true }; } return { errore: 'In tempo reale si gioca con la tastiera o il joystick' }; }
+  azione(p, a) {
+    if (a && a.tipo === 'input') { this.input(p, a.dati || {}); return { ok: true }; }
+    if (a && a.tipo === 'scrivi') return this.scrivi(this.gioc[p], a.testo);
+    return { errore: 'In tempo reale si gioca con la tastiera o il joystick' };
+  }
+
+  // ---------- l'azione scritta: il gioco non si ferma mentre il master risponde ----------
+  scrivi(p, testo) {
+    const g = this.g, pg = p && g.pg[p.posto];
+    testo = String(testo || '').replace(/\s+/g, ' ').trim().slice(0, 300);
+    if (!pg) return { errore: 'Non sei al tavolo' };
+    if (!testo) return { errore: 'Scrivi cosa fai' };
+    if (pg.morto) return { errore: 'Sei morto: scrivete !revive in chat' };
+    if (p.scriveFino > this.t) return { errore: 'Aspetta: il master sta ancora rispondendo' };
+    p.scriveFino = this.t + 10;
+    this.avvisa(`✍️ ${pg.nome}: ${testo}`, 'azione');
+    g.scrivi('azione', testo, { posto: p.posto, chi: pg.nome });
+    const n = norm(testo);
+    // subito, senza aspettare il master: urla, salti e colpi fanno rumore, respirare piano calma
+    if (/\b(urlo|urla|grido|strillo|chiamo|canto|fischio|bestemmio)/.test(n)) this.rumore(p.x, p.y, 15, 1.2, p.posto);
+    else if (/\b(salto|saltello|sbatto|calcio|prendo a calci|batto|rompo|spacco|tiro un pugno)/.test(n)) this.rumore(p.x, p.y, 7, 0.8, p.posto);
+    else if (/\b(parlo|dico|chiedo|rispondo|sussurro|chiamo)/.test(n)) this.rumore(p.x, p.y, /sussurr/.test(n) ? 2 : 4.5, 0.6, p.posto);
+    if (/\b(respiro|mi calmo|calmarmi|prego|chiudo gli occhi)/.test(n)) g.paura(p.posto, -1);
+    const vicini = this.chiVede(p);
+    if (g.chiave) {
+      const ar = this.areaIn(p), ob = g.obiettivoOra, c = this.creatura;
+      const msg = `TEMPO REALE (il gioco non si ferma). Settore: ${ar.nome} (${ar.desc}, luce: ${ar.luce}). Obiettivo attuale: ${ob ? `${ob.titolo}: ${ob.testo}` : 'nessuno'}.
+Vicino a ${pg.nome}: ${vicini.length ? vicini.map((v) => `${v.nome}${v.androide ? ' (androide)' : ''} a ${Math.round(v.d * 1.5)} m`).join(', ') : 'nessuno in vista'}. ${c && c.fuori && dist(c, p) < 20 ? `${c.ref.nome} è a ${Math.round(dist(c, p) * 1.5)} m (${c.stato}).` : 'La creatura non è in vista.'}
+${pg.nome} (${pg.classe}, ${pg.pf}/${pg.pfMax} PF, paura ${g.incubo.stato[p.posto].paura}/10) scrive: «${testo}».
+Racconta l'esito in 1-3 frasi brevi, in italiano, al presente (i PNG parlano tra «»). Non muovere personaggi né creature, non dare oggetti: lo fa il gioco. Rispondi SOLO in JSON: {"narrazione": "…", "rumore": 0-5, "paura": -2..2}`;
+      MASTER.chiamaGemini({ chiave: g.chiave, sistema: g.sistema(), messaggi: [{ ruolo: 'giocatori', testo: msg }], fetch: g.fetch, maxToken: 600 })
+        .then((x) => {
+          let o = null;
+          if (!x.errore) { const t = String(x.testo || ''); try { o = JSON.parse(t.slice(t.indexOf('{'), t.lastIndexOf('}') + 1)); } catch (e) { o = { narrazione: MASTER.leggiRisposta(t).narrazione }; } }
+          this.risposta(p, o && o.narrazione ? o : this.riserva(p, n, vicini));
+        })
+        .catch(() => this.risposta(p, this.riserva(p, n, vicini)));
+    } else this.risposta(p, this.riserva(p, n, vicini));
+    return { ok: true };
+  }
+  // chi vede il personaggio da vicino (per parlarci)
+  chiVede(p) {
+    const out = [];
+    for (const n of this.nemici) if (!n.via && dist(n, p) < 8 && this.vede(p, n)) out.push({ nome: n.ref.nome, androide: n.androide, d: dist(n, p), n });
+    const c = this.creatura;
+    if (c && c.fuori && dist(c, p) < 10 && this.vede(p, c)) out.push({ nome: c.ref.nome, creatura: true, d: dist(c, p), n: c });
+    return out.sort((a, b) => a.d - b.d);
+  }
+  risposta(p, o) {
+    const g = this.g;
+    if (g.finita || g.fase !== 'reale') return;
+    p.scriveFino = 0;
+    const testo = String(o.narrazione || '').trim().slice(0, 500);
+    if (testo) { this.avvisa(`📜 ${testo}`, 'master'); g.scrivi('master', testo); }
+    const r = Math.max(0, Math.min(5, Math.round(Number(o.rumore) || 0)));
+    if (r) this.rumore(p.x, p.y, r * 3, 1, p.posto);
+    const q = Math.max(-2, Math.min(2, Math.round(Number(o.paura) || 0)));
+    if (q) g.paura(p.posto, q);
+  }
+  // il master di riserva: risponde da solo alle cose più comuni
+  riserva(p, n, vicini) {
+    const g = this.g, pg = g.pg[p.posto], ar = this.areaIn(p), c = this.creatura, v = vicini[0];
+    const parla = /\b(parlo|dico|chiedo|rispondo|sussurro|saluto|convinco|minaccio|imploro|chiamo)/.test(n);
+    if (parla && v && v.creatura) return { narrazione: `${v.nome} non capisce le parole. Capisce la voce: gira la testa verso di te.`, paura: 1 };
+    if (parla && v && v.androide) return { narrazione: caso(this.cp.id === 'pathos' ? [`${v.nome} gracchia con una voce umana: «Non riesco a vedere… sei tu, mamma?»`, `${v.nome}: «Il WAU ci protegge. Il WAU protegge tutti.»`, `${v.nome} si ferma un istante, gli occhi che lampeggiano: «Non dovreste essere qui.»`] : [`${v.nome}, gentile: «Questa zona è riservata al personale autorizzato.»`, `${v.nome}: «Vi prego di non correre nei corridoi.»`, `${v.nome}, senza espressione: «È irregolare. Siete un pericolo per voi stessi.»`, `${v.nome}: «Sono qui per aiutarvi.» Le mani si alzano comunque.`]) };
+    if (parla && v) return { narrazione: caso([`${v.nome} non vuole sentire ragioni: ha paura quanto voi, e la paura lo rende cattivo.`, `${v.nome} vi guarda un attimo, poi ringhia qualcosa di incomprensibile.`, `«Andatevene!» grida ${v.nome}. Troppo forte.`]) };
+    if (parla) return { narrazione: caso([`La voce di ${pg.nome} rimbalza nel corridoio vuoto. Nessuno risponde… per ora.`, 'Solo l\'eco, e il ronzio delle ventole. Qualcuno, da qualche parte, ha sentito.', 'Silenzio. Poi un rumore metallico, lontano, nei condotti.']) };
+    if (/\b(ascolto|ascolta|sento|tendo l'orecchio|origlio)/.test(n)) {
+      if (!c || (!c.fuori && !c.condotto)) return { narrazione: 'Ronzio delle macchine, gocce, il tuo respiro. Niente si muove, per ora.' };
+      const d = dist(c, p), a = angolo(p, c), dir = ['a est', 'a sud-est', 'a sud', 'a sud-ovest', 'a ovest', 'a nord-ovest', 'a nord', 'a nord-est'][(Math.round(a / (Math.PI / 4)) + 8) % 8];
+      return { narrazione: d < 25 ? `${c.fuori ? 'Passi pesanti' : 'Qualcosa striscia nei condotti'}, ${dir}${d < 10 ? ', vicinissimo' : ''}.` : 'Molto lontano, qualcosa si muove nei condotti. Per ora non è qui.', paura: d < 10 ? 1 : 0 };
+    }
+    if (/\b(urlo|urla|grido|strillo|canto|fischio|bestemmio)/.test(n)) return { narrazione: 'Il tuo urlo riempie il settore e rimbomba nei condotti. Qualcosa, da qualche parte, si è girato verso di te.', paura: 1 };
+    if (/\b(salto|saltello|sbatto|calcio|batto|rompo|spacco)/.test(n)) return { narrazione: 'Un colpo secco sul metallo: il rumore corre lungo le pareti.' };
+    if (/\b(respiro|mi calmo|calmarmi|prego|chiudo gli occhi)/.test(n)) return { narrazione: `${pg.nome} respira piano, conta fino a dieci. Il cuore rallenta un po'.` };
+    if (/\b(guardo|osservo|esamino|leggo|cerco)/.test(n)) return { narrazione: `${caso(ar.eventi || [ar.ingresso])} (Per frugare nelle casse e usare le cose: E.)` };
+    return { narrazione: caso([`${pg.nome} ci prova. ${caso(ar.eventi || ['Il settore resta in silenzio.'])}`, `Fatto. Intorno, ${ar.nome} resta immobile e buio… quasi.`, `${caso(ar.eventi || ['Le luci tremano.'])}`]) };
+  }
   revive(morti) {
     const vivo = this.gioc.find((q) => !this.g.pg[q.posto].morto && !morti.includes(q.posto));
     const base = vivo || this.salvataggio || { x: this.mappa.partenza.x + 0.5, y: this.mappa.partenza.y + 0.5 };

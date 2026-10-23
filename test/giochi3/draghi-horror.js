@@ -121,7 +121,13 @@ function nuova(amb, opz = {}) {
     assert.ok(['libera', 'tregua', 'indizio'].includes(R.ordine));
     assert.ok(JSON.stringify(g.vistaTick(0)).length < 6000, 'il tick è leggero');
     // !revive anche con uno solo morto (gli altri vivi)
-    g.revive(); g.pg[1].morto = true; g.pg[1].pf = 0;
+    g.revive();
+    // l'azione scritta: risponde il master (qui quello di riserva) e il gioco intanto va avanti
+    for (const testo of ['parlo con lui', 'ascolto', 'urlo']) { R.gioc[0].scriveFino = 0; assert.ok(!g.azione(0, { tipo: 'scrivi', testo }).errore, testo); }
+    assert.ok(R.messaggi.filter((m) => m.tipo === 'master' && m.testo.startsWith('📜')).length >= 3, 'il master risponde alle azioni scritte');
+    assert.ok(R.rumori.some((q) => q.r >= 15), 'urlare fa rumore');
+    g.tick(ora + 50);
+    g.pg[1].morto = true; g.pg[1].pf = 0;
     assert.strictEqual(g.revive(), 1); assert.ok(!g.pg[1].morto && g.pg[1].pf === g.pg[1].pfMax);
     reali.push(`${amb} ${g.incubo.fatti.length} obiettivi, tick max ${maxMs} ms`);
   }
