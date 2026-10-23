@@ -275,6 +275,8 @@
   // il valore di un'opzione: le caselle (opzioni sì/no con "casella") danno "true" o "false"
   const valoreOpz = (el) => (el.type === 'checkbox' ? String(el.checked) : el.value);
   function selectOpzione(o, valore, attr) {
+    // opzioni che contano solo con certe scelte (es. o.se = { modalita: ['survival'] }): si vedono solo allora
+    if (o.se) return `<div class="opz-se" data-se='${esc(JSON.stringify(o.se))}'>${selectOpzione({ ...o, se: null }, valore, attr)}</div>`;
     if (o.casella) return `<label class="imp-riga imp-casella"><span>${esc(o.nome)}</span><input type="checkbox" ${attr} data-opz="${o.id}" ${String(valore) === 'true' ? 'checked' : ''}></label>`;
     return `<label class="imp-riga"><span>${esc(o.nome)}</span>
       <select ${attr} data-opz="${o.id}">${o.valori.map((v, i) => `<option value="${v}" ${String(v) === String(valore) ? 'selected' : ''}>${esc(o.etichette ? o.etichette[i] : v)}</option>`).join('')}</select></label>${anteprime(o, valore)}`;
@@ -288,9 +290,19 @@
       return `<figure data-v="${esc(v)}" ${String(v) === String(valore) ? '' : 'hidden'}>${disegno}<figcaption>${nome}</figcaption></figure>`;
     }).join('')}</div>`;
   }
+  function opzioniVisibili(radice) {
+    if (!radice) return;
+    const valori = {};
+    for (const el of radice.querySelectorAll('[data-opz]')) valori[el.dataset.opz] = valoreOpz(el);
+    for (const box of radice.querySelectorAll('[data-se]')) {
+      let se = {}; try { se = JSON.parse(box.dataset.se); } catch (_) { /* niente */ }
+      box.hidden = !Object.entries(se).every(([k, v]) => v.map(String).includes(String(valori[k])));
+    }
+  }
   document.addEventListener('change', (e) => {
     const sel = e.target.closest && e.target.closest('select[data-opz]');
     if (!sel) return;
+    opzioniVisibili(sel.closest('#imp-opzioni, #sala-opzioni'));
     const box = sel.closest('.imp-riga') && sel.closest('.imp-riga').nextElementSibling;
     if (box && box.dataset.anteprime === sel.dataset.opz) for (const f of box.querySelectorAll('figure')) f.hidden = f.dataset.v !== sel.value;
   });
@@ -304,6 +316,7 @@
     if (!m.giocatori.includes(scelto.posti)) scelto.posti = m.giocatori[0];
     $('#scelta-posti').innerHTML = m.giocatori.map((n) => `<button type="button" data-posti="${n}" aria-pressed="${n === scelto.posti}">${n}${m.id !== 'scopone' && n === 4 && ['briscola', 'scopa'].includes(m.id) ? ' <small>in coppia</small>' : ''}</button>`).join('');
     $('#imp-opzioni').innerHTML = m.opzioni.map((o) => selectOpzione(o, scelto.opzioni[o.id] ?? o.predefinito, 'class="imp-select"')).join('');
+    opzioniVisibili($('#imp-opzioni'));
     for (const b of $$('#scelta-livello button')) b.setAttribute('aria-pressed', String(b.dataset.livello === scelto.livello));
     // giochi solo tra persone: niente computer; con un solo posto si gioca da soli
     const solo = scelto.posti === 1;
@@ -646,6 +659,7 @@
       $('#sala-select').innerHTML = giochi.filter((g) => g.giocatori.includes(stato.numPosti))
         .map((g) => `<option value="${g.id}" ${g.id === stato.gioco ? 'selected' : ''}>${esc(g.nome)}</option>`).join('');
       $('#sala-opzioni').innerHTML = m.opzioni.map((o) => selectOpzione(o, stato.opzioni[o.id], '')).join('');
+      opzioniVisibili($('#sala-opzioni'));
     }
 
     $('#lista-posti').innerHTML = stato.giocatori.map((g, i) => {

@@ -124,3 +124,125 @@ for (const [n, op] of [[1, {}], [4, {}], [3, { mostro: 'giocatore', chi: 1 }], [
   }
 }
 console.log('✓ Alien: Isolation 3D');
+
+// ================= MODALITÀ SURVIVAL =================
+{
+  const { STAZIONI, MINIGIOCHI, TASK_MIN, FERMO, ATTACCATO, BOTOLA } = G._test;
+  // le opzioni della survival si vedono solo scegliendola
+  const opz = Object.fromEntries(G.meta.opzioni.map((o) => [o.id, o]));
+  assert.deepStrictEqual(opz.alieni.se, { modalita: ['survival'] });
+  assert.deepStrictEqual(opz.mostro.se, { modalita: ['classica'] });
+  assert.ok(G.meta.regole.some((r) => /SURVIVAL/.test(r) && /task/i.test(r)));
+  assert.strictEqual(MINIGIOCHI.length, 4);
+  assert.strictEqual(STAZIONI.length, M.OGGETTI.m.length + M.OGGETTI.G.length);
+  // le botole: a coppie, su pavimento libero, mai dentro l'attracco (si scapperebbe senza finire le task)
+  assert.strictEqual(M.OGGETTI.P.length % 2, 0);
+  for (const t of M.OGGETTI.P) { assert.strictEqual(M.cella(...t), '.', `botola ${t} sul pavimento`); assert.notStrictEqual((M.stanzaDi(M.centro(t)) || {}).id, 'attracco'); }
+  for (const t of M.OGGETTI.c) assert.ok(M.verso[`${t[0]},${t[1]}`], 'ogni cassa ha un lato libero');
+
+  // i posti degli xenomorfi
+  {
+    const g = G.crea({ n: 6, opzioni: { modalita: 'survival', alieni: 2, chiS: 3 }, bot: Array(6).fill(null) });
+    assert.strictEqual(g.mostri.length, 2); assert.strictEqual(g.mostri[0], 2);
+    assert.strictEqual(g.umani.length, 4); assert.strictEqual(g.alieni.length, 2);
+    assert.ok(g.alieni.every((A) => g.mostri.includes(A.giocatore)));
+    assert.deepStrictEqual(g.vistaExtra(0).mostri, g.mostri);
+    const g2 = G.crea({ n: 2, opzioni: { modalita: 'survival', alieni: 3 }, bot: [null, null] });
+    assert.strictEqual(g2.mostri.length, 1, 'resta almeno un sopravvissuto');
+    const g3 = G.crea({ n: 1, opzioni: { modalita: 'survival', alieni: 2 }, bot: [null] });
+    assert.ok(g3.mostri.length === 0 && g3.alieni.length === 2, 'da soli gli xenomorfi sono del computer');
+  }
+
+  // le task: E alla stazione, il minigioco finito nel browser, il tempo minimo, il rumore, la fuga
+  {
+    const g = G.crea({ n: 2, opzioni: { modalita: 'survival', chiS: 2, task: 20 }, bot: [null, null] }); parti(g);
+    for (const A of g.alieni) Object.assign(A, { inCondotto: true, stato: 'condotto', x: 30, y: 30 });
+    const u = g.umani[0];
+    g.stazioni.forEach((S) => { S.pausa = 0; });
+    const vaiA = (si) => { const t = STAZIONI[si].t, d = davantiA(t), c = M.centro(t); Object.assign(u, { x: d.x, y: d.y, yaw: Math.atan2(c.y - d.y, c.x - d.x) }); g.cmd[0].yaw = u.yaw; };
+    vaiA(0); g.interagisci(u);
+    assert.ok(u.task && u.task.s === 0 && g.stazioni[0].chi === 0, 'la task comincia');
+    assert.ok(g.statoTick(0).me[5], 'il browser sa che minigioco aprire');
+    const S = g.stazioni[0];
+    g.input(0, { tf: [0, S.seme + 1] }); passa(g, 4);
+    assert.strictEqual(g.fatte, 0, 'seme sbagliato: niente');
+    g.interagisci(u); assert.ok(!u.task, 'E lascia la task'); g.interagisci(u);
+    g.input(0, { tf: [0, S.seme] }); passa(g, 0.5);
+    assert.strictEqual(g.fatte, 0, 'troppo in fretta: si aspetta il tempo minimo');
+    passa(g, TASK_MIN[S.diff]);
+    assert.strictEqual(g.fatte, 1, 'task completata');
+    assert.ok(S.pausa > 20 && S.chi === null && !u.task, 'la stazione si riposa');
+    g.interagisci(u); assert.ok(!u.task, 'in riposo non si può rifare');
+    // fino all'obiettivo: parte la fuga
+    while (g.fatte < g.obiettivo) {
+      const si = g.stazioni.findIndex((x) => x.pausa <= 0 && x.chi === null);
+      if (si < 0) { g.stazioni.forEach((x) => { x.pausa = 0; }); continue; }
+      vaiA(si); g.interagisci(u); g.input(0, { tf: [si, g.stazioni[si].seme] }); passa(g, 4);
+    }
+    assert.ok(g.sbloccato, 'task finite: si fugge');
+    assert.ok(g.alieni[0].zona || g.alieni[0].pings, 'gli xenomorfi corrono all\'attracco');
+  }
+
+  // chi sta fermo è invisibile allo xenomorfo giocatore (se non gli è attaccato); il colpo davanti lo prende lo stesso
+  {
+    const g = G.crea({ n: 2, opzioni: { modalita: 'survival', chiS: 1 }, bot: [null, null] }); parti(g);
+    const A = g.alieni[0], u = g.umani[0];
+    assert.strictEqual(A.giocatore, 0);
+    // tutti e due nel corridoio principale, a 6 m
+    Object.assign(A, { inCondotto: false, stato: 'giro', x: 20.5 * M.T, y: 15.5 * M.T, yaw: 0, anim: 'fermo' });
+    Object.assign(u, { x: 20.5 * M.T + 60, y: 15.5 * M.T, fermo: 0 });
+    assert.ok(g.statoTick(0).u.some((x) => x[0] === 1), 'chi si muove si vede');
+    passa(g, FERMO + 0.3);
+    assert.ok(!g.statoTick(0).u.some((x) => x[0] === 1), 'chi sta fermo sparisce');
+    assert.ok(!AI.vedeUmano(g, A, u), 'anche per l\'IA');
+    u.x = A.x + ATTACCATO - 5;
+    assert.ok(g.statoTick(0).u.some((x) => x[0] === 1), 'attaccato si vede');
+    u.x = A.x + 18;
+    // attacco di lato: niente; davanti: preso con un colpo solo
+    g.cmd[0].yaw = Math.PI / 2; g.cmd[0].c[0]++; passa(g, 0.05);
+    assert.ok(u.vivo, 'il colpo è solo davanti');
+    passa(g, 0.8);
+    g.cmd[0].yaw = 0; g.cmd[0].c[0]++; passa(g, 0.05);
+    assert.ok(!u.vivo, 'un colpo, morto');
+  }
+
+  // il lanciafiamme stordisce lo xenomorfo giocatore (fermo per qualche secondo)
+  {
+    const g = G.crea({ n: 2, opzioni: { modalita: 'survival', chiS: 1 }, bot: [null, null] }); parti(g);
+    const A = g.alieni[0], u = g.umani[0];
+    Object.assign(A, { inCondotto: false, stato: 'giro', x: 20.5 * M.T + 30, y: 15.5 * M.T, yaw: Math.PI });
+    Object.assign(u, { x: 20.5 * M.T, y: 15.5 * M.T, yaw: 0 });
+    g.fiamma(u);
+    assert.ok(A.stordito > 2, 'stordito');
+    const x0 = A.x; g.inp[0].y = -1; passa(g, 1);
+    assert.ok(Math.abs(A.x - x0) < 0.5, 'stordito non si muove');
+    g.inp[0].y = 0;
+  }
+
+  // casse e passaggi di servizio
+  {
+    const g = G.crea({ n: 1, opzioni: { modalita: 'survival' }, bot: [null] }); parti(g); lontano(g);
+    const u = g.umani[0];
+    const c = M.OGGETTI.c[0], d = davantiA(c), cc = M.centro(c);
+    Object.assign(u, { x: d.x, y: d.y, yaw: Math.atan2(cc.y - d.y, cc.x - d.x) });
+    g.interagisci(u);
+    assert.ok(u.nascosto && u.nascosto.x === c[0], 'dentro la cassa');
+    g.interagisci(u); assert.ok(!u.nascosto);
+    const b = M.centro(M.OGGETTI.P[0]); Object.assign(u, { x: b.x, y: b.y });
+    g.interagisci(u);
+    assert.ok(u.botola, 'nel passaggio');
+    assert.ok(!AI.vedeUmano(g, g.alieni[0], u), 'nel passaggio nessuno ti vede');
+    passa(g, BOTOLA + 0.2);
+    const e = M.centro(M.OGGETTI.P[1]);
+    assert.ok(!u.botola && Math.hypot(u.x - e.x, u.y - e.y) < 1, 'esce dalla botola gemella');
+  }
+
+  // partite tra computer: finiscono tutte (anche con tre xenomorfi)
+  for (const [n, op] of [[1, {}], [4, {}], [6, { alieni: 2 }], [8, { alieni: 3, task: 40, tempoS: 5 }], [3, { chiS: 1 }]]) {
+    const g = G.crea({ n, opzioni: { modalita: 'survival', ...op }, bot: Array.from({ length: n }, () => 'medio') });
+    let ora = Date.now(), t = 0;
+    while (!g.finita && t < 21 * 60 * 20) { ora += 50; t++; g.tick(ora); for (let p = 0; p < n; p++) g.statoTick(p); }
+    assert.ok(g.finita && ['umani', 'alieno'].includes(g.vittoria), `survival ${n} ${JSON.stringify(op)} finita`);
+  }
+  console.log('✓ Alien: Isolation 3D, survival: posti degli xenomorfi, task e fuga, invisibili da fermi, colpo davanti, fuoco che stordisce, casse e botole');
+}

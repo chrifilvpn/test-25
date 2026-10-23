@@ -25,7 +25,8 @@
   // porte bloccate finché non tornano tutti e tre i generatori (l'uscita verso il Torrens)
   const BLOCCATE = ['40,15', '40,16'];
   // gli oggetti: L armadietto, T scrivania o letto (ci si passa sotto solo accucciati), m terminale, c cassa,
-  // G generatore, V grata del condotto, b batteria, f carburante, r razzo di segnalazione, S partenza, E uscita
+  // G generatore, V grata del condotto, b batteria, f carburante, r razzo di segnalazione, S partenza, E uscita,
+  // P botole dei passaggi di servizio per le persone (a coppie: si entra in una e si esce dall'altra)
   const OGGETTI = {
     L: [[2, 13], [2, 18], [11, 13], [4, 12], [9, 19], [2, 2], [2, 8], [12, 2], [9, 8], [17, 2], [30, 2], [17, 9], [30, 9], [34, 9], [44, 2], [44, 9],
       [2, 31], [13, 31], [13, 23], [17, 21], [29, 30], [17, 30], [29, 21], [33, 30], [38, 30], [41, 11], [46, 20]],
@@ -40,7 +41,12 @@
     r: [[3, 17], [28, 22], [35, 8]],
     S: [[4, 14], [4, 17], [5, 13], [5, 18], [8, 14], [8, 17], [9, 13], [9, 18]],
     E: [[45, 14], [46, 14], [45, 15], [46, 15], [45, 16], [46, 16], [45, 17], [46, 17]],
+    P: [[11, 7], [18, 5], [10, 18], [3, 28], [43, 7], [37, 29], [28, 26], [29, 6]],
   };
+  // dove ci si nasconde: armadietti e casse grandi
+  const NASCONDIGLI = OGGETTI.L.concat(OGGETTI.c);
+  // la botola gemella di una botola (0↔1, 2↔3…)
+  const gemella = (i) => (i % 2 ? i - 1 : i + 1);
   const SOLIDI = 'LmcG'; // T (scrivania) è solida solo per chi è in piedi
 
   function costruisci() {
@@ -61,7 +67,7 @@
     for (const [tipo, lista] of Object.entries(OGGETTI)) for (const [x, y] of lista) if ('LTmcGV'.includes(tipo)) g[y][x] = tipo;
     // da che parte guarda un armadietto o un terminale: verso il quadretto libero
     const verso = {};
-    for (const tipo of ['L', 'm', 'G']) for (const [x, y] of OGGETTI[tipo]) {
+    for (const tipo of ['L', 'm', 'G', 'c']) for (const [x, y] of OGGETTI[tipo]) {
       const libero = [[0, 1], [0, -1], [1, 0], [-1, 0]].find(([dx, dy]) => g[y + dy] && g[y + dy][x + dx] === '.');
       verso[`${x},${y}`] = libero || [0, 1];
     }
@@ -174,7 +180,7 @@
     return gen >= 0 && accesi && accesi[gen] ? Math.max(s.luce, 0.7) : s.luce;
   }
 
-  const M = { T, COLS, RIGHE, SOFFITTO, STANZE, OGGETTI, PORTE, griglia: C.g, zona: C.zona, verso: C.verso, cella, solida, rettangolo, muovi, vede, strada, centro, quadretto, stanzaDi, luce, portaIn };
+  const M = { T, COLS, RIGHE, SOFFITTO, STANZE, OGGETTI, NASCONDIGLI, gemella, PORTE, griglia: C.g, zona: C.zona, verso: C.verso, cella, solida, rettangolo, muovi, vede, strada, centro, quadretto, stanzaDi, luce, portaIn };
   if (typeof module !== 'undefined' && module.exports) module.exports = M;
   else radice.IsolationMappa = M;
 })(typeof window !== 'undefined' ? window : this);

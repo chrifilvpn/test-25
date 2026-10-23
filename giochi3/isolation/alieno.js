@@ -23,8 +23,8 @@ const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const angolo = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
 const GRATE = M.OGGETTI.V.map(M.centro);
 
-function nuovo(difficolta) {
-  const v = GRATE[5]; // parte dai condotti sopra la mensa
+function nuovo(difficolta, grata = 5) {
+  const v = GRATE[grata]; // parte dai condotti (il primo sopra la mensa)
   return {
     x: v.x, y: v.y, yaw: 0, stato: 'condotto', anim: 'condotto', inCondotto: true, verso: { ...v }, t: 0, attesa: caso(18, 26), // all'inizio un po' di respiro per orientarsi
     percorso: null, meta: null, bersaglio: null, ultimoVisto: null, timer: 0, vel: 0, preda: null, armadietto: null,
@@ -42,8 +42,9 @@ function impara(A, tipo, k = 1) {
 // ---------- vedere e sentire ----------
 // la creatura vede l'umano u? (cono davanti, la luce, la torcia, accucciati, nascosti)
 function vedeUmano(g, A, u) {
-  if (!u.vivo || u.fuggito || u.nascosto || g.invisibile(u.k)) return false;
+  if (!u.vivo || u.fuggito || u.nascosto || u.botola || g.invisibile(u.k)) return false;
   const d = dist(A, u);
+  if (g.invisibileA && g.invisibileA(A, u)) return false; // survival: chi sta fermo non si vede
   if (u.sotto) { if (d > 30 || Math.random() > 0.15 + A.mente.abitudini.sotto * 0.8) return false; }
   const luce = M.luce(u, g.accesi);
   let portata = 45 + 150 * luce;
@@ -180,7 +181,7 @@ function passo(g, A, dt) {
       A.anim = 'cammina';
       if (!A.percorso || !A.percorso.length) {
         // controlla un armadietto qui vicino (più spesso se ha capito che vi ci nascondete)
-        const vicini = M.OGGETTI.L.map((t) => ({ t, c: M.centro(t) })).filter((o) => dist(o.c, A) < 110 && M.vede(A, o.c, g.aperte));
+        const vicini = M.NASCONDIGLI.map((t) => ({ t, c: M.centro(t) })).filter((o) => dist(o.c, A) < 110 && M.vede(A, o.c, g.aperte));
         if (vicini.length && Math.random() < 0.18 + A.mente.abitudini.armadietto * 0.6) { controlla(g, A, scegli(vicini).t); break; }
         // un punto intorno alla zona che le ha dato la direttrice, o a caso nel settore
         const centro = A.zona || A;
@@ -239,7 +240,7 @@ function passo(g, A, dt) {
       if (A.attesa > 0) { A.attesa -= dt; A.vel = 0; A.anim = 'fiuta'; break; }
       A.anim = 'cammina';
       if (!A.percorso || !A.percorso.length) {
-        const vicini = M.OGGETTI.L.filter((t) => dist(M.centro(t), A) < 90);
+        const vicini = M.NASCONDIGLI.filter((t) => dist(M.centro(t), A) < 90);
         // chi si è nascosto davanti ai suoi occhi: va dritta a quell'armadietto
         const visto = A.armadiettoVisto && dist(M.centro(A.armadiettoVisto), A) < 160 ? A.armadiettoVisto : null;
         if (visto) { A.armadiettoVisto = null; controlla(g, A, visto); break; }
@@ -298,7 +299,7 @@ function controlla(g, A, t) {
 function uccide(g, A, u, armadietto = false) {
   stato(A, 'uccide', armadietto ? 'tira' : 'attacca');
   A.yaw = Math.atan2(u.y - A.y, u.x - A.x);
-  g.morte(u, armadietto);
+  g.morte(u, armadietto, A);
 }
 // il fuoco la colpisce: scappa (sempre meno a lungo se ha imparato)
 function brucia(g, A) {

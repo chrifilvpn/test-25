@@ -360,10 +360,24 @@ export async function crea({ M }) {
     return { gr, gambe, braccia, cono, busto, testa, ciuffo, fase: 0 };
   }
 
-  // lo xenomorfo
+  // gli xenomorfi (nella survival possono essere più d'uno: gli altri si caricano quando servono)
   const xeno = await caricaXeno(envMap);
   scena.add(xeno.oggetto);
+  const xenos = [xeno];
+  let caricaAltro = null;
+  function assicura(n) {
+    if (xenos.length >= n || caricaAltro) return;
+    caricaAltro = caricaXeno(envMap).then((x) => { scena.add(x.oggetto); xenos.push(x); }).catch(() => {}).finally(() => { caricaAltro = null; });
+  }
   const luceXeno = new THREE.PointLight(0x9fb4ff, 0, 4, 2); scena.add(luceXeno); // un filo di riflesso quando è vicino
+  // le botole dei passaggi di servizio, a terra
+  const matBotola = new THREE.MeshStandardMaterial({ color: 0x3a3a36, roughness: 0.6, metalness: 0.7 });
+  for (const t of M.OGGETTI.P) {
+    const [cx, cz] = centro(t);
+    const b = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.6, 0.05, 20), matBotola); b.position.set(cx, 0.025, cz); aggiungi(b);
+    for (const k of [-0.25, 0, 0.25]) { const r = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.02, 0.06), matScuro); r.position.set(cx, 0.06, cz + k); aggiungi(r); }
+    const sp = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 6), new THREE.MeshBasicMaterial({ color: 0xffb020, toneMapped: false })); sp.position.set(cx + 0.45, 0.07, cz); aggiungi(sp);
+  }
   // le fiamme del lanciafiamme: tante scintille additive
   const sprite = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const q = c.getContext('2d'); const gr = q.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,240,200,1)'); gr.addColorStop(0.3, 'rgba(255,150,40,.9)'); gr.addColorStop(1, 'rgba(255,40,0,0)'); q.fillStyle = gr; q.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
   const NF = 400, fPos = new Float32Array(NF * 3), fVel = new Float32Array(NF * 3), fVita = new Float32Array(NF);
@@ -418,9 +432,25 @@ export async function crea({ M }) {
     camera.fov = C.fov || 72; camera.aspect = V.w / V.h; camera.updateProjectionMatrix();
     camera.position.set(C.x * D, C.h, C.y * D);
     camera.rotation.set(C.pitch || 0, -C.yaw - Math.PI / 2, C.rollio || 0);
-    if (C.modo === 'morte' && V.alieno) {
+    // ---------- gli xenomorfi ----------
+    const alieni = V.alieni || [];
+    assicura(alieni.length);
+    let vicinoX = null, dVicino = Infinity;
+    xenos.forEach((X, i) => {
+      const A = alieni[i];
+      if (!A) { X.oggetto.visible = false; return; }
+      const nascosto = A.inCondotto && !['entra', 'esce'].includes(A.anim);
+      X.oggetto.visible = !nascosto && V.nascondiXeno !== i;
+      X.oggetto.position.set(A.x * D, 0, A.y * D);
+      X.oggetto.rotation.y = Math.PI / 2 - A.yaw;
+      X.aggiorna(dt, A.anim === 'condotto' ? 'fermo' : A.anim, (A.vel || 0) * D);
+      const d = Math.hypot(A.x * D - camera.position.x, A.y * D - camera.position.z);
+      if (X.oggetto.visible && d < dVicino) { dVicino = d; vicinoX = X; }
+    });
+    if (vicinoX) { const p = vicinoX.oggetto.position; luceXeno.position.set(p.x, 2.4, p.z); luceXeno.intensity = dVicino < 6 ? 1.2 : 0; } else luceXeno.intensity = 0;
+    if (C.modo === 'morte' && vicinoX) {
       // la telecamera guarda la bocca dello xenomorfo
-      xeno.testa(v3); camera.lookAt(v3.x, v3.y - 0.1, v3.z);
+      vicinoX.testa(v3); camera.lookAt(v3.x, v3.y - 0.1, v3.z);
     }
     // ---------- gli altri sopravvissuti ----------
     const visti = new Set();
@@ -450,17 +480,6 @@ export async function crea({ M }) {
     }
     for (; it < torceAltri.length; it++) torceAltri[it].intensity = 0;
     for (const [k, o] of omini) if (!visti.has(k)) o.gr.visible = false;
-    // ---------- lo xenomorfo ----------
-    const A = V.alieno;
-    if (A) {
-      const nascosto = A.inCondotto && !['entra', 'esce'].includes(A.anim);
-      xeno.oggetto.visible = !nascosto && !V.nascondiXeno;
-      xeno.oggetto.position.set(A.x * D, 0, A.y * D);
-      xeno.oggetto.rotation.y = Math.PI / 2 - A.yaw;
-      xeno.aggiorna(dt, A.anim === 'condotto' ? 'fermo' : A.anim, (A.vel || 0) * D);
-      const d = Math.hypot(A.x * D - camera.position.x, A.y * D - camera.position.z);
-      luceXeno.position.set(A.x * D, 2.4, A.y * D); luceXeno.intensity = xeno.oggetto.visible && d < 6 ? 1.2 : 0;
-    }
     // ---------- la mia torcia, le lampade vicine, i fuochi ----------
     torcia.intensity = C.torcia ? 34 * (C.batteria < 15 ? (Math.random() > 0.1 ? 0.6 : 0.1) : 1) : 0;
     const cx = camera.position.x, cz = camera.position.z;

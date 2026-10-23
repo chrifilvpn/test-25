@@ -4,6 +4,10 @@
 // (armadietti, sotto scrivanie e letti), lo si distrae coi razzi, lo si scaccia col lanciafiamme.
 // Il mostro lo fa l'IA (isolation/alieno.js: direttrice + mente che impara) oppure un giocatore scelto al tavolo, come
 // il master: vede al buio, sente i rumori, si muove nei condotti, apre gli armadietti, uccide da vicino.
+// MODALITÀ SURVIVAL (opzione del tavolo): uno o più xenomorfi (persone o computer) contro i sopravvissuti, che devono
+// completare insieme tante TASK (minigiochi ai terminali e ai generatori) e poi scappare sul Torrens. Chi sta fermo è
+// invisibile agli xenomorfi (se non gli sono attaccati), gli xenomorfi sentono i rumori come nuvolette sulla mappa e
+// uccidono con un colpo davanti a sé; il lanciafiamme li stordisce per pochi secondi.
 // Il server muove tutto 20 volte al secondo; il browser disegna in 3D (three.js) e muove subito il proprio personaggio
 // (Arena: movimento previsto). Unità: il decimetro (vedi mappa.js).
 const { Arena } = require('../giochi/arena');
@@ -14,7 +18,15 @@ const AI = require('./isolation/alieno');
 const { T } = M;
 const R_UMANO = 4;
 const VEL = { cammina: 30, corre: 52, accucciato: 14, rilevatore: 20, alieno: 30, alienoCorre: 62, condotto: 95 };
-const RUMORE = { cammina: 55, corre: 180, accucciato: 12, rilevatore: 45, porta: 70, generatore: 260, fiamma: 220, razzo: 320, armadietto: 40 };
+const RUMORE = { cammina: 55, corre: 180, accucciato: 12, rilevatore: 45, porta: 70, generatore: 260, fiamma: 220, razzo: 320, armadietto: 40, task: 240, botola: 60 };
+// survival: le stazioni delle task (terminali e generatori), i minigiochi, quanto durano al minimo, chi sta fermo
+const STAZIONI = M.OGGETTI.m.map((t) => ({ t, tipo: 'm' })).concat(M.OGGETTI.G.map((t) => ({ t, tipo: 'G' })));
+const MINIGIOCHI = ['fili', 'codice', 'sequenza', 'taratura'];
+const TASK_MIN = [0, 1.5, 2.5, 3.5]; // secondi minimi per difficoltà (sotto è un imbroglio)
+const TASK_BOT = [0, 6, 8.5, 11]; // quanto ci mette un compagno del computer
+const FERMO = 0.5; // dopo mezzo secondo fermo si diventa invisibili agli xenomorfi
+const ATTACCATO = 25; // ...tranne che a chi ti sta attaccato (2,5 m)
+const BOTOLA = 3; // secondi per strisciare da una botola all'altra
 const GEN_TEMPO = 10; // secondi per riaccendere un generatore
 const FIATO = 4.5; // secondi di fiato trattenuto
 const FIAMMA = { portata: 65, cono: 0.55, durata: 0.7 };
@@ -31,13 +43,27 @@ class Isolation extends Arena {
     this.W = 1280; this.H = 720; // la tela (il mondo è nella mappa)
     const op = o.opzioni || {};
     this.difficolta = ['facile', 'normale', 'difficile'].includes(op.difficolta) ? op.difficolta : 'normale';
-    this.durata = ([20, 30, 15].includes(Number(op.durata)) ? Number(op.durata) : 20) * 60;
-    // il mostro: l'IA, oppure un posto del tavolo (scelto o a caso); da soli è sempre l'IA
-    this.mostro = null;
-    if (op.mostro === 'giocatore' && this.n >= 2) {
-      const chi = Number(op.chi);
-      this.mostro = Number.isInteger(chi) && chi >= 1 && chi <= this.n ? chi - 1 : Math.floor(Math.random() * this.n);
+    this.survival = op.modalita === 'survival';
+    // gli xenomorfi: posti del tavolo (scelto o a caso; i posti vuoti li gioca il computer) oppure l'IA; da soli è sempre l'IA
+    this.mostri = [];
+    const posto = (chi) => { const c = Number(chi); return Number.isInteger(c) && c >= 1 && c <= this.n ? c - 1 : null; };
+    if (this.survival) {
+      this.durata = ([10, 5, 15, 20].includes(Number(op.tempoS)) ? Number(op.tempoS) : 10) * 60;
+      this.obiettivo = [20, 30, 40].includes(Number(op.task)) ? Number(op.task) : 20;
+      this.nAlieni = Math.max(1, Math.min(3, Number(op.alieni) || 1));
+      if (this.n >= 2) {
+        this.nAlieni = Math.min(this.nAlieni, this.n - 1);
+        const primo = posto(op.chiS);
+        if (primo !== null) this.mostri.push(primo);
+        const liberi = Array.from({ length: this.n }, (_, i) => i).filter((i) => !this.mostri.includes(i));
+        while (this.mostri.length < this.nAlieni) this.mostri.push(liberi.splice(Math.floor(Math.random() * liberi.length), 1)[0]);
+      }
+    } else {
+      this.durata = ([20, 30, 15].includes(Number(op.durata)) ? Number(op.durata) : 20) * 60;
+      this.nAlieni = 1;
+      if (op.mostro === 'giocatore' && this.n >= 2) { const p = posto(op.chi); this.mostri.push(p !== null ? p : Math.floor(Math.random() * this.n)); }
     }
+    this.mostro = this.mostri.length ? this.mostri[0] : null;
     this.etichettaPunti = 'punti';
     this.avvia();
   }
@@ -46,16 +72,26 @@ class Isolation extends Arena {
     const partenze = M.OGGETTI.S.map(M.centro);
     this.umani = [];
     for (let k = 0; k < this.n; k++) {
-      if (k === this.mostro) continue;
+      if (this.mostri.includes(k)) continue;
       const p = partenze[this.umani.length % partenze.length];
       this.umani.push({
         k, x: p.x, y: p.y, yaw: 0, pitch: 0, vx: 0, vy: 0, vivo: true, fuggito: false, nascosto: null, sotto: false,
         accucciato: false, corre: false, rilevatore: false, trattiene: false, torcia: true, batteria: 100, carburante: 1, razzi: 1,
-        fiato: FIATO, fiamma: 0, gen: null, bip: 0, passi: 0, mente: { fino: 0 }, morto: null,
+        fiato: FIATO, fiamma: 0, gen: null, bip: 0, passi: 0, mente: { fino: 0 }, morto: null, task: null, botola: null, fermo: 0,
       });
     }
-    this.alieno = AI.nuovo(this.difficolta);
-    if (this.mostro !== null) Object.assign(this.alieno, { giocatore: this.mostro, stato: 'condotto', inCondotto: true, stamina: 1, stordito: 0, colpoT: 0, pings: [] });
+    // gli xenomorfi partono da grate diverse (il primo sopra la mensa)
+    this.alieni = [];
+    for (let i = 0; i < this.nAlieni; i++) {
+      const A = AI.nuovo(this.difficolta, [5, 2, 6][i]);
+      A.id = i;
+      if (this.survival) A.attesa = 8 + i * 4; // nella survival si comincia presto
+      if (this.mostri[i] !== undefined) Object.assign(A, { giocatore: this.mostri[i], stato: 'condotto', inCondotto: true, stamina: 1, stordito: 0, colpoT: 0, pings: [] });
+      this.alieni.push(A);
+    }
+    // survival: le stazioni (ognuna con il suo minigioco, poi si riposa un po' prima del prossimo)
+    this.fatte = 0;
+    this.stazioni = this.survival ? STAZIONI.map(() => this.nuovaTask({ pausa: Math.random() < 0.25 ? caso(5, 20) : 0 })) : [];
     this.generatori = M.OGGETTI.G.map(() => ({ carica: 0, acceso: false, chi: null }));
     this.accesi = this.generatori.map(() => false);
     this.sbloccato = false;
@@ -73,6 +109,18 @@ class Isolation extends Arena {
   ev(e) { this.eventi.push(e); }
   rumore(x, y, r, tipo, chi = null) { if (chi !== null && this.winOn && this.winOn[chi]) return; this.rumori.push({ x, y, r, tipo, chi }); } // chi ha il trucco non fa rumore
   umano(k) { return this.umani.find((u) => u.k === k) || null; }
+  get alieno() { return this.alieni[0]; }
+  // lo xenomorfo più vicino a un punto (prima quelli fuori dai condotti)
+  alienoVicino(p) {
+    const fuori = this.alieni.filter((A) => !A.inCondotto), lista = fuori.length ? fuori : this.alieni;
+    return lista.reduce((a, b) => (dist(a, p) <= dist(b, p) ? a : b));
+  }
+  mioAlieno(posto) { return this.alieni.find((A) => A.giocatore === posto && !this.bot[posto]) || null; }
+  persona(A) { return A.giocatore !== undefined && A.giocatore !== null && !this.bot[A.giocatore]; }
+  // chi sta fermo è invisibile agli xenomorfi (survival), se non è attaccato
+  invisibileA(A, u) { return this.survival && u.fermo > FERMO && dist(A, u) > ATTACCATO; }
+  nascostoDel(u) { return !!(u.nascosto || u.botola); }
+  nuovaTask(o = {}) { return { tipo: MINIGIOCHI[Math.floor(Math.random() * MINIGIOCHI.length)], diff: 1 + Math.floor(Math.random() * 3), seme: 1 + Math.floor(Math.random() * 1e6), chi: null, pausa: 0, ...o }; }
   umaniInGioco() { return this.umani.filter((u) => u.vivo && !u.fuggito); }
   invisibile(k) { return !!(this.winOn && this.winOn[k]); }
 
@@ -86,6 +134,8 @@ class Isolation extends Arena {
     if (Number.isFinite(Number(d.pt))) c.pitch = Math.max(-1.4, Math.min(1.4, Number(d.pt)));
     if (Number.isInteger(d.k)) c.k = d.k & 15;
     if (Array.isArray(d.c)) for (let i = 0; i < 4; i++) { const v = Number(d.c[i]); if (Number.isInteger(v) && v > c.c[i] && v - c.c[i] < 50) c.c[i] = v; }
+    // il minigioco finito: [stazione, seme]
+    if (Array.isArray(d.tf) && Number.isInteger(d.tf[0]) && Number.isInteger(d.tf[1])) c.tf = [d.tf[0], d.tf[1]];
   }
   premuti(p) { const c = this.cmd[p], out = c.c.map((v, i) => Math.max(0, v - c.visti[i])); c.visti = c.c.slice(); return out; }
 
@@ -98,10 +148,12 @@ class Isolation extends Arena {
       if (this.bot[u.k]) this.pensaUmano(u, dt); else this.comandiUmano(u, dt);
       this.vivi(u, dt);
     }
-    const A = this.alieno;
-    if (A.giocatore !== undefined && A.giocatore !== null && !this.bot[A.giocatore]) this.alienoGiocatore(A, dt);
-    else AI.passo(this, A, dt);
-    for (const t of A.imparato.splice(0)) this.annuncia(null, IMPARATO[t], IMPARATO[t]);
+    for (const A of this.alieni) {
+      if (this.persona(A)) this.alienoGiocatore(A, dt);
+      else AI.passo(this, A, dt);
+      for (const t of A.imparato.splice(0)) this.annuncia(null, IMPARATO[t], IMPARATO[t]);
+    }
+    for (const S of this.stazioni) if (S.pausa > 0 && (S.pausa -= dt) <= 0) { Object.assign(S, this.nuovaTask()); this.ev(['stazione', this.stazioni.indexOf(S)]); }
     // i razzi bruciano e fanno rumore
     for (const r of this.razzi) { r.t -= dt; if (Math.random() < dt * 2) this.rumore(r.x, r.y, RUMORE.razzo, 'razzo'); }
     this.razzi = this.razzi.filter((r) => r.t > 0);
@@ -116,8 +168,8 @@ class Isolation extends Arena {
     return false;
   }
   porteAperte(dt) {
-    const chi = this.umaniInGioco().filter((u) => !u.nascosto);
-    if (!this.alieno.inCondotto) chi.push(this.alieno);
+    const chi = this.umaniInGioco().filter((u) => !this.nascostoDel(u));
+    for (const A of this.alieni) if (!A.inCondotto) chi.push(A);
     M.PORTE.forEach((p, i) => {
       const s = this.porte[i], c = M.centro([p.x, p.y]);
       if (s.bloccata && this.sbloccato) s.bloccata = false;
@@ -133,8 +185,15 @@ class Isolation extends Arena {
     const c = this.cmd[u.k], [usa, inter, torcia, razzo] = this.premuti(u.k);
     u.yaw = c.yaw; u.pitch = c.pitch;
     u.corre = !!(c.k & BIT.corre) && !u.nascosto; u.accucciato = !!(c.k & BIT.accucciato); u.rilevatore = !!(c.k & BIT.rilevatore) && !u.nascosto; u.trattiene = !!(c.k & BIT.respiro);
+    if (u.botola) return;
     if (torcia) this.torcia(u);
     if (inter) this.interagisci(u);
+    // il minigioco finito nel browser (vale solo alla stazione giusta, col seme giusto e non troppo in fretta)
+    if (c.tf) {
+      const [si, seme] = c.tf; c.tf = null;
+      const S = this.stazioni[si];
+      if (u.task && u.task.s === si && S && S.seme === seme && S.chi === u.k) u.task.pronta = true; // si chiude appena passa il tempo minimo
+    }
     if (u.nascosto) return;
     if (usa) this.fiamma(u);
     if (razzo) this.lancia(u);
@@ -144,7 +203,7 @@ class Isolation extends Arena {
     else { const f = -i.y, s = i.x; dx = Math.cos(u.yaw) * f - Math.sin(u.yaw) * s; dy = Math.sin(u.yaw) * f + Math.cos(u.yaw) * s; }
     this.muoviUmano(u, dx, dy, dt);
   }
-  velocita(u) { const v = u.accucciato ? VEL.accucciato : u.rilevatore ? VEL.rilevatore : u.corre ? VEL.corre : VEL.cammina; return u.gen !== null ? 0 : v; }
+  velocita(u) { const v = u.accucciato ? VEL.accucciato : u.rilevatore ? VEL.rilevatore : u.corre ? VEL.corre : VEL.cammina; return u.gen !== null || u.task ? 0 : v; }
   muoviUmano(u, dx, dy, dt) {
     const l = Math.hypot(dx, dy), v = this.velocita(u);
     const prima = { x: u.x, y: u.y };
@@ -155,6 +214,8 @@ class Isolation extends Arena {
     }
     u.vx = (u.x - prima.x) / dt; u.vy = (u.y - prima.y) / dt;
     const vel = Math.hypot(u.vx, u.vy);
+    // fermi (girarsi non conta): dopo mezzo secondo invisibili agli xenomorfi
+    u.fermo = vel > 1 ? 0 : u.fermo + dt;
     // sotto una scrivania (accucciati dentro il quadretto del mobile)
     const [tx, ty] = M.quadretto(u);
     u.sotto = u.accucciato && M.cella(tx, ty) === 'T';
@@ -173,6 +234,22 @@ class Isolation extends Arena {
     if (u.torcia) { u.batteria = Math.max(0, u.batteria - dt * 0.9); if (!u.batteria) { u.torcia = false; this.ev(['torciaSpenta', u.k]); } }
     if (u.rilevatore) { u.bip -= dt; if (u.bip <= 0) { u.bip = 1; this.rumore(u.x, u.y, RUMORE.rilevatore, 'bip', u.k); } }
     if (u.fiamma > 0) u.fiamma -= dt;
+    // nel passaggio di servizio: si striscia fino alla botola gemella
+    if (u.botola) {
+      u.botola.t += dt; u.fermo = 0;
+      if (u.botola.t >= BOTOLA) {
+        const c = M.centro(M.OGGETTI.P[u.botola.a]); u.x = c.x; u.y = c.y; u.botola = null;
+        this.ev(['botola', u.k, 0]); this.rumore(u.x, u.y, RUMORE.botola, 'botola', u.k);
+      }
+      return;
+    }
+    // la task in corso: si resta vicini (i compagni del computer la finiscono da soli dopo un po')
+    if (u.task) {
+      const S = this.stazioni[u.task.s];
+      u.task.t += dt;
+      if (!S || S.chi !== u.k || S.pausa > 0 || dist(u, M.centro(STAZIONI[u.task.s].t)) > 34) { this.lasciaTask(u); return; }
+      if (this.bot[u.k] ? u.task.t >= TASK_BOT[S.diff] : u.task.pronta && u.task.t >= TASK_MIN[S.diff]) this.completa(u);
+    }
     // il fiato: si trattiene solo nascosti, poi si rifiata (e se finisce si ansima)
     if (u.nascosto && u.trattiene && u.fiato > 0) u.fiato = Math.max(0, u.fiato - dt);
     else u.fiato = Math.min(FIATO, u.fiato + dt * 0.8);
@@ -191,25 +268,62 @@ class Isolation extends Arena {
   torcia(u) { if (u.batteria > 0) { u.torcia = !u.torcia; this.ev(['torcia', u.k, u.torcia ? 1 : 0]); } }
   // E: armadietto (entra o esce), generatore
   interagisci(u) {
+    if (u.botola) return;
     if (u.nascosto) { this.esceArmadietto(u); return; }
+    if (u.task) { this.lasciaTask(u); return; }
     const vicino = (lista, r) => {
       let best = null, bd = r;
       lista.forEach((t, i) => { const c = M.centro(t); const d = dist(u, c); const a = Math.abs(angolo(Math.atan2(c.y - u.y, c.x - u.x) - u.yaw)); if (d < bd && (a < 1.1 || d < 18)) { bd = d; best = i; } });
       return best;
     };
-    const g = vicino(M.OGGETTI.G, 30);
-    if (g !== null && !this.generatori[g].acceso) { u.gen = g; this.generatori[g].chi = u.k; this.ev(['genInizia', g]); return; }
-    const l = vicino(M.OGGETTI.L, 26);
+    if (this.survival) {
+      // una stazione con la task pronta e libera
+      const si = vicino(STAZIONI.map((s) => s.t), 32);
+      const S = si !== null ? this.stazioni[si] : null;
+      if (S && S.pausa <= 0 && S.chi === null && !this.sbloccato) { S.chi = u.k; u.task = { s: si, t: 0 }; u.corre = false; this.ev(['taskInizia', si, u.k]); return; }
+    } else {
+      const g = vicino(M.OGGETTI.G, 30);
+      if (g !== null && !this.generatori[g].acceso) { u.gen = g; this.generatori[g].chi = u.k; this.ev(['genInizia', g]); return; }
+    }
+    // la botola di un passaggio di servizio (sotto i piedi)
+    const b = M.OGGETTI.P.findIndex((t) => dist(u, M.centro(t)) < 14);
+    if (b >= 0) {
+      u.botola = { da: b, a: M.gemella(b), t: 0 }; u.gen = null; u.rilevatore = false; u.corre = false;
+      this.ev(['botola', u.k, 1]); this.rumore(u.x, u.y, RUMORE.botola, 'botola', u.k);
+      return;
+    }
+    const l = vicino(M.NASCONDIGLI, 26);
     if (l !== null) {
-      const t = M.OGGETTI.L[l];
+      const t = M.NASCONDIGLI[l];
       if (this.umani.some((v) => v.nascosto && v.nascosto.x === t[0] && v.nascosto.y === t[1])) return; // occupato
       u.nascosto = { x: t[0], y: t[1], prima: { x: u.x, y: u.y } };
       u.gen = null; u.rilevatore = false; u.corre = false;
       const c = M.centro(t); u.x = c.x; u.y = c.y;
       const [fx, fy] = M.verso[`${t[0]},${t[1]}`]; u.yaw = Math.atan2(fy, fx);
       this.ev(['armadietto', u.k, 1]); this.rumore(u.x, u.y, RUMORE.armadietto, 'armadietto', u.k);
-      const A = this.alieno;
-      if (!A.inCondotto && dist(A, u) < 160 && M.vede(A, u.nascosto.prima, this.aperte) && Math.abs(angolo(Math.atan2(u.y - A.y, u.x - A.x) - A.yaw)) < 1.3) AI.vistoNascondersi(this, A, t);
+      for (const A of this.alieni) if (!A.inCondotto && dist(A, u) < 160 && M.vede(A, u.nascosto.prima, this.aperte) && Math.abs(angolo(Math.atan2(u.y - A.y, u.x - A.x) - A.yaw)) < 1.3) AI.vistoNascondersi(this, A, t);
+    }
+  }
+  lasciaTask(u) { const S = this.stazioni[u.task.s]; if (S && S.chi === u.k) S.chi = null; u.task = null; }
+  // una task completata: conta per tutti, fa rumore; alla fine parte la fuga
+  completa(u) {
+    const si = u.task.s, S = this.stazioni[si], c = M.centro(STAZIONI[si].t);
+    u.task = null;
+    Object.assign(S, { chi: null, pausa: caso(25, 45) });
+    this.fatte++;
+    this.punti[u.k] += 1;
+    this.rumore(c.x, c.y, RUMORE.task, 'task', u.k);
+    this.ev(['task', si, u.k, this.fatte]);
+    if (this.fatte >= this.obiettivo && !this.sbloccato) {
+      this.sbloccato = true;
+      this.annuncia(null, `📡 ${this.fatte} task completate: il Torrens è attraccato! FUGGITE all'attracco (a est del corridoio principale)`, `📡 Task completate: il Torrens è attraccato! FUGGI all'attracco`, true);
+      this.ev(['sbloccato']);
+      // gli xenomorfi sentono le sirene: vanno a fare la guardia all'attracco
+      const e = M.centro([39, 15]);
+      for (const A of this.alieni) {
+        if (this.persona(A)) A.pings.push({ x: Math.round(e.x), y: Math.round(e.y), t: 8, tipo: 'fiuto' });
+        else A.zona = e;
+      }
     }
   }
   esceArmadietto(u) {
@@ -223,15 +337,15 @@ class Isolation extends Arena {
     if (u.carburante <= 0 || u.fiamma > 0) { if (u.carburante <= 0) this.ev(['vuoto', u.k]); return; }
     u.carburante--; u.fiamma = FIAMMA.durata;
     this.ev(['fiamma', u.k]); this.rumore(u.x, u.y, RUMORE.fiamma, 'fiamma', u.k);
-    const A = this.alieno;
-    if (A.inCondotto) return;
-    const d = dist(A, u), a = Math.abs(angolo(Math.atan2(A.y - u.y, A.x - u.x) - u.yaw));
-    if (d < FIAMMA.portata && (a < FIAMMA.cono || d < 14) && M.vede(u, A, this.aperte)) {
-      u.punti = (u.punti || 0);
+    for (const A of this.alieni) {
+      if (A.inCondotto) continue;
+      const d = dist(A, u), a = Math.abs(angolo(Math.atan2(A.y - u.y, A.x - u.x) - u.yaw));
+      if (!(d < FIAMMA.portata && (a < FIAMMA.cono || d < 14) && M.vede(u, A, this.aperte))) continue;
       this.punti[u.k] += 1;
-      if (A.giocatore !== undefined && A.giocatore !== null && !this.bot[A.giocatore]) { A.stordito = 3; A.colpoT = 6; AI.impara(A, 'fuoco'); this.ev(['brucia', Math.round(A.x), Math.round(A.y)]); }
+      // una persona viene stordita (nella survival resta ferma qualche secondo); il computer scappa nei condotti
+      if (this.persona(A)) { A.stordito = 3; A.colpoT = this.survival ? 3 : 6; AI.impara(A, 'fuoco'); this.ev(['brucia', Math.round(A.x), Math.round(A.y)]); }
       else AI.brucia(this, A);
-      this.annuncia(u.k, 'scaccia lo xenomorfo col fuoco! 🔥', 'l\'hai scacciato col fuoco! 🔥');
+      this.annuncia(u.k, this.survival ? 'stordisce uno xenomorfo col fuoco! 🔥' : 'scaccia lo xenomorfo col fuoco! 🔥', this.survival ? 'l\'hai stordito col fuoco! 🔥' : 'l\'hai scacciato col fuoco! 🔥');
     }
   }
   // il razzo di segnalazione: si lancia avanti, fa luce rossa e tanto rumore
@@ -273,15 +387,16 @@ class Isolation extends Arena {
     }
   }
   fugge(u) {
+    if (u.task) this.lasciaTask(u);
     u.fuggito = true; u.nascosto = null; u.gen = null;
     this.punti[u.k] += 5;
     this.annuncia(u.k, 'è salito sul Torrens! 🚀', 'sei salito sul Torrens: sei salvo! 🚀', true);
     this.ev(['fugge', u.k]);
   }
-  morte(u, armadietto) {
-    u.vivo = false; u.morto = { x: this.alieno.x, y: this.alieno.y, armadietto: !!armadietto };
+  morte(u, armadietto, A = this.alieno) {
+    if (u.task) this.lasciaTask(u);
+    u.vivo = false; u.morto = { x: A.x, y: A.y, armadietto: !!armadietto }; u.botola = null;
     u.gen = null; if (u.nascosto) { const t = u.nascosto; u.nascosto = null; const [fx, fy] = M.verso[`${t.x},${t.y}`]; const c = M.centro([t.x + fx, t.y + fy]); u.x = c.x; u.y = c.y; }
-    const A = this.alieno;
     if (A.giocatore !== undefined && A.giocatore !== null) this.punti[A.giocatore] += 3;
     this.annuncia(u.k, 'è stato preso dallo xenomorfo 💀', 'lo xenomorfo ti ha preso 💀', true);
     this.ev(['morte', u.k, armadietto ? 1 : 0]);
@@ -293,8 +408,13 @@ class Isolation extends Arena {
     A.yaw = c.yaw; A.pitch = c.pitch; A.t = (A.t || 0) + dt;
     if (A.stordito > 0) A.stordito -= dt;
     if (A.colpoT > 0) A.colpoT -= dt;
-    // i rumori che sente: puntini per il suo schermo (solo quelli degli umani, dei razzi e dei generatori)
-    for (const n of this.rumori) if (!n.visto) { n.visto = true; if (dist(A, n) < n.r * 1.6) A.pings.push({ x: Math.round(n.x), y: Math.round(n.y), t: 2.5, tipo: n.tipo }); }
+    // i rumori che sente: nuvolette sulla mappa (e segni sullo schermo); ogni xenomorfo li sente per conto suo
+    for (const n of this.rumori) {
+      n.visti = n.visti || [];
+      if (n.visti.includes(A.id)) continue;
+      n.visti.push(A.id);
+      if (dist(A, n) < n.r * 1.6) A.pings.push({ x: Math.round(n.x), y: Math.round(n.y), t: this.survival ? 4 : 2.5, tipo: n.tipo });
+    }
     for (const g of A.pings) g.t -= dt;
     A.pings = A.pings.filter((g) => g.t > 0).slice(-30);
     // l'ultimo istinto: se non trova nessuno da tanto, la direttrice gli fa sentire dove siete (più o meno)
@@ -304,7 +424,7 @@ class Isolation extends Arena {
       const u = this.umaniInGioco()[Math.floor(Math.random() * this.umaniInGioco().length)];
       if (u) { A.pings.push({ x: Math.round(u.x + caso(-40, 40)), y: Math.round(u.y + caso(-40, 40)), t: 6, tipo: 'fiuto' }); this.ev(['fiuto']); }
     }
-    if (A.stato === 'uccide') { A.vel = 0; if (A.t > 2.2) { A.stato = 'giro'; A.anim = 'cammina'; } return; }
+    if (A.stato === 'uccide') { A.vel = 0; if (A.t > (this.survival ? 1.2 : 2.2)) { A.stato = 'giro'; A.anim = 'cammina'; } return; }
     const i = this.inp[p];
     if (A.inCondotto) {
       // nei condotti si va dove si vuole sopra i soffitti (lo schermo mostra la pianta); E scende dalla grata vicina
@@ -321,7 +441,7 @@ class Isolation extends Arena {
     // a piedi: corsa con il fiato (stamina), attacco col clic, E su una grata o un armadietto
     const corre = !!(c.k & BIT.corre) && A.stamina > 0.05 && A.stordito <= 0;
     A.stamina = Math.max(0, Math.min(1, A.stamina + (corre ? -dt / 7 : dt / 5)));
-    const v = (corre ? VEL.alienoCorre : VEL.alieno) * (A.stordito > 0 ? 0.5 : 1) * (this.winOn[p] ? 1.25 : 1);
+    const v = (corre ? VEL.alienoCorre : VEL.alieno) * (A.stordito > 0 ? (this.survival ? 0 : 0.5) : 1) * (this.winOn[p] ? 1.25 : 1);
     let dx, dy;
     if (i.px !== null && i.px !== undefined) { const d = this.verso(p, A, v, dt); dx = d.x; dy = d.y; }
     else { const f = -i.y, s = i.x; dx = Math.cos(A.yaw) * f - Math.sin(A.yaw) * s; dy = Math.sin(A.yaw) * f + Math.cos(A.yaw) * s; }
@@ -331,23 +451,26 @@ class Isolation extends Arena {
     if (A.anim !== 'esce' || A.t > 1.2) A.anim = A.vel > 40 ? 'corre' : A.vel > 3 ? 'cammina' : 'fermo';
     if (A.vel > 3) { A.passi = (A.passi || 0) + dt; if (A.passi > 0.5) { A.passi = 0; this.ev(['passiAlieno', Math.round(A.x), Math.round(A.y)]); } }
     if (usa && A.colpoT <= 0) {
-      A.colpoT = 1.1; A.anim = 'attacca'; A.t = 0;
+      // nella survival niente ricarica: solo il tempo dell'animazione, e un colpo solo davanti (anche a chi è invisibile)
+      A.colpoT = this.survival ? 0.7 : 1.1; A.anim = 'attacca'; A.t = 0;
       this.ev(['colpo', Math.round(A.x), Math.round(A.y)]);
-      const vittima = this.umaniInGioco().filter((u) => !u.nascosto).find((u) => {
+      const cono = this.survival ? 0.5 : 0.9;
+      const vittime = this.umaniInGioco().filter((u) => !this.nascostoDel(u)).filter((u) => {
         const d = dist(A, u), a = Math.abs(angolo(Math.atan2(u.y - A.y, u.x - A.x) - A.yaw));
-        return d < (u.sotto ? AI.PRESA_SOTTO + 4 : AI.PRESA + 8) && a < 0.9 && M.vede(A, u, this.aperte);
+        return d < (u.sotto ? AI.PRESA_SOTTO + 4 : AI.PRESA + 8) && (a < cono || d < 8) && M.vede(A, u, this.aperte);
       });
-      if (vittima) { A.stato = 'uccide'; A.t = 0; A.yaw = Math.atan2(vittima.y - A.y, vittima.x - A.x); this.morte(vittima, false); }
+      const vittima = vittime.length ? vittime.reduce((a, b) => (dist(A, a) <= dist(A, b) ? a : b)) : null;
+      if (vittima) { A.stato = 'uccide'; A.t = 0; A.yaw = Math.atan2(vittima.y - A.y, vittima.x - A.x); this.morte(vittima, false, A); }
     }
     if (inter) {
       const g = AI.grataVicina(A);
       if (dist(g, A) < 16) { A.inCondotto = true; A.stato = 'condotto'; A.anim = 'entra'; this.ev(['condotto', Math.round(A.x), Math.round(A.y)]); return; }
-      // l'armadietto davanti: se c'è qualcuno dentro lo tira fuori
-      const t = M.OGGETTI.L.find((q) => { const cc = M.centro(q); return dist(cc, A) < 30 && Math.abs(angolo(Math.atan2(cc.y - A.y, cc.x - A.x) - A.yaw)) < 0.9; });
+      // l'armadietto (o la cassa) davanti: se c'è qualcuno dentro lo tira fuori
+      const t = M.NASCONDIGLI.find((q) => { const cc = M.centro(q); return dist(cc, A) < 30 && Math.abs(angolo(Math.atan2(cc.y - A.y, cc.x - A.x) - A.yaw)) < 0.9; });
       if (t) {
         this.ev(['apre', t[0], t[1]]);
         const dentro = this.umaniInGioco().find((u) => u.nascosto && u.nascosto.x === t[0] && u.nascosto.y === t[1]);
-        if (dentro) { A.stato = 'uccide'; A.anim = 'tira'; A.t = 0; this.morte(dentro, true); }
+        if (dentro) { A.stato = 'uccide'; A.anim = 'tira'; A.t = 0; this.morte(dentro, true, A); }
       }
     }
   }
@@ -357,7 +480,8 @@ class Isolation extends Arena {
   // trattengono il respiro, usano il fuoco se è vicina e la torcia solo dove è buio
   pensa() { return {}; }
   pensaUmano(u, dt) {
-    const A = this.alieno, m = u.mente;
+    const A = this.alienoVicino(u), m = u.mente;
+    if (u.botola) return;
     if (u.nascosto) {
       u.trattiene = !!u.annusato && Math.random() < 0.97;
       m.nascostoDa = (m.nascostoDa || 0) + dt;
@@ -365,14 +489,17 @@ class Isolation extends Arena {
       return;
     }
     const pericolo = !A.inCondotto && (A.stato === 'caccia' && A.preda === u.k ? dist(A, u) < 160 : dist(A, u) < 70 && M.vede(A, u, this.aperte));
+    if (pericolo && u.task) this.lasciaTask(u);
     u.corre = false; u.accucciato = false; u.rilevatore = false;
     // fuoco se vicina e davanti
     if (pericolo && u.carburante > 0 && dist(A, u) < 45) { u.yaw = Math.atan2(A.y - u.y, A.x - u.x); this.fiamma(u); }
     let meta = null;
     if (pericolo) {
       // l'armadietto più vicino lontano dalla creatura, se no si scappa correndo
-      const ok = M.OGGETTI.L.filter((t) => !this.umani.some((v) => v.nascosto && v.nascosto.x === t[0] && v.nascosto.y === t[1]))
+      const ok = M.NASCONDIGLI.filter((t) => !this.umani.some((v) => v.nascosto && v.nascosto.x === t[0] && v.nascosto.y === t[1]))
         .map((t) => ({ t, c: M.centro(t) })).filter((o) => dist(o.c, u) < 90 && dist(o.c, A) > dist(o.c, u));
+      // survival: senza un nascondiglio vicino ci si immobilizza (chi sta fermo è invisibile), se non è già addosso
+      if (this.survival && !(A.stato === 'caccia' && A.preda === u.k) && dist(A, u) > ATTACCATO + 6 && !ok.some((o) => dist(o.c, u) < 40)) { u.accucciato = true; this.muoviUmano(u, 0, 0, dt); return; }
       if (ok.length) {
         const o = ok.reduce((a, b) => (dist(a.c, u) <= dist(b.c, u) ? a : b));
         if (dist(o.c, u) < 24) { u.yaw = Math.atan2(o.c.y - u.y, o.c.x - u.x); this.interagisci(u); m.nascostoDa = 0; return; }
@@ -380,8 +507,20 @@ class Isolation extends Arena {
         meta = M.centro([o.t[0] + fx, o.t[1] + fy]);
       } else meta = { x: u.x - (A.x - u.x), y: u.y - (A.y - u.y) };
       u.corre = true;
-    } else if (u.gen !== null) return;
-    else {
+    } else if (u.gen !== null || u.task) return;
+    else if (this.survival && !this.sbloccato) {
+      // la stazione libera più vicina con la task pronta (se non c'è, si aspetta vicino a una che si riposa)
+      const libere = this.stazioni.map((S, i) => ({ S, i, c: M.centro(STAZIONI[i].t) })).filter((o) => o.S.chi === null);
+      const pronte = libere.filter((o) => o.S.pausa <= 0), lista = pronte.length ? pronte : libere;
+      if (lista.length) {
+        const o = lista.reduce((a, b) => (dist(a.c, u) + (a.S.pausa || 0) * 20 <= dist(b.c, u) + (b.S.pausa || 0) * 20 ? a : b));
+        if (dist(o.c, u) < 28 && o.S.pausa <= 0) { u.yaw = Math.atan2(o.c.y - u.y, o.c.x - u.x); this.interagisci(u); return; }
+        const t = STAZIONI[o.i].t, [fx, fy] = M.verso[`${t[0]},${t[1]}`];
+        meta = M.centro([t[0] + fx, t[1] + fy]);
+        if (dist(meta, u) < 6) return; // aspetta che si liberi
+      } else meta = u;
+      u.accucciato = !A.inCondotto && dist(A, u) < 110;
+    } else {
       const spenti = this.generatori.map((g, i) => ({ g, i })).filter((o) => !o.g.acceso);
       if (spenti.length) {
         const o = spenti.reduce((a, b) => (dist(M.centro(M.OGGETTI.G[a.i]), u) <= dist(M.centro(M.OGGETTI.G[b.i]), u) ? a : b));
@@ -390,6 +529,7 @@ class Isolation extends Arena {
         const [fx, fy] = M.verso[`${M.OGGETTI.G[o.i][0]},${M.OGGETTI.G[o.i][1]}`];
         meta = M.centro([M.OGGETTI.G[o.i][0] + fx, M.OGGETTI.G[o.i][1] + fy]);
       } else meta = M.centro(M.OGGETTI.E[0]);
+      if (this.survival) meta = M.centro(M.OGGETTI.E[0]);
       // vicino alla creatura (sentita) si va accucciati
       u.accucciato = !A.inCondotto && dist(A, u) < 110;
     }
@@ -418,31 +558,38 @@ class Isolation extends Arena {
   }
   chiudi() {
     this.finita = true; this.fase = 'fine';
-    const umani = this.umani.map((u) => u.k), mostro = this.mostro !== null ? [this.mostro] : [];
+    const umani = this.umani.map((u) => u.k), mostro = this.mostri.slice();
     const vinti = this.vittoria === 'umani';
     const fazioni = [{ posti: umani, punti: vinti ? 1 : 0, nome: 'Sopravvissuti' }];
-    if (mostro.length) fazioni.push({ posti: mostro, punti: vinti ? 0 : 1, nome: 'Xenomorfo' });
+    if (mostro.length) fazioni.push({ posti: mostro, punti: vinti ? 0 : 1, nome: mostro.length > 1 ? 'Xenomorfi' : 'Xenomorfo' });
     this.risultato = { fazioni, etichetta: 'vittoria', pareggio: false, vincitori: vinti ? umani : mostro };
   }
 
-  vistaExtra(p) { return { mostro: this.mostro, durata: this.durata, difficolta: this.difficolta, versione: 1 }; }
+  vistaExtra(p) { return { mostro: this.mostro, mostri: this.mostri, survival: this.survival, obiettivo: this.obiettivo || 0, durata: this.durata, difficolta: this.difficolta, versione: 2 }; }
   statoTick(posto) {
-    const r = (v) => Math.round(v * 10) / 10, A = this.alieno;
+    const r = (v) => Math.round(v * 10) / 10, mioA = this.alieni.find((A) => A.giocatore === posto) || null;
     const eventi = this.eventi; this.eventi = [];
-    const bit = (u) => (u.vivo ? 1 : 0) | (u.nascosto ? 2 : 0) | (u.accucciato ? 4 : 0) | (u.corre ? 8 : 0) | (u.rilevatore ? 16 : 0) | (u.torcia ? 32 : 0) | (u.fuggito ? 64 : 0) | (u.fiamma > 0 ? 128 : 0) | (u.sotto ? 256 : 0) | (u.trattiene ? 512 : 0) | (u.annusato ? 1024 : 0);
+    const bit = (u) => (u.vivo ? 1 : 0) | (u.nascosto ? 2 : 0) | (u.accucciato ? 4 : 0) | (u.corre ? 8 : 0) | (u.rilevatore ? 16 : 0) | (u.torcia ? 32 : 0) | (u.fuggito ? 64 : 0) | (u.fiamma > 0 ? 128 : 0) | (u.sotto ? 256 : 0) | (u.trattiene ? 512 : 0) | (u.annusato ? 1024 : 0) | (u.botola ? 2048 : 0) | (u.task ? 4096 : 0);
     const io = this.umano(posto);
+    // survival: allo xenomorfo non arrivano proprio chi è nascosto e chi sta fermo lontano da lui (invisibili)
+    let umani = this.umani;
+    if (this.survival && mioA) umani = umani.filter((u) => !u.vivo || u.fuggito || (!this.nascostoDel(u) && !this.invisibileA(mioA, u)));
     const out = {
-      u: this.umani.map((u) => [u.k, r(u.x), r(u.y), Math.round(u.yaw * 100) / 100, Math.round(u.pitch * 100) / 100, bit(u)]),
-      a: [r(A.x), r(A.y), Math.round(A.yaw * 100) / 100, A.anim, A.inCondotto ? 1 : 0, Math.round((A.vel || 0)), A.stato],
+      u: umani.map((u) => [u.k, r(u.x), r(u.y), Math.round(u.yaw * 100) / 100, Math.round(u.pitch * 100) / 100, bit(u)]),
+      al: this.alieni.map((A) => [r(A.x), r(A.y), Math.round(A.yaw * 100) / 100, A.anim, A.inCondotto ? 1 : 0, Math.round((A.vel || 0)), A.stato, A.giocatore === undefined || A.giocatore === null ? -1 : A.giocatore]),
       p: this.porte.map((s) => Math.round(s.a * 10) + (s.bloccata ? 100 : 0)),
-      g: this.generatori.map((g) => (g.acceso ? 100 : Math.round(g.carica * 99))),
+      g: this.survival ? M.OGGETTI.G.map((_, i) => { const S = this.stazioni[STAZIONI.length - 3 + i]; return S.pausa > 0 ? 0 : 50; }) : this.generatori.map((g) => (g.acceso ? 100 : Math.round(g.carica * 99))),
       o: this.raccolti.map((x) => (x ? 1 : 0)).join(''),
       fl: this.razzi.map((f) => [Math.round(f.x), Math.round(f.y), Math.round(f.t)]),
       e: eventi, sb: this.sbloccato ? 1 : 0,
       tr: Math.max(0, Math.ceil(this.durata - this.tempoRound)),
     };
-    if (io) out.me = [Math.round(io.batteria), io.carburante, io.razzi, Math.round((io.fiato / FIATO) * 100), io.gen !== null ? io.gen : -1];
-    if (posto === this.mostro && A.pings) out.me = [Math.round(A.stamina * 100), A.colpoT > 0 ? 1 : 0, A.stordito > 0 ? 1 : 0], out.pi = A.pings.map((g) => [g.x, g.y, g.tipo]);
+    if (this.survival) out.ts = [this.fatte, this.obiettivo, this.stazioni.map((S) => (S.pausa > 0 ? 0 : S.chi !== null ? 2 : 1)).join('')];
+    if (io) {
+      out.me = [Math.round(io.batteria), io.carburante, io.razzi, Math.round((io.fiato / FIATO) * 100), io.gen !== null ? io.gen : -1, null];
+      if (io.task) { const S = this.stazioni[io.task.s]; out.me[5] = [io.task.s, MINIGIOCHI.indexOf(S.tipo), S.diff, S.seme]; }
+    }
+    if (mioA && mioA.pings) out.me = [Math.round(mioA.stamina * 100), mioA.colpoT > 0 ? 1 : 0, mioA.stordito > 0 ? 1 : 0], out.pi = mioA.pings.map((g) => [g.x, g.y, g.tipo, Math.round(g.t * 10)]);
     return out;
   }
 }
@@ -476,10 +623,15 @@ module.exports = {
     descrizione: 'Il primo gioco in 3D: in prima persona sulla stazione Sevastopol, tutti insieme contro lo xenomorfo. Riaccendete i generatori e scappate sul Torrens. Il mostro è l\'IA o uno di voi.',
     alias: ['alien', 'alien isolation', 'isolation', 'xenomorfo', 'sevastopol', '3d', 'horror', 'alieno 3d', 'torrens', 'amanda ripley'],
     opzioni: [
-      { id: 'mostro', nome: 'Chi è lo xenomorfo', valori: ['ia', 'giocatore'], etichette: ['🤖 L\'IA (pensa e impara da sola)', '🧑 Un giocatore del tavolo'], predefinito: 'ia' },
-      { id: 'chi', nome: 'Se è un giocatore, chi', valori: ['caso', 1, 2, 3, 4, 5, 6, 7, 8], etichette: ['A caso', 'Il 1° posto (chi apre il tavolo)', 'Il 2° posto', 'Il 3° posto', 'Il 4° posto', 'Il 5° posto', 'Il 6° posto', 'Il 7° posto', 'L\'8° posto'], predefinito: 'caso' },
+      { id: 'modalita', nome: 'Modalità', valori: ['classica', 'survival'], etichette: ['🔦 Classica: i generatori e la fuga', '🧪 Survival: task e xenomorfi giocatori'], predefinito: 'classica' },
+      { id: 'mostro', nome: 'Chi è lo xenomorfo', valori: ['ia', 'giocatore'], etichette: ['🤖 L\'IA (pensa e impara da sola)', '🧑 Un giocatore del tavolo'], predefinito: 'ia', se: { modalita: ['classica'] } },
+      { id: 'chi', nome: 'Se è un giocatore, chi', valori: ['caso', 1, 2, 3, 4, 5, 6, 7, 8], etichette: ['A caso', 'Il 1° posto (chi apre il tavolo)', 'Il 2° posto', 'Il 3° posto', 'Il 4° posto', 'Il 5° posto', 'Il 6° posto', 'Il 7° posto', 'L\'8° posto'], predefinito: 'caso', se: { modalita: ['classica'] } },
+      { id: 'alieni', nome: 'Quanti xenomorfi', valori: [1, 2, 3], etichette: ['Uno', 'Due', 'Tre'], predefinito: 1, se: { modalita: ['survival'] } },
+      { id: 'chiS', nome: 'Chi è lo xenomorfo', valori: ['caso', 1, 2, 3, 4, 5, 6, 7, 8], etichette: ['A caso', 'Il 1° posto (chi apre il tavolo)', 'Il 2° posto', 'Il 3° posto', 'Il 4° posto', 'Il 5° posto', 'Il 6° posto', 'Il 7° posto', 'L\'8° posto'], predefinito: 'caso', se: { modalita: ['survival'] } },
+      { id: 'task', nome: 'Task da completare (tutti insieme)', valori: [20, 30, 40], etichette: ['20', '30', '40'], predefinito: 20, se: { modalita: ['survival'] } },
+      { id: 'tempoS', nome: 'Tempo', valori: [10, 5, 15, 20], etichette: ['10 minuti', '5 minuti', '15 minuti', '20 minuti'], predefinito: 10, se: { modalita: ['survival'] } },
       { id: 'difficolta', nome: 'Difficoltà', valori: ['normale', 'facile', 'difficile'], etichette: ['Normale', 'Facile', 'Difficile (incubo)'], predefinito: 'normale' },
-      { id: 'durata', nome: 'Tempo', valori: [20, 30, 15], etichette: ['20 minuti', '30 minuti', '15 minuti'], predefinito: 20 },
+      { id: 'durata', nome: 'Tempo', valori: [20, 30, 15], etichette: ['20 minuti', '30 minuti', '15 minuti'], predefinito: 20, se: { modalita: ['classica'] } },
     ],
     regole: [
       'Siete sulla stazione Sevastopol, in prima persona. Dovete riaccendere i TRE GENERATORI (San Cristobal Medicina, Ingegneria, Torre Solomons Comunicazioni) restando vicini per qualche secondo (E), poi raggiungere l\'attracco del Torrens, in fondo al corridoio principale, e salire a bordo. Basta che uno di voi si salvi per vincere tutti; se lo xenomorfo vi prende tutti (o finisce il tempo) vince lui.',
@@ -488,10 +640,12 @@ module.exports = {
       'Nascondersi: E davanti a un armadietto per entrarci (E per uscire), oppure accucciati sotto scrivanie e letti. Se lo xenomorfo annusa l\'armadietto, trattieni il respiro (spazio) ma non troppo a lungo. Il lanciafiamme lo fa scappare nei condotti; i razzi lo attirano lontano. Batterie, carburante e razzi si raccolgono passandoci sopra.',
       'Lo xenomorfo ha due intelligenze, come nel gioco vero: la direttrice decide quando mandarlo verso di voi (non sa mai esattamente dove siete) e quando concedervi una tregua; la mente impara le vostre abitudini: più usate lo stesso trucco (armadietti, fuoco, razzi, correre) meno funziona.',
       'Lo xenomorfo può farlo anche un giocatore (opzione del tavolo): vede al buio, sente i rumori (puntini sullo schermo), corre col fiato, attacca col clic, apre gli armadietti con E e con E su una grata entra nei condotti (si vede la pianta e si scende da un\'altra grata con E).',
+      'MODALITÀ SURVIVAL: uno, due o tre xenomorfi (persone del tavolo o il computer) contro gli altri. I sopravvissuti completano insieme 20 o più TASK: E davanti a un terminale o a un generatore apre un minigioco (fili da collegare, codice, sequenza, taratura; più o meno difficile). Ogni task finita fa rumore. Finite tutte parte la FUGA: il Torrens è attraccato, correte all\'attracco. Gli xenomorfi vincono se non scappa nessuno prima della fine del tempo.',
+      'Nella survival chi sta FERMO è invisibile agli xenomorfi (girare la visuale non conta), a meno che non gli stia attaccato. Gli xenomorfi sentono i rumori come nuvolette di gas rosso sulla mappa, uccidono con un colpo (clic, solo davanti a sé, senza ricarica) e il lanciafiamme li stordisce per qualche secondo. Ci si nasconde negli armadietti, nelle casse grandi e nei passaggi di servizio (E sulla botola a terra: si striscia fino alla botola gemella). I morti guardano gli altri.',
       'Il gioco è in tempo reale e si ferma per tutti quando qualcuno apre le dispense. I posti vuoti sono compagni del computer che vanno ai generatori e si nascondono quando arriva lo xenomorfo.',
     ],
   },
   crea: (o) => new Isolation(o),
   bot: () => ({}),
-  _test: { Isolation, M, AI, VEL, RUMORE, BIT, FIATO },
+  _test: { Isolation, M, AI, VEL, RUMORE, BIT, FIATO, STAZIONI, MINIGIOCHI, TASK_MIN, FERMO, ATTACCATO, BOTOLA },
 };
