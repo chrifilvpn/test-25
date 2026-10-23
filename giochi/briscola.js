@@ -16,9 +16,11 @@ function vincitoreDi(tavolo, semeBriscola) {
 }
 
 class Briscola {
-  constructor({ n, primo = 0 }) {
+  constructor({ n, primo = 0, opzioni = {} }) {
     this.id = 'briscola';
     this.n = n;
+    // al buio: nessuno vede le proprie carte finché non le gioca (si sceglie solo la posizione); la briscola si vede
+    this.alBuio = opzioni.carte === 'coperte';
     this.aSquadre = n === 4;
     let mazzo = mazzo40();
     if (n === 3) mazzo = mazzo.filter((c) => c.id !== '2c'); // in tre si toglie il 2 di cuori
@@ -47,7 +49,8 @@ class Briscola {
     if (this.inAttesa) return { errore: 'Aspetta che si raccolga la mano' };
     if (p !== this.turno) return { errore: 'Non è il tuo turno' };
     if (!a || a.tipo !== 'gioca') return { errore: 'Mossa non valida' };
-    const i = this.mani[p].findIndex((c) => c.id === a.carta);
+    // al buio si gioca per posizione (con il nome della carta si potrebbe scoprire che cosa si ha in mano)
+    const i = this.alBuio ? (Number.isInteger(a.pos) && a.pos >= 0 && a.pos < this.mani[p].length ? a.pos : -1) : this.mani[p].findIndex((c) => c.id === a.carta);
     if (i < 0) return { errore: 'Non hai questa carta' };
     const [c] = this.mani[p].splice(i, 1);
     this.tavolo.push({ posto: p, carta: c });
@@ -85,9 +88,9 @@ class Briscola {
   // a mazzo finito non si pesca più: il trucco diventa il consiglio della carta da giocare
   suggerimentoWin(p) {
     if (this.mazzo.length >= this.n || this.turno !== p || this.inAttesa || !this.mani[p].length) return null;
-    const a = bot(this, p, 'difficile');
-    const c = this.mani[p].find((x) => x.id === a.carta);
-    return c ? `💡 Gioca ${nomeCarta(c)}` : null;
+    const a = bot(this, p, 'difficile', true);
+    const k = this.mani[p].findIndex((x) => x.id === a.carta), c = this.mani[p][k];
+    return c ? `💡 Gioca ${this.alBuio ? `la ${['prima', 'seconda', 'terza'][k] || `${k + 1}ª`} carta (${nomeCarta(c)})` : nomeCarta(c)}` : null;
   }
 
   chiudi() {
@@ -107,7 +110,9 @@ class Briscola {
       gioco: this.id,
       n: this.n,
       aSquadre: this.aSquadre,
-      mano: this.mani[p] || [],
+      // al buio la mano è fatta solo di dorsi: il server non manda nemmeno quali carte sono
+      mano: this.alBuio ? (this.mani[p] || []).map((c, k) => ({ coperta: true, pos: k })) : this.mani[p] || [],
+      alBuio: this.alBuio,
       carteInMano: this.mani.map((m) => m.length),
       tavolo: this.tavolo,
       briscola: this.briscola,
@@ -123,8 +128,11 @@ class Briscola {
 }
 
 // ---------- Computer ----------
-function bot(g, p, livello) {
+// (vede: il consiglio del trucco conosce le carte anche al buio)
+function bot(g, p, livello, vede = false) {
   const mano = g.mani[p];
+  // al buio anche il computer non sa che carte ha: ne gioca una a caso
+  if (g.alBuio && !vede) return { tipo: 'gioca', pos: Math.floor(Math.random() * mano.length) };
   const gioca = (c) => ({ tipo: 'gioca', carta: c.id });
   if (livello === 'facile') return gioca(casuale(mano));
 
@@ -180,7 +188,9 @@ module.exports = {
     nome: 'Briscola',
     giocatori: [2, 3, 4],
     descrizione: 'Il classico: prendi più punti degli altri. In quattro si gioca in coppia.',
-    opzioni: [],
+    opzioni: [
+      { id: 'carte', nome: 'Carte in mano', valori: ['scoperte', 'coperte'], etichette: ['Normali: vedi le tue carte', 'Al buio: le scopri solo quando le giochi'], predefinito: 'scoperte' },
+    ],
     regole: [
       'Si gioca con 40 carte: dall\'asso al 7, più fante, donna e re. In tre si toglie il 2 di cuori.',
       'Ognuno riceve 3 carte. Una carta scoperta sotto il mazzo indica il seme di briscola, e sarà l\'ultima pescata.',
@@ -189,6 +199,7 @@ module.exports = {
       'Punti: asso 11, tre 10, re 4, donna 3, fante 2. In tutto sono 120: vince chi ne fa almeno 61.',
       'Chi prende pesca per primo e gioca per primo la mano successiva.',
       'In quattro giocano in coppia i giocatori seduti uno di fronte all\'altro.',
+      'Al buio (opzione "Carte in mano"): hai sempre 3 carte ma sono coperte, anche per te. Scegli quale giocare (prima, seconda o terza) e la scopri solo quando arriva sul tavolo. La briscola sotto il mazzo resta scoperta. Anche il computer gioca senza guardare.',
       'Le carte in mano sono in ordine di seme (la briscola in fondo) e dalla più debole alla più forte. Sulle carte che valgono punti c\'è un numerino in alto a destra: asso 11, tre 10, re 4, donna 3, fante 2.',
     ],
   },

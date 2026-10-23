@@ -180,9 +180,11 @@ class Wanted extends Arena {
   }
   statoTick() {
     const sbagli = this.sbagli; this.sbagli = [];
+    // nel conto alla rovescia (e in pausa) le facce non si mandano: ferme, il ricercato si troverebbe subito
+    const coperte = this.fase === 'via' || (this.fase === 'gioco' && this.inPausa);
     return {
-      ric: this.ricercato, sc: this.schema, r: this.L.r, lv: this.livello, resta: Math.max(0, Math.ceil(TEMPO - this.tempoRound)),
-      f: this.facce.map((f) => [Math.round(f.x), Math.round(f.y), TIPI.indexOf(f.tipo), Math.round(f.ang * 10)]),
+      ric: this.ricercato, sc: this.schema, r: this.L.r, lv: this.livello, resta: Math.max(0, Math.ceil(TEMPO - this.tempoRound)), nf: this.facce.length,
+      f: coperte ? [] : this.facce.map((f) => [Math.round(f.x), Math.round(f.y), TIPI.indexOf(f.tipo), Math.round(f.ang * 10)]),
       tr: this.trovato ? { p: this.trovato.p, i: this.quale, t: this.trovato.t } : this.fase === 'pausaRound' ? { p: null, i: this.quale } : null,
       bl: this.bloccati.map((b) => Math.max(0, Math.round((b - this.tempoRound) * 10) / 10)), sb: sbagli,
     };

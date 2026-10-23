@@ -179,9 +179,10 @@
   // ================= fasi =================
   function monta() {
     const p = ctxA.partita, t = p.stato;
-    const k = `${p.k}-${t.fase}-${t.nPausa}-${p.mio.fatto}-${p.finita}`;
+    // anche la pausa fa parte della chiave: alla ripresa la prova si rimonta (prima restava "In pausa" per sempre)
+    const k = `${p.k}-${t.fase}-${t.nPausa}-${!!t.pausa}-${p.mio.fatto}-${p.finita}`;
     if (k === chiave) return;
-    const eraInProva = chiave && chiave.startsWith(`${p.k}-prova-${t.nPausa}-false`);
+    const eraInProva = chiave && chiave.startsWith(`${p.k}-prova-${t.nPausa}-false-false`);
     chiave = k;
     if (t.fase === 'prova' && p.mio.fatto && eraInProva) {
       // appena finito: si lascia vedere un attimo l'ultimo errore prima del riassunto

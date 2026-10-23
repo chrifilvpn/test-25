@@ -532,6 +532,7 @@
 .sd-tasto:hover { background: rgba(247, 240, 222, .28); }
 .sd-tasto.finito { opacity: .35; }
 .sd-comandi { display: flex; gap: .5rem; }
+.sd-guida { margin: 0; max-width: 26rem; font-size: .85rem; color: var(--tenue); text-align: center; line-height: 1.4; }
 .attivo-bt { background: var(--avorio) !important; color: var(--inchiostro); }
 
 /* ======================= SNAKE ======================= */

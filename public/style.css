@@ -96,6 +96,8 @@ input::placeholder { color: rgba(243, 236, 217, .4); }
 .filtro-tipo button { padding: .45rem .7rem; font: inherit; font-size: .86rem; color: inherit; background: transparent; border: 0; cursor: pointer; }
 .filtro-tipo button + button { border-left: 1px solid rgba(247, 240, 222, .18); }
 .filtro-tipo button[aria-pressed="true"] { background: rgba(209, 154, 42, .25); color: var(--avorio); }
+/* mouse o tastiera: conta solo sul computer (sul telefono si gioca col dito) */
+@media (hover: none) and (pointer: coarse) { #filtro-controlli { display: none; } }
 .g-tag { font-size: .72rem; color: var(--tenue); }
 .elenco-giochi { display: grid; grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr)); gap: .6rem; }
 @media (min-width: 1100px) { .elenco-giochi { grid-template-columns: repeat(auto-fill, minmax(10.4rem, 1fr)); } .gioco-tessera { padding: .8rem .9rem; } .g-desc { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; } }

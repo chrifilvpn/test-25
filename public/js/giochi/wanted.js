@@ -141,7 +141,7 @@
     accetta: (x, y) => visibili.some(([a, b, r]) => Math.hypot(a - x, b - y) < r),
     sottotitolo: (p) => { const s = p.stato && p.stato.s; const lv = s && s.lv ? { facile: 'Facile', normale: 'Normale', difficile: 'Difficile', esperto: 'Esperto', estremo: 'Estremo', impossibile: 'Impossibile' }[s.lv] + ' · ' : ''; return s ? lv + { griglia: 'Griglia', sparsi: 'Sparsi', righe: 'File che scorrono', rimbalzo: 'Rimbalzi', cerchi: 'Cerchi', pioggia: 'Pioggia', calca: 'Calca' }[s.sc] || '' : ''; },
     statoGioco: (ctx, s) => (s.s.bl[ctx.mio] > 0 ? `Bloccato ${s.s.bl[ctx.mio].toFixed(1)} s` : `Trova ${NOMI[s.s.ric].toLowerCase()}!`),
-    hud: (ctx, s) => `<span>⏱️ ${s.s.resta} s</span><span>👥 ${s.s.f.length} facce</span>`,
+    hud: (ctx, s) => `<span>⏱️ ${s.s.resta} s</span><span>👥 ${s.s.nf ?? s.s.f.length} facce</span>`,
     fineRound: (p, s, ctx) => { const t = s.s.tr; return t && t.p !== null ? `${t.p === ctx.mio ? 'L\'hai trovato tu' : `L'ha trovato ${ctx.nome(t.p)}`} in ${t.t.toFixed(1)} s` : 'Nessuno l\'ha trovato'; },
     dopoTick(ctx, d, prima) {
       for (const [p, x, y] of d.s.sb || []) { croci.push({ x, y, t: performance.now(), mio: p === ctx.mio }); if (p === ctx.mio) window.Nuovi.suono([[180, 0.15]], { tipo: 'square', volume: 0.06 }); }
@@ -168,7 +168,8 @@
         visibili.push([fx, fy, R + 6]);
       });
       g.globalAlpha = 1;
-      if (trovato) {
+      // prima del via le facce restano nascoste (il server non le manda): si vede solo il conto alla rovescia
+      if (trovato && x.f[trovato.i]) {
         const f = x.f[trovato.i], a = 0.6 + 0.4 * Math.sin(s.t * 8);
         g.strokeStyle = `rgba(255,220,80,${a})`; g.lineWidth = 5; g.beginPath(); g.arc(f[0], f[1], 34, 0, Math.PI * 2); g.stroke();
         faccia(g, TIPI[f[2]], f[0], f[1], 30);

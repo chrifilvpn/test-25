@@ -103,6 +103,16 @@ const CATEGORIE = {
 for (const [cat, ids] of Object.entries(CATEGORIE)) for (const id of ids) if (GIOCHI[id]) GIOCHI[id].meta.categoria = cat;
 for (const g of Object.values(GIOCHI)) if (!g.meta.categoria) g.meta.categoria = 'altri';
 
+// CONTROLLI sul computer (filtro della home): 'tastiera' = serve solo la tastiera, 'entrambi' = servono mouse e
+// tastiera insieme, 'uno' = basta l'uno o l'altro; tutti gli altri si giocano col solo mouse ('mouse')
+const CONTROLLI = {
+  tastiera: ['snake', 'tetris', 'tasti', 'battitura', 'colori', 'bumper', 'fuga', 'monete', 'arcobaleno', 'pioggia', 'piattaforme', 'duello', 'mangiatutto', 'bomberman', 'hockey', 'patata', 'tron', 'stella', 'buio', 'calamaro', 'asteroidi', 'catena', 'nomicose', 'anagrammi', 'numero'],
+  entrambi: ['paintball', 'carri', 'gattotopi', 'alieno', 'disegna', 'impostore', 'codenames', 'cruciverba', 'benchmark', 'draghi', 'angolo'],
+  uno: ['airhockey', 'massi', 'strada', 'pong4', 'slither', 'palloncini', 'calcetto', 'sudoku', 'wordle', 'impiccato', 'quiz', 'bandiere', 'capitali', 'sagome', 'monumenti', 'paroliere', 'duemila', 'mind', 'ponte'],
+};
+for (const [c, ids] of Object.entries(CONTROLLI)) for (const id of ids) if (GIOCHI[id]) GIOCHI[id].meta.controlli = c;
+for (const g of Object.values(GIOCHI)) if (!g.meta.controlli) g.meta.controlli = 'mouse';
+
 // Tiene solo le opzioni previste, con valori ammessi
 function pulisciOpzioni(id, opzioni = {}) {
   const out = {};
@@ -114,4 +124,4 @@ function pulisciOpzioni(id, opzioni = {}) {
   return out;
 }
 
-module.exports = { GIOCHI, pulisciOpzioni };
+module.exports = { GIOCHI, pulisciOpzioni, CONTROLLI };
