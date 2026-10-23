@@ -1,0 +1,11 @@
+/* COLLEGA I COLORI: griglia scura con tubi colorati */
+.cg { width: min(40rem, 100%); margin: 0 auto; display: grid; justify-items: center; gap: .8rem; padding: .3rem 0 1rem; }
+.cg-box { width: 100%; justify-self: stretch; display: grid; justify-items: center; }
+.cg-tela { display: block; border-radius: 16px; box-shadow: 0 12px 28px rgba(0, 0, 0, .45), 0 0 0 3px #2a3140; user-select: none; -webkit-user-select: none; cursor: pointer; }
+.cg-comandi { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: center; }
+.cg.finito .cg-tela { animation: cg-fine 1.1s ease-out; }
+@keyframes cg-fine { 30% { box-shadow: 0 0 0 4px #ffd166, 0 0 40px rgba(255, 209, 102, .6); } }
+.cg-record { text-align: center; }
+.cg-record ol { margin: .3rem 0 0; padding-left: 1.2rem; text-align: left; }
+.cg-record li.nuovo { font-weight: 700; color: #ffd166; }
+@media (prefers-reduced-motion: reduce) { .cg.finito .cg-tela { animation: none; } }
