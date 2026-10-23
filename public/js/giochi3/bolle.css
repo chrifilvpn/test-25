@@ -1,0 +1,9 @@
+/* BOLLE COLORATE: campo notturno con le bolle lucide */
+.bo { width: min(40rem, 100%); margin: 0 auto; display: grid; justify-items: center; gap: .6rem; padding: .3rem 0 1rem; }
+.bo-box { width: 100%; justify-self: stretch; display: grid; justify-items: center; }
+.bo-tela { display: block; border-radius: 16px; box-shadow: 0 12px 28px rgba(0, 0, 0, .45), 0 0 0 3px #2c3550; user-select: none; -webkit-user-select: none; cursor: crosshair; }
+.bo-comandi { display: flex; gap: .5rem; justify-content: center; }
+.bo-guida { margin: 0; font-size: .8rem; color: var(--tenue); text-align: center; }
+.bo-record { text-align: center; }
+.bo-record ol { margin: .3rem 0 0; padding-left: 1.2rem; text-align: left; }
+.bo-record li.nuovo { font-weight: 700; color: #ffd166; }
