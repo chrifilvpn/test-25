@@ -408,6 +408,8 @@ public/js/giochi3/draghi-campo.js
 public/js/giochi3/draghi-crea.js
 public/js/giochi3/draghi-incubo.js
 public/js/giochi3/draghi-mappe.js
+public/js/giochi3/draghi-musica.css
+public/js/giochi3/draghi-musica.js
 public/js/giochi3/draghi.css
 public/js/giochi3/draghi.js
 public/js/giochi3/forza3d.css
@@ -496,6 +498,7 @@ test/giochi3/conquista.js
 test/giochi3/cruciverba.js
 test/giochi3/damaint.js
 test/giochi3/draghi-horror.js
+test/giochi3/draghi-musica.js
 test/giochi3/draghi-stessopc.js
 test/giochi3/draghi.js
 test/giochi3/forza3d.js
