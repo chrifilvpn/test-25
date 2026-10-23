@@ -1,7 +1,8 @@
 // DRAGHI E SEGRETE: l'arte del gioco, tutta disegnata in SVG (niente immagini esterne). Il RITRATTO del personaggio è
 // fatto a strati: sfondo col colore della classe, capelli dietro, mantello, armatura o veste secondo la classe, collo,
 // orecchie secondo la stirpe (a punta per gli elfi, grandi per gnomi e halfling), testa con la forma del viso, corna dei
-// tiefling, muso a scaglie dei dragonidi, zanne dei mezzorchi, occhi, sopracciglia, naso, bocca, barba, capelli davanti,
+// tiefling, muso a scaglie dei dragonidi, zanne dei mezzorchi, chiaroscuro del viso, occhi con iride sfumata e palpebre,
+// sopracciglia piene, naso con narici, labbra, barba, capelli davanti (pieni, con attaccatura e ciocche),
 // segni (cicatrice, tatuaggio, lentiggini, benda, pitture), l'arma o il simbolo della classe dietro la spalla.
 // Poi gli EMBLEMI delle classi, le ICONE dei luoghi della mappa del mondo e il DADO a venti facce.
 (() => {
@@ -65,6 +66,11 @@
       <linearGradient id="${id}cu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8a5a32"/><stop offset="1" stop-color="#4a2e16"/></linearGradient>
       <linearGradient id="${id}ca" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${scurisci(cap, 1.25)}"/><stop offset="1" stop-color="${capS}"/></linearGradient>
       <linearGradient id="${id}om" x1="0" y1="0" x2="1" y2="0"><stop offset=".55" stop-color="#000" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".22"/></linearGradient>
+      <radialGradient id="${id}ir" cx="45%" cy="40%" r="60%"><stop offset="0" stop-color="${scurisci(occhi, 1.6)}"/><stop offset=".55" stop-color="${occhi}"/><stop offset="1" stop-color="${scurisci(occhi, 0.45)}"/></radialGradient>
+      <radialGradient id="${id}lu" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#fff" stop-opacity=".5"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+      <radialGradient id="${id}sc" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="${pelleSS}" stop-opacity=".55"/><stop offset="1" stop-color="${pelleSS}" stop-opacity="0"/></radialGradient>
+      <linearGradient id="${id}cv" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${scurisci(cap, 1.35)}"/><stop offset=".35" stop-color="${cap}"/><stop offset="1" stop-color="${capS}"/></linearGradient>
+      <clipPath id="${id}fv"><path d="${formaViso(viso, hx, hy, rx, ry)}"/></clipPath>
       <clipPath id="${id}cl"><rect x="0" y="0" width="200" height="240" rx="${cornice ? 14 : 0}"/></clipPath>
     </defs>`);
     out.push(`<g clip-path="url(#${id}cl)">`);
@@ -80,35 +86,36 @@
     out.push(armaDietro(cl, id));
     // ---- cappuccio del warlock (dietro la testa) ----
     if (cl === 'warlock') out.push(`<path d="M${hx - rx - 14} ${hy + 40} C${hx - rx - 20} ${hy - 30} ${hx - 20} ${hy - ry - 22} ${hx} ${hy - ry - 22} C${hx + 20} ${hy - ry - 22} ${hx + rx + 20} ${hy - 30} ${hx + rx + 14} ${hy + 40} Z" fill="${scurisci(mant, 0.5)}"/>`);
-    // ---- capelli dietro ----
-    if (['lunghi', 'treccia', 'coda'].includes(pett) || (f && pett === 'ricci')) {
-      const lung = pett === 'lunghi' ? 78 : pett === 'ricci' ? 40 : 20;
-      out.push(`<path d="M${hx - rx - 6} ${hy - 10} C${hx - rx - 14} ${hy + 30} ${hx - rx - 10} ${hy + lung} ${hx - rx + 6} ${hy + lung + 10} L${hx + rx - 6} ${hy + lung + 10} C${hx + rx + 10} ${hy + lung} ${hx + rx + 14} ${hy + 30} ${hx + rx + 6} ${hy - 10} Z" fill="url(#${id}ca)"/>`);
-    }
-    if (pett === 'chignon') out.push(`<circle cx="${hx}" cy="${hy - ry - 6}" r="15" fill="url(#${id}ca)"/><circle cx="${hx - 4}" cy="${hy - ry - 10}" r="5" fill="#fff" opacity=".12"/>`);
+    // ---- capelli dietro (la massa che sta dietro la testa e le spalle) ----
+    if (!drago) out.push(capelliDietro(pett, hx, hy, rx, ry, id, f));
     // ---- corpo: mantello e armatura o veste ----
     out.push(`<path d="M8 240 C12 196 46 176 100 172 C154 176 188 196 192 240 Z" fill="url(#${id}ma)"/>`);
     out.push(corpo(cl, id, { f, mant, c1 }));
     // ---- collo ----
     out.push(`<path d="M${hx - 14} ${hy + ry - 14} L${hx - 15} ${hy + ry + 18} Q${hx} ${hy + ry + 26} ${hx + 15} ${hy + ry + 18} L${hx + 14} ${hy + ry - 14} Z" fill="${pelleS}"/>`);
+    out.push(`<ellipse cx="${hx}" cy="${hy + ry - 2}" rx="17" ry="10" fill="url(#${id}sc)"/>`);
     out.push(colletto(cl, hx, hy + ry + 16, id, mant));
     // ---- orecchie ----
     out.push(orecchie(st, hx, hy, rx, pelle, pelleS));
     // ---- testa ----
     if (drago) out.push(testaDrago(hx, hy, rx, ry, pelle, pelleS, pelleSS, id));
     else out.push(`<path d="${formaViso(viso, hx, hy, rx, ry)}" fill="url(#${id}pe)"/>`);
-    // ombra sotto i capelli e guance
-    if (!drago) out.push(`<ellipse cx="${hx - rx * 0.55}" cy="${hy + 14}" rx="9" ry="6" fill="#e06060" opacity="${f ? 0.22 : 0.1}"/><ellipse cx="${hx + rx * 0.55}" cy="${hy + 14}" rx="9" ry="6" fill="#e06060" opacity="${f ? 0.22 : 0.1}"/>`);
+    // chiaroscuro: orbite, zigomi, guance, mascella, fronte e mento (tutto dentro la forma del viso)
+    if (!drago) out.push(modella({ hx, hy, rx, ry, id, f, pelleS, pelleSS }));
     // ---- corna ----
     if (a.corna && a.corna !== 'nessuna') out.push(corna(a.corna, hx, hy, rx, ry, drago ? scurisci(pelle, 0.5) : '#3a2a2a', id));
     // ---- occhi, sopracciglia, naso, bocca ----
-    out.push(occhiFaccia({ hx, hy, rx, ry, occhi, cap, st, f, drago, pelleSS, segni: a.segni }));
-    // ---- barba ----
+    const faccia = drago ? { sopra: occhiDrago({ hx, hy, rx, occhi, pelleSS, segni: a.segni }), bocca: '' } : occhiFaccia({ hx, hy, rx, ry, id, cap, pelle, st, f, pelleS, pelleSS, segni: a.segni });
+    out.push(faccia.sopra);
+    // ---- barba (i baffi coprono il labbro di sopra; con la barba piena la bocca resta sopra) ----
+    const baffiSopra = barba === 'baffi' || barba === 'pizzetto';
+    if (baffiSopra) out.push(faccia.bocca);
     if (barba !== 'nessuna') out.push(disegnaBarba(barba, hx, hy, rx, ry, id, cap));
+    if (!baffiSopra) out.push(faccia.bocca);
     // zanne del mezzorco (sopra la barba)
     if (st === 'mezzorco') out.push(`<path d="M${hx - 9} ${hy + 30} l2 -8 l3 8 Z M${hx + 9} ${hy + 30} l-2 -8 l-3 8 Z" fill="#f4ecd8" stroke="#8a7a5a" stroke-width=".6"/>`);
     // ---- capelli davanti ----
-    if (!drago) out.push(capelliDavanti(pett, hx, hy, rx, ry, id, f));
+    if (!drago) out.push(capelliDavanti(pett, hx, hy, rx, ry, id, f, cap));
     // ---- segni ----
     out.push(segni(a.segni, hx, hy, rx, ry, c1));
     // ---- accessori della classe ----
@@ -155,24 +162,74 @@
     return `<path d="M${x - 18} ${top + 4} C${x - 30} ${top - 22} ${x - 58} ${top - 10} ${x - 52} ${top + 18} C${x - 48} ${top + 30} ${x - 36} ${top + 26} ${x - 38} ${top + 14} C${x - 44} ${top + 4} ${x - 34} ${top - 6} ${x - 26} ${top + 10} Z M${x + 18} ${top + 4} C${x + 30} ${top - 22} ${x + 58} ${top - 10} ${x + 52} ${top + 18} C${x + 48} ${top + 30} ${x + 36} ${top + 26} ${x + 38} ${top + 14} C${x + 44} ${top + 4} ${x + 34} ${top - 6} ${x + 26} ${top + 10} Z" fill="${col}" stroke="#000" stroke-opacity=".45"/>
       <path d="M${x - 44} ${top + 2} q4 4 0 9 M${x + 44} ${top + 2} q-4 4 0 9" stroke="#fff" stroke-opacity=".2" fill="none"/>`;
   }
-  function occhiFaccia({ hx, hy, rx, ry, occhi, cap, st, f, drago, pelleSS, segni: sg }) {
+  // occhi da rettile e bocca a fessura dei dragonidi
+  function occhiDrago({ hx, hy, rx, occhi, pelleSS, segni: sg }) {
+    const ey = hy - 4, dx = rx * 0.42;
+    const occhio = (cx) => `<path d="M${cx - 8} ${ey} Q${cx} ${ey - 7} ${cx + 8} ${ey} Q${cx} ${ey + 5} ${cx - 8} ${ey} Z" fill="#f4e090"/><ellipse cx="${cx}" cy="${ey}" rx="4.5" ry="5" fill="${occhi === '#3a2a1a' ? '#e0b030' : occhi}"/><ellipse cx="${cx}" cy="${ey}" rx="1.3" ry="4.4" fill="#111"/>
+      <path d="M${cx - 9} ${ey} Q${cx} ${ey - 7.5} ${cx + 9} ${ey - 0.5}" stroke="#20140c" stroke-width="1.6" fill="none" stroke-linecap="round"/>`;
+    const my = hy + 34;
+    return `${occhio(hx - dx)}${sg === 'benda' ? '' : occhio(hx + dx)}<path d="M${hx - 18} ${my - 4} Q${hx} ${my + 3} ${hx + 18} ${my - 4}" stroke="${pelleSS}" stroke-width="2" fill="none"/>`;
+  }
+  // mescola due colori (t = 0 il primo, 1 il secondo)
+  const mescola = (c1, c2, t) => { const a = parseInt(c1.slice(1), 16), b = parseInt(c2.slice(1), 16); return `#${[16, 8, 0].map((k) => Math.round(((a >> k) & 255) * (1 - t) + ((b >> k) & 255) * t).toString(16).padStart(2, '0')).join('')}`; };
+  // il chiaroscuro del viso: luce da sinistra in alto
+  function modella({ hx, hy, rx, ry, id, f, pelleS, pelleSS }) {
+    const ey = hy - 4, dx = rx * 0.42;
+    return `<g clip-path="url(#${id}fv)">
+      <ellipse cx="${hx - dx}" cy="${ey - 1}" rx="12" ry="7" fill="url(#${id}sc)" opacity=".75"/><ellipse cx="${hx + dx}" cy="${ey - 1}" rx="12" ry="7" fill="url(#${id}sc)" opacity=".85"/>
+      <path d="M${hx - rx * 0.95} ${hy + 4} Q${hx - rx * 0.7} ${hy + 22} ${hx - rx * 0.3} ${hy + ry * 0.78}" stroke="${pelleS}" stroke-width="7" fill="none" stroke-linecap="round" opacity=".22"/>
+      <path d="M${hx + rx * 0.95} ${hy + 4} Q${hx + rx * 0.7} ${hy + 22} ${hx + rx * 0.3} ${hy + ry * 0.78}" stroke="${pelleSS}" stroke-width="8" fill="none" stroke-linecap="round" opacity=".25"/>
+      <ellipse cx="${hx - rx * 0.5}" cy="${hy + 10}" rx="10" ry="6" fill="#e2706a" opacity="${f ? 0.22 : 0.1}"/><ellipse cx="${hx + rx * 0.5}" cy="${hy + 10}" rx="10" ry="6" fill="#e2706a" opacity="${f ? 0.2 : 0.09}"/>
+      <ellipse cx="${hx - rx * 0.5}" cy="${hy + 2}" rx="8" ry="4" fill="url(#${id}lu)" opacity=".5"/>
+      <ellipse cx="${hx - 6}" cy="${hy - ry * 0.62}" rx="15" ry="8" fill="url(#${id}lu)" opacity=".45"/>
+      <ellipse cx="${hx - 2}" cy="${hy + ry * 0.84}" rx="7" ry="3.5" fill="url(#${id}lu)" opacity=".4"/>
+      <path d="M${hx - rx * 0.62} ${hy + ry * 0.86} Q${hx} ${hy + ry * 1.08} ${hx + rx * 0.62} ${hy + ry * 0.86}" stroke="${pelleSS}" stroke-width="5" fill="none" opacity=".25"/>
+    </g>`;
+  }
+  // occhi (iride sfumata, palpebre, piega, ciglia), sopracciglia, naso e bocca con le labbra
+  function occhiFaccia({ hx, hy, rx, ry, id, cap, pelle, st, f, pelleS, pelleSS, segni: sg }) {
     const ey = hy - 4, dx = rx * 0.42;
     const elf = st === 'elfo' || st === 'mezzelfo';
-    const occhio = (cx, chiuso) => {
-      if (chiuso) return `<path d="M${cx - 8} ${ey} q8 3 16 0" stroke="#2a1a10" stroke-width="2" fill="none"/>`;
-      const w = elf ? 9 : 8, h = drago ? 5 : 5.5;
-      const iris = drago ? `<ellipse cx="${cx}" cy="${ey}" rx="4.5" ry="5" fill="${occhi === '#3a2a1a' ? '#e0b030' : occhi}"/><ellipse cx="${cx}" cy="${ey}" rx="1.3" ry="4.4" fill="#111"/>` : `<circle cx="${cx}" cy="${ey + 0.5}" r="4.2" fill="${occhi}"/><circle cx="${cx}" cy="${ey + 0.5}" r="2" fill="#111"/><circle cx="${cx + 1.4}" cy="${ey - 1}" r="1.1" fill="#fff"/>`;
-      return `<path d="M${cx - w} ${ey} Q${cx} ${ey - h * (elf ? 1.6 : 1.4)} ${cx + w} ${ey - (elf ? 2 : 0)} Q${cx} ${ey + h} ${cx - w} ${ey} Z" fill="${drago ? '#f4e090' : '#fbf7f0'}"/>${iris}
-        <path d="M${cx - w - 1} ${ey} Q${cx} ${ey - h * (elf ? 1.7 : 1.5)} ${cx + w + 1} ${ey - (elf ? 2.5 : 0.5)}" stroke="#20140c" stroke-width="${f ? 2.2 : 1.6}" fill="none" stroke-linecap="round"/>
-        ${f && !drago ? `<path d="M${cx + w} ${ey - (elf ? 2.5 : 0.5)} l3 -2" stroke="#20140c" stroke-width="1.4"/>` : ''}`;
+    const w = elf ? 9 : 8.2, h = 4.8, alza = elf ? 2.2 : 0.6;
+    // lato: -1 occhio a sinistra (angolo esterno a sinistra), +1 a destra
+    const occhio = (cx, lato, n) => {
+      const xi = cx - lato * w, xo = cx + lato * w, yo = ey - alza;
+      const forma = `M${xi} ${ey + 0.6} C${cx - lato * w * 0.45} ${ey - h * 1.2} ${cx + lato * w * 0.5} ${ey - h * 1.25} ${xo} ${yo} C${cx + lato * w * 0.45} ${ey + h * 0.85} ${cx - lato * w * 0.5} ${ey + h * 0.9} ${xi} ${ey + 0.6} Z`;
+      const cid = `${id}oc${n}`;
+      const ciglia = f ? `<path d="M${xo} ${yo} l${lato * 3} -2.4 M${xo - lato * 2.2} ${yo - 1.6} l${lato * 2.2} -2.8 M${xo - lato * 4.6} ${yo - 2.8} l${lato * 1.2} -2.8" stroke="#1a0e08" stroke-width="1.1" stroke-linecap="round"/>` : '';
+      return `<clipPath id="${cid}"><path d="${forma}"/></clipPath>
+        <path d="${forma}" fill="#f6f1ea"/>
+        <g clip-path="url(#${cid})"><circle cx="${cx}" cy="${ey + 0.2}" r="4.3" fill="url(#${id}ir)"/><circle cx="${cx}" cy="${ey + 0.2}" r="4.3" fill="none" stroke="#000" stroke-opacity=".35" stroke-width=".8"/>
+          <circle cx="${cx}" cy="${ey + 0.2}" r="1.9" fill="#0b0806"/><circle cx="${cx + 1.5}" cy="${ey - 1.5}" r="1.15" fill="#fff"/><circle cx="${cx - 1.3}" cy="${ey + 1.6}" r=".6" fill="#fff" opacity=".6"/>
+          <path d="M${xi - 2} ${ey - 2} Q${cx} ${ey - h * 1.6} ${xo + 2} ${yo - 2} L${xo + 2} ${yo - 6} L${xi - 2} ${ey - 6} Z" fill="#000" opacity=".22" transform="translate(0 2.2)"/></g>
+        <path d="M${xi - lato * 0.5} ${ey + 0.4} C${cx - lato * w * 0.45} ${ey - h * 1.25} ${cx + lato * w * 0.5} ${ey - h * 1.3} ${xo + lato * 1} ${yo - 0.3}" stroke="#1e120a" stroke-width="${f ? 2.1 : 1.7}" fill="none" stroke-linecap="round"/>
+        <path d="M${xi + lato * 1} ${ey - 4.6} Q${cx} ${ey - h * 2.05} ${xo - lato * 0.5} ${yo - 3.6}" stroke="${pelleSS}" stroke-width="1" fill="none" opacity=".7"/>
+        <path d="M${xi + lato * 1.5} ${ey + 2.2} Q${cx} ${ey + h * 1.05} ${xo - lato * 1} ${yo + 1.4}" stroke="${pelleSS}" stroke-width=".9" fill="none" opacity=".55"/>${ciglia}`;
+    };
+    // sopracciglia piene, più spesse all'interno e sottili verso l'esterno
+    const colS = scurisci(cap, cap === '#e8e0c8' || cap === '#d8b060' ? 0.7 : 0.85), sp = f ? 2.1 : 3.2;
+    const ciglio = (cx, lato) => {
+      const xi = cx - lato * (w + 0.5), xo = cx + lato * (w + 3.5), by = ey - 9.5 - (elf ? 1 : 0);
+      return `<path d="M${xi} ${by + 0.5} Q${cx - lato * 1} ${by - 4.2} ${xo} ${by - (elf ? 2.5 : 0.5)} Q${cx} ${by - 4.8 - sp} ${xi} ${by - sp} Z" fill="${colS}"/>`;
     };
     const benda = sg === 'benda';
-    const sopr = drago ? '' : `<path d="M${hx - dx - 9} ${ey - 10 - (elf ? 2 : 0)} Q${hx - dx} ${ey - 15} ${hx - dx + 9} ${ey - 11}" stroke="${scurisci(cap, 0.85)}" stroke-width="${f ? 2.2 : 3.4}" fill="none" stroke-linecap="round"/><path d="M${hx + dx - 9} ${ey - 11} Q${hx + dx} ${ey - 15} ${hx + dx + 9} ${ey - 10 - (elf ? 2 : 0)}" stroke="${scurisci(cap, 0.85)}" stroke-width="${f ? 2.2 : 3.4}" fill="none" stroke-linecap="round"/>`;
-    const nasoLungo = st === 'gnomo' ? 1.5 : 1;
-    const naso = drago ? '' : `<path d="M${hx - 1} ${ey + 4} Q${hx - 5 * nasoLungo} ${ey + 16 * nasoLungo} ${hx - 4} ${ey + 18 * nasoLungo} Q${hx} ${ey + 21 * nasoLungo} ${hx + 5} ${ey + 17 * nasoLungo}" stroke="${pelleSS}" stroke-width="1.6" fill="none" stroke-linecap="round"/>${st === 'gnomo' ? `<ellipse cx="${hx}" cy="${ey + 22}" rx="6" ry="5" fill="${pelleSS}" opacity=".35"/>` : ''}`;
-    const my = drago ? hy + 34 : hy + 27;
-    const bocca = drago ? `<path d="M${hx - 18} ${my - 4} Q${hx} ${my + 3} ${hx + 18} ${my - 4}" stroke="${pelleSS}" stroke-width="2" fill="none"/>` : `<path d="M${hx - 10} ${my} Q${hx} ${my + (f ? 5 : 3)} ${hx + 10} ${my}" stroke="${f ? '#a83a42' : '#7a3a2a'}" stroke-width="${f ? 3 : 2.2}" fill="none" stroke-linecap="round"/>${f ? `<path d="M${hx - 8} ${my + 1} Q${hx} ${my + 6} ${hx + 8} ${my + 1}" fill="#c0505a" opacity=".55"/>` : ''}`;
-    return `${occhio(hx - dx, false)}${benda ? '' : occhio(hx + dx, false)}${sopr}${naso}${bocca}`;
+    const k = st === 'gnomo' ? 1.35 : st === 'mezzorco' ? 1.12 : 1;
+    const nt = ey + 16 * k;
+    const naso = `<path d="M${hx - 3} ${ey + 1} Q${hx - 5.5} ${ey + 9 * k} ${hx - 6} ${nt - 2}" stroke="${pelleS}" stroke-width="3" fill="none" stroke-linecap="round" opacity=".45"/>
+      <ellipse cx="${hx + 0.5}" cy="${nt}" rx="${4.4 * k}" ry="${3.4 * k}" fill="${scurisci(pelle, 1.05)}"/>
+      <ellipse cx="${hx - 0.8}" cy="${nt - 1.2}" rx="${2 * k}" ry="${1.4 * k}" fill="#fff" opacity=".3"/>
+      <path d="M${hx - 6.5 * k} ${nt - 0.5} Q${hx - 8 * k} ${nt + 3.5} ${hx - 3.5} ${nt + 3.4}" stroke="${pelleSS}" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+      <path d="M${hx + 6.5 * k} ${nt - 0.5} Q${hx + 8 * k} ${nt + 3.5} ${hx + 3.5} ${nt + 3.4}" stroke="${pelleSS}" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+      <ellipse cx="${hx - 2.6}" cy="${nt + 3}" rx="1.6" ry=".9" fill="${scurisci(pelle, 0.4)}" opacity=".8"/><ellipse cx="${hx + 2.6}" cy="${nt + 3}" rx="1.6" ry=".9" fill="${scurisci(pelle, 0.4)}" opacity=".8"/>
+      <ellipse cx="${hx}" cy="${nt + 6}" rx="6" ry="1.8" fill="${pelleSS}" opacity=".25"/>`;
+    // le labbra: quello di sopra più scuro, quello di sotto più pieno con un riflesso
+    const my = hy + 27, lab = f ? mescola(pelle, '#b8404c', 0.55) : mescola(pelle, '#9a4a40', 0.38), lw = f ? 9.5 : 10;
+    const bocca = `<path d="M${hx - lw} ${my} Q${hx - 5} ${my - 3.4} ${hx} ${my - 1.6} Q${hx + 5} ${my - 3.4} ${hx + lw} ${my} Q${hx} ${my + 0.8} ${hx - lw} ${my} Z" fill="${scurisci(lab, 0.82)}"/>
+      <path d="M${hx - lw + 1} ${my + 0.4} Q${hx} ${my + (f ? 6.4 : 4.6)} ${hx + lw - 1} ${my + 0.4} Q${hx} ${my + 1.4} ${hx - lw + 1} ${my + 0.4} Z" fill="${lab}"/>
+      <path d="M${hx - lw} ${my} Q${hx} ${my + 1.6} ${hx + lw} ${my}" stroke="${scurisci(lab, 0.45)}" stroke-width="1.1" fill="none" stroke-linecap="round"/>
+      <ellipse cx="${hx - 2}" cy="${my + (f ? 3 : 2.3)}" rx="3" ry=".9" fill="#fff" opacity="${f ? 0.35 : 0.2}"/>
+      <ellipse cx="${hx}" cy="${my + (f ? 9.5 : 8)}" rx="6" ry="2" fill="${pelleSS}" opacity=".3"/>`;
+    return { sopra: `${occhio(hx - dx, -1, 1)}${benda ? '' : occhio(hx + dx, 1, 2)}${ciglio(hx - dx, -1)}${ciglio(hx + dx, 1)}${naso}`, bocca };
   }
   function disegnaBarba(tipo, x, y, rx, ry, id, cap) {
     const g = `url(#${id}ca)`;
@@ -185,22 +242,58 @@
     if (tipo === 'treccia') s += `<g fill="${scurisci(cap, 0.8)}">${[0, 1, 2].map((k) => `<ellipse cx="${x}" cy="${y + ry + 26 + k * 9}" rx="6" ry="5"/>`).join('')}</g><circle cx="${x}" cy="${y + ry + 54}" r="3" fill="#d8b25a"/>`;
     return s;
   }
-  function capelliDavanti(pett, x, y, rx, ry, id, f) {
-    const g = `url(#${id}ca)`, top = y - ry;
+  // ciocche: fili di luce e d'ombra che seguono la forma dei capelli
+  const ciocche = (linee, cap) => `<g fill="none" stroke-linecap="round"><g stroke="${scurisci(cap, 1.7)}" stroke-opacity=".28" stroke-width="1.1">${linee.map((d) => `<path d="${d}"/>`).join('')}</g><g stroke="${scurisci(cap, 0.45)}" stroke-opacity=".35" stroke-width=".9" transform="translate(1.6 1.2)">${linee.map((d) => `<path d="${d}"/>`).join('')}</g></g>`;
+  function capelliDietro(pett, x, y, rx, ry, id, f) {
+    const g = `url(#${id}cv)`, top = y - ry;
     switch (pett) {
-      case 'calvo': return `<ellipse cx="${x - 10}" cy="${top + 14}" rx="12" ry="6" fill="#fff" opacity=".18"/>`;
-      case 'cresta': return `<path d="M${x - 8} ${top + 6} C${x - 10} ${top - 22} ${x - 4} ${top - 34} ${x} ${top - 36} C${x + 4} ${top - 34} ${x + 10} ${top - 22} ${x + 8} ${top + 6} Z" fill="${g}"/><path d="M${x - 8} ${top + 6} Q${x} ${top} ${x + 8} ${top + 6}" fill="${g}"/>`;
-      case 'ricci': return `<g fill="${g}">${Array.from({ length: 17 }, (_, k) => { const a = Math.PI * 0.92 + (k / 16) * Math.PI * 1.16; const rr = 7 + ((k * 7) % 4); return `<circle cx="${x + Math.cos(a) * (rx + 1)}" cy="${y - 8 + Math.sin(a) * (ry + 1)}" r="${rr}"/>`; }).join('')}${Array.from({ length: 6 }, (_, k) => `<circle cx="${x - rx * 0.6 + k * rx * 0.24}" cy="${y - ry + 6 + (k % 2) * 4}" r="8"/>`).join('')}</g><g fill="none" stroke="#fff" stroke-opacity=".14">${Array.from({ length: 6 }, (_, k) => `<path d="M${x - 20 + k * 8} ${y - ry - 2} q3 -4 6 0"/>`).join('')}</g>`;
-      case 'spettinati': return `<path d="M${x - rx - 4} ${y - 2} L${x - rx - 6} ${top + 4} L${x - rx + 6} ${top + 8} L${x - 20} ${top - 12} L${x - 8} ${top + 2} L${x} ${top - 16} L${x + 8} ${top + 2} L${x + 22} ${top - 10} L${x + rx - 4} ${top + 8} L${x + rx + 8} ${top + 2} L${x + rx + 4} ${y - 2} C${x + rx - 4} ${top + 18} ${x - rx + 4} ${top + 18} ${x - rx - 4} ${y - 2} Z" fill="${g}"/>`;
-      case 'lunghi': return `<path d="M${x - rx - 6} ${y + 30} C${x - rx - 10} ${top - 4} ${x - 10} ${top - 12} ${x} ${top - 10} C${x + 10} ${top - 12} ${x + rx + 10} ${top - 4} ${x + rx + 6} ${y + 30} C${x + rx} ${y + 4} ${x + rx - 6} ${top + 22} ${x + 6} ${top + 16} C${x - 2} ${top + 22} ${x - rx + 6} ${top + 26} ${x - rx} ${y + 30} Z" fill="${g}"/><path d="M${x} ${top - 6} q-6 14 -2 22" stroke="#fff" stroke-opacity=".15" fill="none" stroke-width="2"/>`;
-      case 'coda': case 'treccia': {
-        let s = `<path d="M${x - rx - 3} ${y - 2} C${x - rx - 6} ${top - 4} ${x + rx + 6} ${top - 4} ${x + rx + 3} ${y - 2} C${x + rx - 6} ${top + 16} ${x - rx + 6} ${top + 14} ${x - rx - 3} ${y - 2} Z" fill="${g}"/>`;
-        if (pett === 'treccia') s += `<g fill="${g}">${[0, 1, 2, 3].map((k) => `<ellipse cx="${x + rx + 4 + k * 1.5}" cy="${y + 8 + k * 12}" rx="7" ry="6.5"/>`).join('')}</g>`;
+      case 'lunghi': return `<path d="M${x - rx - 9} ${y - 12} C${x - rx - 16} ${top - 10} ${x + rx + 16} ${top - 10} ${x + rx + 9} ${y - 12} C${x + rx + 18} ${y + 30} ${x + rx + 22} ${y + 72} ${x + rx + 10} ${y + 96} L${x - rx - 10} ${y + 96} C${x - rx - 22} ${y + 72} ${x - rx - 18} ${y + 30} ${x - rx - 9} ${y - 12} Z" fill="${g}"/>
+        <ellipse cx="${x}" cy="${y + ry + 8}" rx="${rx}" ry="22" fill="#000" opacity=".16"/>`;
+      case 'ricci': {
+        const n = f ? 22 : 16;
+        return `<g fill="${g}">${Array.from({ length: n }, (_, k) => { const t = k / (n - 1), a = Math.PI * (f ? 0.62 : 0.86) + t * Math.PI * (f ? 1.76 : 1.28); const r = 11 + ((k * 5) % 4); return `<circle cx="${x + Math.cos(a) * (rx + 6)}" cy="${y - 6 + Math.sin(a) * (ry + 6)}" r="${r}"/>`; }).join('')}</g>`;
+      }
+      case 'coda': return `<path d="M${x + rx - 10} ${top + 12} C${x + rx + 18} ${top + 10} ${x + rx + 30} ${y + 20} ${x + rx + 16} ${y + 74} C${x + rx + 10} ${y + 56} ${x + rx + 6} ${y + 24} ${x + rx - 6} ${y - 4} Z" fill="${g}"/>
+        <path d="M${x + rx + 6} ${top + 22} q10 20 8 50" stroke="${scurisci('#ffffff', 1)}" stroke-opacity=".15" fill="none"/>`;
+      case 'chignon': return `<circle cx="${x + 2}" cy="${top - 7}" r="16" fill="${g}"/><path d="M${x - 10} ${top - 10} q12 -10 24 0 M${x - 8} ${top - 3} q10 -8 20 0" stroke="#fff" stroke-opacity=".18" fill="none"/>`;
+      case 'treccia': return `<path d="M${x - rx - 4} ${y - 8} C${x - rx - 8} ${top} ${x + rx + 8} ${top} ${x + rx + 4} ${y - 8} L${x + rx} ${y + 10} L${x - rx} ${y + 10} Z" fill="${g}"/>`;
+      default: return '';
+    }
+  }
+  function capelliDavanti(pett, x, y, rx, ry, id, f, cap) {
+    const g = `url(#${id}cv)`, top = y - ry, hl = y - ry * 0.5;
+    switch (pett) {
+      case 'calvo': return `<ellipse cx="${x - 10}" cy="${top + 14}" rx="13" ry="6" fill="url(#${id}lu)" opacity=".6"/>`;
+      case 'cresta': return `<path d="M${x - rx - 1} ${y - 2} C${x - rx - 3} ${top} ${x + rx + 3} ${top} ${x + rx + 1} ${y - 2} C${x + rx - 4} ${top + 16} ${x - rx + 4} ${top + 16} ${x - rx - 1} ${y - 2} Z" fill="${cap}" opacity=".22"/>
+        <path d="M${x - 9} ${hl} C${x - 12} ${top - 18} ${x - 6} ${top - 34} ${x + 1} ${top - 38} C${x + 8} ${top - 32} ${x + 12} ${top - 18} ${x + 9} ${hl} Q${x} ${hl - 4} ${x - 9} ${hl} Z" fill="${g}"/>
+        ${ciocche([`M${x - 4} ${hl - 2} Q${x - 5} ${top - 16} ${x} ${top - 32}`, `M${x + 4} ${hl - 2} Q${x + 4} ${top - 14} ${x + 2} ${top - 30}`], cap)}`;
+      case 'ricci': {
+        const n = 9;
+        return `<path d="M${x - rx - 3} ${y + 2} C${x - rx - 8} ${top - 6} ${x + rx + 8} ${top - 6} ${x + rx + 3} ${y + 2} L${x + rx - 3} ${y + 2} C${x + rx - 4} ${hl + 6} ${x + 10} ${hl} ${x} ${hl} C${x - 10} ${hl} ${x - rx + 4} ${hl + 6} ${x - rx + 3} ${y + 2} Z" fill="${g}"/>
+          <g fill="${g}" stroke="${scurisci(cap, 0.5)}" stroke-opacity=".35" stroke-width=".8">${Array.from({ length: n }, (_, k) => { const t = k / (n - 1), a = Math.PI * (1.02 + t * 0.96); return `<circle cx="${x + Math.cos(a) * (rx * 0.92)}" cy="${hl - 2 + Math.sin(a) * 12 + (k % 2) * 3}" r="${7 + (k % 3)}"/>`; }).join('')}
+          ${Array.from({ length: 7 }, (_, k) => { const t = k / 6, a = Math.PI * (1.1 + t * 0.8); return `<circle cx="${x + Math.cos(a) * (rx + 2)}" cy="${top + 2 + Math.sin(a) * 8 + 6}" r="${8 + (k % 2) * 2}"/>`; }).join('')}
+          <circle cx="${x - rx - 1}" cy="${y - 6}" r="6.5"/><circle cx="${x + rx + 1}" cy="${y - 6}" r="6.5"/></g>
+          <g fill="none" stroke="#fff" stroke-opacity=".2">${Array.from({ length: 7 }, (_, k) => `<path d="M${x - 24 + k * 8} ${top - 1 + (k % 2) * 3} q3 -4 6 0"/>`).join('')}</g>`;
+      }
+      case 'spettinati': return `<path d="M${x - rx - 3} ${y + 2} L${x - rx - 9} ${top + 6} L${x - rx + 1} ${top + 4} L${x - rx + 4} ${top - 10} L${x - 12} ${top - 4} L${x - 6} ${top - 18} L${x + 2} ${top - 6} L${x + 12} ${top - 17} L${x + 14} ${top - 4} L${x + rx - 2} ${top - 10} L${x + rx + 2} ${top + 4} L${x + rx + 10} ${top + 8} L${x + rx + 3} ${y + 2}
+          L${x + rx - 3} ${y + 2} L${x + rx - 4} ${hl + 2} L${x + rx - 10} ${hl + 6} L${x + 14} ${hl - 3} L${x + 9} ${hl + 6} L${x + 2} ${hl - 4} L${x - 5} ${hl + 7} L${x - 10} ${hl - 3} L${x - 18} ${hl + 6} L${x - rx + 6} ${hl - 1} L${x - rx + 3} ${y + 2} Z" fill="${g}" stroke-linejoin="round"/>
+        ${ciocche([`M${x - 18} ${hl} L${x - 10} ${top - 2}`, `M${x + 4} ${hl - 2} L${x + 10} ${top - 12}`, `M${x - 4} ${hl} L${x - 6} ${top - 12}`, `M${x + rx - 8} ${hl} L${x + rx - 4} ${top - 4}`], cap)}`;
+      case 'lunghi': return `<path d="M${x - rx - 5} ${y + 62} C${x - rx - 14} ${y + 24} ${x - rx - 12} ${top - 6} ${x} ${top - 10} C${x + rx + 12} ${top - 6} ${x + rx + 14} ${y + 24} ${x + rx + 5} ${y + 62}
+          L${x + rx - 3} ${y + 58} C${x + rx + 2} ${y + 24} ${x + rx + 1} ${y - 8} ${x + rx - 8} ${hl + 1} C${x + 16} ${hl - 8} ${x + 5} ${hl - 11} ${x + 1} ${hl - 12} C${x - 4} ${hl - 11} ${x - 16} ${hl - 8} ${x - rx + 8} ${hl + 1} C${x - rx - 1} ${y - 8} ${x - rx - 2} ${y + 24} ${x - rx + 3} ${y + 58} Z" fill="${g}"/>
+        ${ciocche([`M${x + 1} ${hl - 11} C${x - 14} ${hl - 8} ${x - rx - 6} ${y - 4} ${x - rx - 4} ${y + 50}`, `M${x - 3} ${top - 6} C${x - 20} ${top} ${x - rx - 10} ${y + 6} ${x - rx - 9} ${y + 40}`, `M${x + 2} ${hl - 11} C${x + 14} ${hl - 8} ${x + rx + 6} ${y - 4} ${x + rx + 4} ${y + 50}`, `M${x + 5} ${top - 6} C${x + 20} ${top} ${x + rx + 10} ${y + 6} ${x + rx + 9} ${y + 40}`], cap)}`;
+      case 'coda': case 'treccia': case 'chignon': {
+        // capelli tirati indietro: attaccatura piena sulla fronte, tempie coperte fino alle orecchie, pettinati all'indietro
+        let s = `<path d="M${x - rx - 3} ${y + 4} C${x - rx - 7} ${top - 2} ${x - rx * 0.5} ${top - 8} ${x} ${top - 8} C${x + rx * 0.5} ${top - 8} ${x + rx + 7} ${top - 2} ${x + rx + 3} ${y + 4}
+          L${x + rx - 3} ${y + 4} C${x + rx - 3} ${y - 12} ${x + rx - 8} ${hl + 2} ${x + rx - 15} ${hl} C${x + 6} ${hl - 5} ${x - 6} ${hl - 5} ${x - rx + 15} ${hl} C${x - rx + 8} ${hl + 2} ${x - rx + 3} ${y - 12} ${x - rx + 3} ${y + 4} Z" fill="${g}"/>`;
+        s += ciocche([`M${x - rx + 12} ${hl} C${x - rx + 4} ${top + 6} ${x - 6} ${top - 6} ${x + 4} ${top - 7}`, `M${x - 6} ${hl - 3} C${x - 8} ${top + 4} ${x + 2} ${top - 4} ${x + 10} ${top - 6}`, `M${x + 8} ${hl - 3} C${x + 10} ${top + 2} ${x + 16} ${top - 2} ${x + 22} ${top - 2}`, `M${x + rx - 12} ${hl} C${x + rx - 6} ${top + 8} ${x + rx} ${top + 10} ${x + rx + 2} ${y - 10}`], cap);
+        if (pett === 'treccia') s += `<g fill="${g}" stroke="${scurisci(cap, 0.45)}" stroke-opacity=".5" stroke-width=".8">${[0, 1, 2, 3, 4, 5].map((k) => `<ellipse cx="${x + rx + 4 + k * 1.4 + (k % 2 ? 2.5 : -2.5)}" cy="${y + 6 + k * 10}" rx="6.5" ry="6.2" transform="rotate(${k % 2 ? 28 : -28} ${x + rx + 4 + k * 1.4} ${y + 6 + k * 10})"/>`).join('')}</g><rect x="${x + rx + 5}" y="${y + 64}" width="9" height="4" rx="2" fill="#d8b25a"/><path d="M${x + rx + 6} ${y + 68} q-3 10 2 14 M${x + rx + 10} ${y + 68} q1 10 4 13 M${x + rx + 13} ${y + 68} q4 8 6 11" stroke="${cap}" stroke-width="3" stroke-linecap="round" fill="none"/>`;
+        if (pett === 'coda') s += `<rect x="${x + rx - 4}" y="${top + 12}" width="5" height="9" rx="2" fill="#7a2a1a" transform="rotate(-30 ${x + rx - 2} ${top + 16})"/>`;
         return s;
       }
-      case 'chignon': return `<path d="M${x - rx - 3} ${y - 4} C${x - rx - 6} ${top - 2} ${x + rx + 6} ${top - 2} ${x + rx + 3} ${y - 4} C${x + rx - 8} ${top + 14} ${x - rx + 8} ${top + 14} ${x - rx - 3} ${y - 4} Z" fill="${g}"/>`;
-      default: // corti, con il ciuffo
-        return `<path d="M${x - rx - 3} ${y - 2} C${x - rx - 8} ${top - 6} ${x + rx + 8} ${top - 6} ${x + rx + 3} ${y - 2} C${x + rx - 2} ${top + 18} ${x + 10} ${top + 12} ${x - 4} ${top + 18} C${x - 14} ${top + 22} ${x - rx + 4} ${top + 16} ${x - rx - 3} ${y - 2} Z" fill="${g}"/>${f ? '' : ''}`;
+      default: // corti, riga di lato e ciuffo
+        return `<path d="M${x - rx - 3} ${y + 4} C${x - rx - 8} ${top - 2} ${x - rx * 0.55} ${top - 11} ${x + 2} ${top - 11} C${x + rx * 0.6} ${top - 11} ${x + rx + 8} ${top - 2} ${x + rx + 3} ${y + 4}
+          L${x + rx - 3} ${y + 4} C${x + rx - 4} ${y - 10} ${x + rx - 6} ${hl} ${x + rx - 14} ${hl - 1} C${x + 8} ${hl - 4} ${x - 2} ${hl - 8} ${x - 8} ${hl - 9} C${x - 13} ${hl - 1} ${x - rx + 6} ${hl - 1} ${x - rx + 3} ${y - 8} L${x - rx + 3} ${y + 4} Z" fill="${g}"/>
+        ${ciocche([`M${x - 8} ${hl - 9} C${x - 4} ${top - 6} ${x + 14} ${top - 9} ${x + rx} ${top + 6}`, `M${x - 6} ${hl - 6} C${x + 4} ${hl - 12} ${x + 18} ${hl - 10} ${x + rx - 6} ${hl - 2}`, `M${x - 9} ${hl - 8} C${x - 16} ${top - 2} ${x - rx} ${top + 4} ${x - rx - 3} ${y - 6}`], cap)}`;
     }
   }
   function segni(tipo, x, y, rx, ry, col) {
