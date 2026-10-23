@@ -99,6 +99,7 @@ giochi/texas.js
 giochi/tigerball-livelli.js
 giochi/tigerball.js
 giochi/tris.js
+giochi/trucco.js
 giochi/uno.js
 giochi/wanted.js
 giochi/wordle.js
@@ -495,5 +496,14 @@ test/migliorie3.js
 test/nuovi.js
 test/serate.js
 test/simula.js
+test/trucco.js
+test/trucco/azione1.js
+test/trucco/azione2.js
+test/trucco/carte.js
+test/trucco/casino.js
+test/trucco/infra.js
+test/trucco/parole.js
+test/trucco/rompicapo.js
+test/trucco/strategia.js
 tornei.js
 verifica.js

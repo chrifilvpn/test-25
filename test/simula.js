@@ -538,3 +538,4 @@ require('./nuovi');
 require('./serate');
 require('./migliorie3');
 require('./giochi2');
+require('./trucco');
