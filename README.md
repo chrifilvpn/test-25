@@ -39,6 +39,7 @@ Made by chry_pala. Altri giochi arriveranno uno alla volta.
 - **Parole, nuovi**: **Catena di parole** (ogni parola comincia con le ultime due lettere della precedente, o con l'ultima; dizionario italiano, niente ripetizioni, tempo e vite, anche da soli; il computer difficile sceglie parole che finiscono con lettere difficili da continuare), **Cruciverba** generati (schema sempre nuovo incrociando centinaia di definizioni scritte a mano, tre grandezze, lettere date secondo la difficoltà, controllo e aiuto, da soli o in sfida) e il **Paroliere a squadre** (4, 6 o 8: i compagni vedono subito le parole della squadra).
 - **Azione, modalità nuove**: **Bombe e mattoni a squadre** (due contro due, le fiamme del compagno non fanno male) e la **Corsa con la pista disegnata** (chi apre il tavolo traccia il giro col mouse o col dito; il gioco lo liscia, lo ingrandisce e rifiuta piste che si incrociano o con curve troppo strette).
 - **Azione, nuovo**: **Hockey su ghiaccio** (due contro due con i portieri: in 4 ognuno il suo pattinatore, in 2 con un compagno del computer; si scivola sul ghiaccio, tiro verso l'angolo lontano dal portiere, passaggio, furto del disco, spintoni, parate, supplementari col gol d'oro).
+- **🖱️ Sette giochi nuovi solo col mouse** (o col dito sul telefono, tutti con il computer a tre livelli): **Affetta la frutta**, **Bolle colorate**, **Catena di biglie**, **Cerchi a tempo**, **Collega i colori**, **Difesa della torre** e **Caramelle in fila** (regole più sotto).
 - **Affari in città** (gioco in più, da 2 a 6): il classico della compravendita con le città italiane (nome e caselle nostri, niente marchi): comprare, aste, affitti, case e alberghi pari, ipoteche, prigione, carte Sorpresa e Destino, scambi tra giocatori, bancarotta; 40 o 25 giri (vince il più ricco) o fino all'ultimo rimasto. Il computer difficile valuta i gruppi da completare e da bloccare e propone scambi.
 - **Migliorie ai giochi**: forza della mano (probabilità di vincere) in Texas e Poker; Wordle con modalità difficile; tabella della strategia di base nel Blackjack (con la tua mano evidenziata) e tabella della terza carta e delle probabilità nel Baccarat; **Chi è l'Alieno con il computer** (si muove sulla mappa, fa i compiti, ricorda chi ha visto e dove, elimina solo senza testimoni, segnala i corpi, scrive in chat nelle riunioni, legge le accuse e vota) e scene di espulsione rifatte (astronauta grande, scritte leggibili su ogni sfondo); nel minigolf un ostacolo mobile non spinge più la pallina oltre il muro.
 - **Dispense**: nuove materie Matematica, Italiano e Storia; argomenti di quinta in più per Sistemi e Reti, TPSIT, Informatica e Inglese. Sul telefono si torna al gioco anche con **tre tocchi veloci nell'angolo in alto a destra** (oltre al logo premuto 3 secondi; si sceglie nelle impostazioni).
@@ -325,6 +326,20 @@ Carte francesi: cuori, quadri, fiori, picche.
 
 **Dispense**: niente nomi di professori, nessuna notifica finta (la campanella dice solo «Nessuna notifica») e nessuna sezione precisa (solo «Studente», «Classe 5ª»); date di lezioni e scadenze calcolate da oggi (una settimana dopo l'altra), pagine in inglese (ICT English, Grammar).
 
+**Collega i colori** (1-8, con computer): griglia da 5×5 a 9×9 con coppie di pallini colorati; si trascina dal pallino per tracciare il tubo fino al suo gemello, i tubi non si incrociano e alla fine devono riempire tutta la griglia. I livelli nascono da un generatore (un percorso che passa per tutte le caselle, tagliato in tubi) e un risolutore controlla che la soluzione sia una sola. 1, 3 o 5 livelli di fila; tutti hanno gli stessi livelli e vince chi li finisce prima; aiuto = un tubo giusto, +15 s.
+
+**Caramelle in fila** (1-8, con computer): griglia 8×8 di caramelle in 6 colori, si scambiano due vicine per fare file di 3 o più; con 4 in fila nasce la caramella a righe (svuota riga o colonna), con una L o una T quella incartata (esplode due volte), con 5 la bomba di cioccolato (toglie tutto un colore). Cadute e reazioni a catena valgono di più. Stessa griglia e stesse caramelle che cadono per tutti: vince chi fa più punti in 2 minuti (o 1 o 3).
+
+**Bolle colorate** (1-8, con computer): griglia a nido d'ape, il cannone in basso spara la bolla verso il puntatore (con rimbalzo sulle pareti, linea di mira fino al primo rimbalzo); tre o più dello stesso colore scoppiano e cadono quelle rimaste appese al niente. Dopo alcuni tiri a vuoto il soffitto scende di una riga; se una bolla supera la linea in fondo si perde. Scambio con la bolla dopo (tasto destro, clic sul cannone o spazio). Stessa griglia e stesse bolle per tutti: vince chi la svuota per primo.
+
+**Cerchi a tempo** (1-8, con computer): gioco di ritmo su una musica fatta dal browser; i cerchi appaiono con un anello che si stringe e si cliccano (o si preme Z o X) quando l'anello tocca il cerchio: 300, 100, 50 o mancato secondo la precisione, e la serie di colpi di fila fa crescere i punti. La mappa nasce da un seme (uguale per tutti); il browser misura i tempi e il server li controlla. Facile 100, media 120, difficile 140 battiti al minuto.
+
+**Affetta la frutta** (1-4, con computer, tempo reale): frutti lanciati dal fondo; tenendo premuto e trascinando la lama li taglia (1 punto, la stella 5); tre o più in un colpo sono una combo; la bomba toglie 10 punti e stordisce la lama. In più giocatori i frutti sono gli stessi e li prende chi li taglia per primo. Il server controlla il taglio anche sulle posizioni di un attimo prima, così si taglia quello che si vede.
+
+**Catena di biglie** (1-4, con computer, tempo reale): una catena di biglie rotola lungo una spirale o un serpente verso il buco; la rana di pietra al centro spara la biglia verso il puntatore; tre o più dello stesso colore scoppiano e, se ai lati del vuoto ci sono due biglie uguali, la parte davanti torna indietro come una calamita (reazione a catena, punti ×2, ×3…). Ognuno ha la sua catena ma le biglie sono le stesse per tutti: vince chi la distrugge per primo.
+
+**Difesa della torre** (1-4, con computer, tempo reale): mostri a ondate (goblin, lupi, orchi, guerrieri con lo scudo e ogni 5 ondate un drago) lungo le strade verso la torre; clic su un prato vicino alla propria strada per costruire arciere, cannone (ad area), ghiaccio (rallenta) o fulmine (salta tra i mostri e passa l'armatura), clic su una torretta per migliorarla o venderla. "Pronto!" fa partire prima l'ondata con un premio in monete. In più giocatori ognuno ha la sua strada: in squadra una torre e le vite in comune, in sfida ognuno la sua porta.
+
 Varianti non incluse: napola e accuse nello scopone, scala 40 con 5 o 6 giocatori, rientro dopo l'eliminazione.
 
 ## Difese del sito
@@ -387,7 +402,7 @@ public/              la pagina del sito
   video/             il video di Enrico Papi (webm e mp4)
 giochi2/             i giochi nuovi (si registrano da soli) e i dati dei quiz di geografia
   paroliere-dati.js + paroliere-aggiunte.js   il dizionario dei giochi di parole
-giochi3/             altri giochi nuovi (si registrano da soli)
+giochi3/             altri giochi nuovi (si registrano da soli); la logica condivisa col browser sta in public/js/giochi3/*-logica.js
 public/js/giochi2/   il loro disegno nel browser (uniti in /js/giochi2.js e /giochi2.css)
 giochi/alieno-bot.js i computer di Chi è l'Alieno
 archivio.js          dati che durano (classifiche): in memoria + file, pronto per un database
