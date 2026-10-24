@@ -28,6 +28,7 @@ const ATTESA_DICHIARAZIONI = 150000; // dopo la prima azione scritta, al massimo
 const MAX_RACCONTO = 400;
 const ATTESA_REVIVE = 15 * 60000; // tutti morti: un quarto d'ora per scrivere !revive, poi la campagna finisce
 const STILE_DA_LUOGO = { villaggio: 'villaggio', citta: 'villaggio', porto: 'villaggio', taverna: 'taverna', castello: 'castello', torre: 'castello', tempio: 'cripta', rovine: 'dungeon', dungeon: 'dungeon', grotta: 'grotta', cripta: 'cripta', foresta: 'foresta', montagna: 'montagna', palude: 'palude', deserto: 'strada', accampamento: 'foresta', ponte: 'strada', miniera: 'grotta', fattoria: 'villaggio', lago: 'palude' };
+const ao = (pg, m = 'o', f = 'a') => (pg && pg.genere === 'f' ? f : m); // pronto/pronta, morto/morta
 const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
 
 class Draghi {
@@ -93,6 +94,9 @@ class Draghi {
     return voce;
   }
   pgVivi() { return this.pg.map((p, i) => (p && !p.morto ? i : -1)).filter((i) => i >= 0); }
+  // i personaggi vivi dei giocatori veri: se non ce n'è più nessuno la campagna aspetta !revive (i compagni del
+  // computer da soli non scrivono niente e il tavolo restava fermo per sempre)
+  umaniVivi() { return this.pgVivi().filter((i) => this.umano(i)); }
   postoDi(nome) {
     const n = norm(nome);
     if (!n) return -1;
@@ -150,6 +154,8 @@ class Draghi {
     if (this.raccontoPronto) { const r = this.raccontoPronto; this.raccontoPronto = null; if (r.narrazione) this.scrivi('master', r.narrazione, { combattimento: true }); cambiato = true; }
     if (this.liberaPronta) { this.applicaLibera(); cambiato = true; }
     if (this.rispostaIA) { const r = this.rispostaIA; this.rispostaIA = null; this.applicaRisposta(r); return true; }
+    // per sicurezza: "il master scrive" senza nessuna richiesta in corso non deve bloccare il tavolo
+    if (this.attesaIA && !this.ultimaRichiesta && !this.attesaDM) { this.attesaIA = false; return true; }
     if (this.attesaIA) return cambiato;
     if (this.erroreIA && this.ultimaRichiesta && this.tentativi < 3 && !this.attesaIA) { this.ripeti(); return true; }
     if (this.fase === 'combattimento' && this.combattimento) {
@@ -177,6 +183,10 @@ class Draghi {
     if (this.finita) return { errore: 'La campagna è finita' };
     if (!a || typeof a.tipo !== 'string') return { errore: 'Mossa non valida' };
     if (a.per != null && p === this.host && this.locali.includes(Number(a.per))) p = Number(a.per);
+    // la risposta del master è arrivata ma il server non l'ha ancora messa nel racconto: prima quella, poi la mossa
+    // (altrimenti una mossa nel mezzo faceva partire una nuova richiesta che la risposta vecchia cancellava, e il tavolo
+    // restava per sempre su "il master sta scrivendo")
+    if (this.rispostaIA && !this.attesaIA) { const r = this.rispostaIA; this.rispostaIA = null; this.applicaRisposta(r); if (this.finita) return { errore: 'La campagna è finita' }; }
     if (a.tipo === 'termina') {
       if (!this.comanda(p)) return { errore: 'Può chiudere la campagna solo chi ha aperto il tavolo' };
       this.chiudi('Il tavolo chiude la campagna.');
@@ -219,7 +229,7 @@ class Draghi {
       r.pg.posto = p;
       if (this.cp) this.dopoCreazioneIncubo(r.pg, a.casuale || this.bot[p] ? { ...s, nome: a.scelte && a.scelte.nome } : s);
       this.pg[p] = r.pg;
-      this.annuncia(p, `ha creato ${r.pg.nome}, ${B.STIRPI[r.pg.stirpe].nome.toLowerCase()} ${CLASSI[r.pg.classe].nome.toLowerCase()}`, `${r.pg.nome} è pronto all'avventura!`);
+      this.annuncia(p, `ha creato ${r.pg.nome}, ${B.STIRPI[r.pg.stirpe].nome.toLowerCase()} ${CLASSI[r.pg.classe].nome.toLowerCase()}`, `${r.pg.nome} è pront${ao(r.pg)} all'avventura!`);
       if (this.tuttiPronti()) this.iniziaAvventura();
       return { ok: true };
     }
@@ -362,7 +372,7 @@ class Draghi {
     this.scelte = r.scelte || [];
     this.applicaEventi(r.eventi || []);
     if (this.finita) return;
-    if (this.pgVivi().length === 0) { this.tuttiMorti(); return; }
+    if (!this.umaniVivi().length) { this.tuttiMorti(); return; }
     // prove e tiri salvezza
     const prove = [];
     for (const x of r.prove || []) {
@@ -393,7 +403,7 @@ class Draghi {
       const chi = this.chiDi(e.chi);
       try {
         if (this.cp && this.eventoIncubo(e, t, chi)) continue;
-        if (t === 'danno') for (const k of chi) { const pg = this.pg[k]; const q = R.tira(e.danno || '1d6').totale; const sub = R.applicaDanno(pg, q, B.TIPI_DANNO[e.tipoDanno] ? e.tipoDanno : 'contundente', {}); this.scrivi('tiro', `${pg.nome} subisce ${sub} danni${e.tipoDanno ? ` da ${e.tipoDanno}` : ''}${e.motivo ? ` (${e.motivo})` : ''}.${pg.morto ? ' È MORTO.' : pg.pf <= 0 ? ' Cade a terra!' : ''}`, { posto: k }); }
+        if (t === 'danno') for (const k of chi) { const pg = this.pg[k]; const q = R.tira(e.danno || '1d6').totale; const sub = R.applicaDanno(pg, q, B.TIPI_DANNO[e.tipoDanno] ? e.tipoDanno : 'contundente', {}); this.scrivi('tiro', `${pg.nome} subisce ${sub} danni${e.tipoDanno ? ` da ${e.tipoDanno}` : ''}${e.motivo ? ` (${e.motivo})` : ''}.${pg.morto ? ` È MORT${ao(pg, 'O', 'A')}.` : pg.pf <= 0 ? ' Cade a terra!' : ''}`, { posto: k }); }
         else if (t === 'cura') for (const k of chi) { const pg = this.pg[k]; const q = R.cura(pg, R.tira(e.cura || '1d8').totale); this.scrivi('tiro', `${pg.nome} recupera ${q} punti ferita.`, { posto: k }); }
         else if (t === 'condizione') for (const k of chi) { const pg = this.pg[k]; const c = norm(e.condizione); if (!B.CONDIZIONI[c]) continue; if (e.togli) pg.condizioni = pg.condizioni.filter((x) => x !== c); else if (!pg.condizioni.includes(c)) pg.condizioni.push(c); if (c === 'esausto' && !e.togli) pg.esaurimento = Math.min(6, pg.esaurimento + 1); }
         else if (t === 'oggetto') for (const k of chi.slice(0, 1)) this.daiOggetto(this.pg[k], e);
@@ -408,7 +418,7 @@ class Draghi {
         else if (t === 'png') { const nome = String(e.nome || '').slice(0, 40); if (!nome) continue; const x = this.png.find((q) => norm(q.nome) === norm(nome)); const d = { nome, descrizione: String(e.descrizione || (x && x.descrizione) || '').slice(0, 400), atteggiamento: ['amico', 'neutrale', 'ostile'].includes(e.atteggiamento) ? e.atteggiamento : (x ? x.atteggiamento : 'neutrale') }; if (x) Object.assign(x, d); else this.png.push(d); if (this.png.length > 60) this.png.shift(); }
         else if (t === 'missione') { const titolo = String(e.titolo || '').slice(0, 80); if (!titolo) continue; const x = this.missioni.find((q) => norm(q.titolo) === norm(titolo)); const st = ['nuova', 'aggiornata', 'completata', 'fallita'].includes(e.stato) ? e.stato : 'nuova'; if (x) { x.stato = st === 'nuova' ? 'aggiornata' : st; if (e.descrizione) x.descrizione = String(e.descrizione).slice(0, 400); } else this.missioni.push({ titolo, descrizione: String(e.descrizione || '').slice(0, 400), stato: st }); this.scrivi('sistema', `📜 Missione ${st === 'completata' ? 'completata' : st === 'fallita' ? 'fallita' : st === 'aggiornata' ? 'aggiornata' : 'nuova'}: ${titolo}`); }
         else if (t === 'ispirazione') for (const k of chi.slice(0, 1)) { this.pg[k].ispirazione = true; this.scrivi('sistema', `✨ ${this.pg[k].nome} riceve l'ispirazione!`); }
-        else if (t === 'morte') for (const k of chi.slice(0, 1)) { this.pg[k].morto = true; this.pg[k].pf = 0; this.scrivi('sistema', `💀 ${this.pg[k].nome} è morto.`); }
+        else if (t === 'morte') for (const k of chi.slice(0, 1)) { this.pg[k].morto = true; this.pg[k].pf = 0; this.scrivi('sistema', `💀 ${this.pg[k].nome} è mort${ao(this.pg[k])}.`); }
       } catch (err) { /* un evento sbagliato non ferma gli altri */ }
     }
     for (const pg of this.pg) if (pg) R.ricalcola(pg);
@@ -461,7 +471,7 @@ class Draghi {
     const r = x.salvezza ? R.salvezza(pg, x.tipo, opz) : R.prova(pg, x.tipo, opz);
     x.esito = { totale: r.totale, d20: r.d20, bonus: r.bonus, riuscita: r.riuscita, naturale: r.naturale };
     let dopo = '';
-    if (x.salvezza && x.danno) { const tot = R.tira(x.danno).totale; const q = r.riuscita ? (x.meta ? Math.floor(tot / 2) : 0) : tot; if (q) { const sub = R.applicaDanno(pg, q, x.tipoDanno, {}); dopo = ` → ${sub} danni da ${x.tipoDanno}${pg.pf <= 0 ? (pg.morto ? ', MORTO' : ', a terra!') : ''}`; } }
+    if (x.salvezza && x.danno) { const tot = R.tira(x.danno).totale; const q = r.riuscita ? (x.meta ? Math.floor(tot / 2) : 0) : tot; if (q) { const sub = R.applicaDanno(pg, q, x.tipoDanno, {}); dopo = ` → ${sub} danni da ${x.tipoDanno}${pg.pf <= 0 ? (pg.morto ? `, MORT${ao(pg, 'O', 'A')}` : ', a terra!') : ''}`; } }
     if (x.salvezza && !r.riuscita && x.condizione && !pg.condizioni.includes(x.condizione)) { pg.condizioni.push(x.condizione); dopo += ` → ${x.condizione}`; }
     const dadi = r.d20.dadi.length > 1 ? `[${r.d20.dadi.join(', ')}] ${r.d20.modo}` : `${r.d20.valore}`;
     this.scrivi('tiro', `🎲 ${pg.nome}, ${r.nomeTipo}: ${dadi} ${R.segno(r.bonus)}${(r.extra || []).length ? ` (${r.extra.join(', ')})` : ''} = ${r.totale} contro CD ${x.cd}: ${r.riuscita ? 'RIUSCITA' : 'fallita'}${r.naturale === 20 ? ' (20 naturale!)' : r.naturale === 1 ? ' (1 naturale…)' : ''}${dopo}`, { posto: p, dado: r.d20.valore, riuscita: r.riuscita });
@@ -608,14 +618,15 @@ class Draghi {
     this.atmosfera = 'calma';
     if (esito === 'vittoria' && px && vivi.length) this.daiPx(Math.round(px / vivi.length), 'il combattimento');
     if (this.cp) this.dopoScontroIncubo(cb, esito);
-    if (this.pgVivi().length === 0) { this.tuttiMorti(); return; }
+    if (!this.umaniVivi().length) { this.tuttiMorti(); return; }
     this.chiediMaster('combattimentoFinito', `Il combattimento è finito: ${riassunto}\nRacconta la fine dello scontro e cosa succede dopo (cosa trovano sui nemici, chi è ferito, conseguenze). Se il gruppo ha perso decidi tu il destino: catturati, salvati, lasciati per morti… L'esperienza del combattimento l'ha già data il gioco.`);
   }
 
   // morte permanente, ma con !revive in chat (server.js) i morti tornano: intanto la campagna aspetta
   tuttiMorti() {
     this.fase = 'caduti'; this.cadutiDa = Date.now(); this.attesaIA = false; this.combattimento = null;
-    this.scrivi('sistema', `💀 Tutti i personaggi sono morti.${this.cp ? ` ${this.cp.morte[Math.floor(Math.random() * this.cp.morte.length)]}` : ''} Scrivete !revive in chat per riportarli in vita, oppure chi ha aperto il tavolo chiude la campagna.`);
+    const soloCompagni = this.pgVivi().length > 0;
+    this.scrivi('sistema', `💀 ${soloCompagni ? 'Tutti i personaggi dei giocatori sono morti (restano solo i compagni del computer).' : 'Tutti i personaggi sono morti.'}${this.cp ? ` ${this.cp.morte[Math.floor(Math.random() * this.cp.morte.length)]}` : ''} Scrivete !revive in chat per riportarli in vita, oppure chi ha aperto il tavolo chiude la campagna.`);
   }
   // !revive: i morti tornano in vita con tutti i punti ferita e le stesse cose che avevano
   revive() {

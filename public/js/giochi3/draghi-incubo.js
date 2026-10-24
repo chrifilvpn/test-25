@@ -181,7 +181,16 @@
         ${qui ? `<text x="${x - CW / 2 + 14}" y="${y - CH / 2 + 24}" font-size="13">📍</text>` : ''}
         ${a.segnale ? `<circle cx="${x}" cy="${y + 16}" r="6" fill="#ff3030" class="dr-in-bip"/>` : ''}</g>`;
     }).join('');
-    return `<svg class="dr-in-mappa" viewBox="0 0 ${W} ${H}" role="img" aria-label="Mappa della stazione">${linee}${nodi}</svg>`;
+    // la vista si stringe sui settori conosciuti (all'inizio se ne vedono pochi: prima erano minuscoli in un angolo)
+    let vb = `0 0 ${W} ${H}`;
+    if (inc.aree.length) {
+      const xs = inc.aree.map((a) => a.gx), ys = inc.aree.map((a) => a.gy);
+      const gx0 = Math.min(...xs), gy0 = Math.min(...ys);
+      const cw = Math.max(3, Math.max(...xs) - gx0 + 1), ch = Math.max(2, Math.max(...ys) - gy0 + 1);
+      const x0 = Math.max(0, Math.min(gx0, inc.cols - cw)), y0 = Math.max(0, Math.min(gy0, inc.righe - ch));
+      vb = `${x0 * CW} ${y0 * CH} ${Math.min(inc.cols, cw) * CW + M * 2} ${Math.min(inc.righe, ch) * CH + M * 2}`;
+    }
+    return `<svg class="dr-in-mappa" viewBox="${vb}" role="img" aria-label="Mappa della stazione">${linee}${nodi}</svg>`;
   }
   const barra = (v, max, col, testo) => `<span class="dr-in-barra"><i style="width:${Math.max(0, Math.min(100, (v / max) * 100))}%;background:${col}"></i><b>${testo}</b></span>`;
   function mioStato(ctx) { const inc = ctx.partita.incubo; return inc && inc.stato ? inc.stato[ctx.mio] : null; }
