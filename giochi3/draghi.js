@@ -501,7 +501,7 @@ class Draghi {
     const scena = MAP.scena(stile, Math.floor(Math.random() * 1e9), { w: grande ? 36 : 30, h: grande ? 22 : 20, luce: qui ? qui.luce : ['giorno', 'buio', 'torce'].includes(def.luce) ? def.luce : null });
     const gruppo = this.pgVivi().map((k) => this.pg[k]);
     for (const p of gruppo) { p.condizioni = p.condizioni.filter((x) => x !== 'prono'); }
-    this.combattimento = new Combattimento({ scena, gruppo, nemici, sorpresa: def.sorpresa === 'gruppo' || def.sorpresa === 'nemici' ? def.sorpresa : null, livelloIA: this.livelloIA() });
+    this.combattimento = new Combattimento({ scena, gruppo, nemici, sorpresa: def.sorpresa === 'gruppo' || def.sorpresa === 'nemici' ? def.sorpresa : null, livelloIA: this.livelloIA(), pazza: this.pazza });
     // il trucco segreto: il prossimo d20 (attacco, tiro salvezza, prova) del personaggio di chi l'ha attivato è un 20
     this.combattimento.venti = (c) => { const k = this.pg.indexOf(c.ref); return k >= 0 && T.consuma(this, k); };
     if (this.cp) { this.combattimento.horror = true; this.combattimento.rumore = this.incubo.rumore; this.combattimento.fuocoImparato = this.incubo.mente ? this.incubo.mente.abitudini.fuoco : 0; this.combattimento.senzaArmi = !this.cp.armi; }
