@@ -3,12 +3,23 @@
 // bestiario, i segreti dell'ambientazione) e risponde lui: racconto, prove, tiri salvezza, combattimenti ed eventi,
 // che il gioco applica con le stesse regole del master IA. L'IA resta il suo consigliere: le può chiedere qualsiasi
 // cosa (regole, idee, PNG, CD), farsi preparare una bozza da modificare, farle rispondere una volta sola o lasciarle
-// tutto il tavolo ("automatico"). Si aggiunge a Draghi (draghi.js) come i metodi delle ambientazioni horror.
+// tutto il tavolo ("automatico"). Il master può anche scrivere di fretta, a grandi linee, e farsi RISCRIVERE il testo
+// dall'IA in un racconto curato: gli torna nella casella, lo controlla e lo cambia, poi lo manda lui (e la voce
+// narrante legge quello che manda). Si aggiunge a Draghi (draghi.js) come i metodi delle ambientazioni horror.
 const MASTER = require('./master');
 const H = require('./horror');
 const { MOSTRI } = require('./mostri');
 
 const MAX_CONSIGLI = 40;
+// le caselle del master che si possono far riscrivere (i nomi dei campi della schermata, draghi-master.js)
+const CAMPI_RISCRITTURA = ['dmNarr', 'dmNarra', 'dmLNarr'];
+const RISCRITTORE = `Sei il NARRATORE di una partita di "Draghi e Segrete" (gioco di ruolo). Il master UMANO ha scritto di fretta, in modo grossolano, cosa succede: tu lo RISCRIVI come racconto curato, da leggere ai giocatori (e da leggere ad alta voce).
+- Scrivi SEMPRE in italiano corretto, al presente, parlando ai personaggi (voi / il nome del personaggio).
+- Tieni TUTTI i fatti del master e nient'altro di importante: non inventare mostri, oggetti, tesori, ferite, morti, esiti di tiri o decisioni dei personaggi, e non cambiare quello che succede. Puoi aggiungere solo atmosfera: luci, suoni, odori, gesti, il tono delle voci.
+- Se il master fa parlare qualcuno, scrivi la battuta come dialogo tra «virgolette», con le stesse informazioni.
+- Lunghezza simile all'originale, al massimo il doppio: 1-3 paragrafi brevi. Chiudi lasciando la scena aperta, senza domande ai giocatori se il master non le fa.
+- Solo testo semplice: niente titoli, elenchi, grassetti, emoji o note. Scrivi SOLO il racconto riscritto, senza commenti o introduzioni.
+- Se il testo del master contiene parolacce o cose volgari, rendile in modo adatto a ragazzi.`;
 const CONSIGLIERE = `Sei il CONSIGLIERE di un master UMANO che sta conducendo una partita di "Draghi e Segrete" (gioco di ruolo con le regole SRD 5.1 della 5ª edizione). Il master è un ragazzo che sta imparando: rispondi SEMPRE in italiano, in modo pratico, chiaro e breve (al massimo 10-12 righe, con elenchi puntati se servono). Non rispondere in JSON.
 - Il master decide tutto: tu proponi. Dai idee concrete e pronte da usare (frasi da leggere ai giocatori, nomi, CD precise, mostri del bestiario con il loro id, conseguenze).
 - Se ti chiede una regola, spiegala in parole semplici e dai il numero giusto (CD, danni, durata).
@@ -31,6 +42,18 @@ const RISERVA = [
 function perUmano(t) {
   return String(t || '').replace(/[^.\n]*(vaiQui|"luogo"|evento "|eventi \(|\(evento|JSON)[^.\n]*\.\s*/g, '').replace(/\nRispondi:[^\n]*/g, '').replace(/ Rispondi:.*$/s, '').trim();
 }
+// senza IA: il testo del master resta suo, solo con le maiuscole a inizio frase, gli spazi giusti e il punto finale
+function sistemaTesto(t) {
+  let s = String(t || '').replace(/[ \t]+/g, ' ').replace(/ *\n */g, '\n').replace(/\n{3,}/g, '\n\n').replace(/ +([,.;:!?])/g, '$1').replace(/([,;:!?])(?=[^\s\d»”"),.!?])/g, '$1 ').replace(/([a-zàèéìòù]{2})\.(?=[a-zA-Zàèéìòù])/g, '$1. ').trim();
+  s = s.replace(/(^|[.!?]\s+|\n)([a-zàèéìòù])/g, (m, a, b) => a + b.toUpperCase());
+  if (s && !/[.!?…»”"]$/.test(s)) s += '.';
+  return s;
+}
+// la risposta dell'IA: solo il racconto (via titoli, elenchi, grassetti e una eventuale frase di presentazione)
+function pulisciRiscritto(t) {
+  return String(t || '').replace(/```[a-z]*\n?|```/gi, '').replace(/^\s*(ecco|certo)[^\n]*:\s*\n/i, '').replace(/^\s{0,3}#{1,6}\s*/gm, '').replace(/^\s*[-*•]\s+/gm, '')
+    .replace(/(\*\*|__|\*)/g, '').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+}
 function infoBestiario(cp) {
   return Object.values(MOSTRI).filter((m) => (cp ? (m.tema || []).includes(cp.id) : !m.tema)).map((m) => ({ id: m.id, nome: m.nome, gs: m.gs, pf: m.pf, ca: m.ca, simbolo: m.simbolo || null }));
 }
@@ -39,6 +62,7 @@ const metodi = {
   preparaDm() {
     this.dm = null; this.dmAuto = false; this.attesaDM = null; this.nDM = 0;
     this.consigli = []; this.attesaConsiglio = false; this.bozzaDM = null; this.attesaBozza = false; this.liberaDM = null; this.dmNovita = false;
+    this.riscritturaDM = null; this.attesaRiscrittura = false; this.nRiscritture = 0;
   },
   // c'è un master umano che risponde lui (non in automatico)
   get dmUmano() { return this.dm != null && !this.dmAuto; },
@@ -47,7 +71,7 @@ const metodi = {
   tuttiPronti() { return this.pg.every((x, i) => x || i === this.dm); },
   // i consigli e le bozze dell'IA arrivano mentre il gioco aspetta: il server chiede controllaTempo ogni tanto
   novitaDm() { if (!this.dmNovita) return false; this.dmNovita = false; return true; },
-  attesaIaDm() { return this.attesaConsiglio || this.attesaBozza || this.dmNovita; },
+  attesaIaDm() { return this.attesaConsiglio || this.attesaBozza || this.attesaRiscrittura || this.dmNovita; },
 
   azioneDm(p, a) {
     const t = a.tipo;
@@ -126,6 +150,18 @@ const metodi = {
         .catch(() => { this.attesaConsiglio = false; this.dmNovita = true; this.consiglio('ia', '⚠️ Il consigliere non risponde: riprova tra poco.'); });
       return { ok: true };
     }
+    if (t === 'dm-riscrivi') {
+      const campo = CAMPI_RISCRITTURA.includes(a.campo) ? a.campo : 'dmNarr';
+      const testo = String(a.testo || '').trim().slice(0, 3000);
+      if (!testo) return { errore: 'Scrivi prima cosa succede, anche in due parole: poi l\'IA lo racconta per bene' };
+      if (this.attesaRiscrittura) return { errore: 'L\'IA sta già riscrivendo' };
+      const id = ++this.nRiscritture;
+      this.attesaRiscrittura = true;
+      this.riscrivi(testo).then((x) => { this.riscritturaDM = { id, campo, originale: testo, ...x }; })
+        .catch(() => { this.riscritturaDM = { id, campo, originale: testo, errore: 'l\'IA non risponde: riprova tra poco' }; })
+        .finally(() => { this.attesaRiscrittura = false; this.dmNovita = true; });
+      return { ok: true };
+    }
     if (t === 'dm-svuota') { this.consigli = []; return { ok: true }; }
     return { errore: 'Mossa non valida' };
   },
@@ -159,6 +195,17 @@ const metodi = {
     return MASTER.chiamaGemini({ chiave: this.chiave, sistema: `${CONSIGLIERE}\n\n${this.sistema()}`, messaggi: [{ ruolo: 'giocatori', testo: msg }], fetch: this.fetch, json: false, temperatura: 0.8, maxToken: 1500 })
       .then((r) => (r.errore ? `⚠️ ${r.errore}. Intanto: ${this.consiglioRiserva(domanda)}` : String(r.testo || '').trim() || '…'));
   },
+  // il testo grossolano del master -> racconto curato (o, senza IA, solo sistemato: maiuscole, spazi, punto finale)
+  riscrivi(testo) {
+    if (!(this.chiave && this.fetch)) return Promise.resolve({ testo: sistemaTesto(testo), riserva: true });
+    const tono = this.pazza ? 'MODALITÀ PAZZA: racconto comico, esagerato e assurdo, che fa ridere.' : this.cp ? 'Ambientazione HORROR: tono teso, cupo e opprimente, frasi brevi.' : `Tono dell'ambientazione: ${this.ambientazione || 'fantasy classico'}.`;
+    const msg = `${this.contesto()}\n\n${tono}${this.lunghezza === 'brevi' ? ' Il tavolo vuole racconti brevi: resta corto.' : ''}\n\n=== IL MASTER HA SCRITTO (da riscrivere) ===\n${testo}`;
+    return MASTER.chiamaGemini({ chiave: this.chiave, sistema: RISCRITTORE, messaggi: [{ ruolo: 'giocatori', testo: msg }], fetch: this.fetch, json: false, temperatura: 0.8, maxToken: 2000 })
+      .then((r) => {
+        const nuovo = r.errore ? '' : pulisciRiscritto(r.testo);
+        return nuovo ? { testo: nuovo.slice(0, 9000) } : { errore: r.errore || 'l\'IA non ha scritto niente' };
+      });
+  },
   consiglioRiserva(domanda) {
     const d = String(domanda || '').toLowerCase();
     const trovati = RISERVA.filter(([re]) => re.test(d)).map(([, t]) => t);
@@ -177,6 +224,7 @@ const metodi = {
       libera: x && cb === x.cb ? { chi: x.chi, testo: x.testo, d20: x.d20, creature: cb.creature.filter((c) => cb.vivo(c)).map((c) => ({ nome: c.ref.nome, lato: c.lato, pf: c.ref.pf, pfMax: c.ref.pfMax, ca: c.ref.ca })) } : null,
       consigli: this.consigli.slice(-MAX_CONSIGLI), attesaConsiglio: this.attesaConsiglio,
       bozza: this.bozzaDM, attesaBozza: this.attesaBozza,
+      riscrittura: this.riscritturaDM, attesaRiscrittura: this.attesaRiscrittura,
       bestiario: infoBestiario(this.cp),
       scene: this.cp ? ['stazione', 'uffici', 'alloggi', 'medico', 'laboratorio', 'industriale', 'tram', 'nido', 'sottomarina', 'fondale', 'manicomio', 'fogne', 'cortile'] : ['dungeon', 'grotta', 'foresta', 'villaggio', 'taverna', 'cripta', 'palude', 'montagna', 'strada', 'castello'],
       segreti: this.cp && this.incubo && this.incubo.area ? this.contestoIncubo().trim() : null,
@@ -197,4 +245,4 @@ const metodi = {
   },
 };
 
-module.exports = { metodi, infoBestiario, perUmano, CONSIGLIERE };
+module.exports = { metodi, infoBestiario, perUmano, CONSIGLIERE, RISCRITTORE, sistemaTesto, pulisciRiscritto };

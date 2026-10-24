@@ -33,6 +33,12 @@
 .dr-dm .dr-dm-pensa { font-style: italic; color: var(--dr-oro2); font-size: .85rem; animation: dr-dm-pulsa 1.4s ease-in-out infinite; }
 @keyframes dr-dm-pulsa { 50% { opacity: .45; } }
 .dr-dm .dr-dm-narra { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .4rem; align-items: center; }
+.dr-dm .dr-dm-narra-bt { display: flex; flex-direction: column; gap: .3rem; }
+.dr-dm .dr-dm-narra-stato { grid-column: 1 / -1; }
+.dr-dm .dr-dm-riscr { white-space: nowrap; }
+.dr-dm .dr-dm-riscritto { font-size: .84rem; color: var(--dr-oro2); line-height: 1.35; }
+.dr-dm .dr-dm-riscritto .dr-link { font-size: .84rem; white-space: nowrap; }
+@media (max-width: 560px) { .dr-dm .dr-dm-narra { grid-template-columns: minmax(0, 1fr); } .dr-dm .dr-dm-narra-bt { flex-direction: row; flex-wrap: wrap; } }
 
 /* a fianco */
 .dr-dm .dr-dm-cb { display: grid; gap: .5rem; }
