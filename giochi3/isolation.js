@@ -424,7 +424,7 @@ class Isolation extends Arena {
       const u = this.umaniInGioco()[Math.floor(Math.random() * this.umaniInGioco().length)];
       if (u) { A.pings.push({ x: Math.round(u.x + caso(-40, 40)), y: Math.round(u.y + caso(-40, 40)), t: 6, tipo: 'fiuto' }); this.ev(['fiuto']); }
     }
-    if (A.stato === 'uccide') { A.vel = 0; if (A.t > (this.survival ? 1.2 : 2.2)) { A.stato = 'giro'; A.anim = 'cammina'; } return; }
+    if (A.stato === 'uccide') { A.vel = 0; if (A.t > (this.survival ? 1.9 : 2.2)) { A.stato = 'giro'; A.anim = 'cammina'; } return; }
     const i = this.inp[p];
     if (A.inCondotto) {
       // nei condotti si va dove si vuole sopra i soffitti (lo schermo mostra la pianta); E scende dalla grata vicina
@@ -460,7 +460,7 @@ class Isolation extends Arena {
         return d < (u.sotto ? AI.PRESA_SOTTO + 4 : AI.PRESA + 8) && (a < cono || d < 8) && M.vede(A, u, this.aperte);
       });
       const vittima = vittime.length ? vittime.reduce((a, b) => (dist(A, a) <= dist(A, b) ? a : b)) : null;
-      if (vittima) { A.stato = 'uccide'; A.t = 0; A.yaw = Math.atan2(vittima.y - A.y, vittima.x - A.x); this.morte(vittima, false, A); }
+      if (vittima) { A.stato = 'uccide'; A.anim = 'uccide'; A.t = 0; A.yaw = Math.atan2(vittima.y - A.y, vittima.x - A.x); this.morte(vittima, false, A); }
     }
     if (inter) {
       const g = AI.grataVicina(A);

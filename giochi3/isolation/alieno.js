@@ -297,7 +297,7 @@ function controlla(g, A, t) {
   if (!vai(g, A, M.centro([t[0] + fx, t[1] + fy]))) { stato(A, 'giro'); A.percorso = null; }
 }
 function uccide(g, A, u, armadietto = false) {
-  stato(A, 'uccide', armadietto ? 'tira' : 'attacca');
+  stato(A, 'uccide', armadietto ? 'tira' : 'uccide');
   A.yaw = Math.atan2(u.y - A.y, u.x - A.x);
   g.morte(u, armadietto, A);
 }
