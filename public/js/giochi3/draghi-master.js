@@ -1,6 +1,7 @@
 // DRAGHI E SEGRETE — la schermata del MASTER UMANO (giochi3/draghi/dm.js). Chi fa il master non ha un personaggio:
 // al centro il racconto e la sua consolle (cosa hanno fatto i giocatori, il racconto da scrivere, prove, tiri salvezza,
-// combattimenti ed eventi da aggiungere, la bozza e la risposta dell'IA), a fianco il consigliere IA a cui chiedere
+// combattimenti ed eventi da aggiungere, la bozza e la risposta dell'IA, il pulsante ✨ che fa riscrivere dall'IA in un
+// racconto curato quello che il master ha scritto di fretta), a fianco il consigliere IA a cui chiedere
 // qualsiasi cosa, la mappa completa (nell'horror tutta la stazione con la creatura), il bestiario, la guida con le CD
 // e i segreti dell'ambientazione. In combattimento i nemici li muove il gioco: il master racconta e giudica le azioni
 // libere dei giocatori. I pezzi comuni del tavolo (gruppo, racconto, mappa) arrivano da draghi.js (window.DraghiTavolo).
@@ -33,6 +34,26 @@
   const opz = (valori, sel) => valori.map(([v, t]) => `<option value="${esc(v)}" ${String(v) === String(sel) ? 'selected' : ''}>${esc(t)}</option>`).join('');
   const sel = (k, valori, def, attr = '') => `<select data-tieni="${k}" ${attr}>${opz(valori, ultimo && ultimo.ui[`t_${k}`] != null ? ultimo.ui[`t_${k}`] : def)}</select>`;
   const val = (ctx, k, def = '') => (ctx.ui[`t_${k}`] != null ? ctx.ui[`t_${k}`] : def);
+  // ✨ "Riscrivi con l'IA" sotto una casella del racconto, e dopo la riscrittura l'avviso con "torna al mio testo"
+  function riscrivi(ctx, campo) {
+    const I = info(ctx), o = ctx.ui.drDmOrig;
+    const bt = `<button type="button" class="dr-bt dr-bt-sec dr-dm-riscr" data-az="dr-dm-riscrivi" data-id="${campo}" ${I.attesaRiscrittura ? 'disabled' : ''} title="Scrivi anche di fretta, a grandi linee: l'IA lo trasforma in un racconto curato, che controlli e cambi prima di mandarlo">✨ Riscrivi con l'IA</button>`;
+    const stato = I.attesaRiscrittura && ctx.ui.drDmChiesta === campo ? '<span class="dr-dm-pensa">✨ L\'IA sta riscrivendo il tuo testo…</span>'
+      : o && o.campo === campo ? `<span class="dr-dm-riscritto">${o.riserva ? '✏️ L\'IA non è disponibile: ho solo sistemato maiuscole e punteggiatura.' : '✨ Riscritto dall\'IA: rileggilo e cambia quello che vuoi, poi mandalo.'} <button type="button" class="dr-link" data-az="dr-dm-originale" data-id="${campo}">↩️ Torna al mio testo</button></span>` : '';
+    return { bt, stato };
+  }
+  // la riscrittura arriva: prende il posto del testo nella casella (solo se l'ha chiesta questa schermata)
+  function caricaRiscrittura(ctx) {
+    const x = info(ctx).riscrittura, ui = ctx.ui;
+    if (!x || ui.drDmRiscr === x.id) return;
+    ui.drDmRiscr = x.id;
+    if (ui.drDmChiesta !== x.campo) return;
+    ui.drDmChiesta = null;
+    if (x.errore) { ctx.avviso(`⚠️ Non riesco a riscrivere: ${x.errore}`); return; }
+    ui.drDmOrig = { campo: x.campo, testo: val(ctx, x.campo, x.originale), riserva: !!x.riserva };
+    ui[`t_${x.campo}`] = x.testo;
+    if (ui.fuoco === x.campo) ui.fuoco = null;
+  }
   // testo del consigliere: paragrafi, elenchi e grassetti
   function testoIa(t) {
     return esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').split(/\n+/).filter((x) => x.trim()).map((x) => (/^\s*[-*•]\s+/.test(x) ? `<p class="dr-dm-punto">• ${x.replace(/^\s*[-*•]\s+/, '')}</p>` : `<p>${x}</p>`)).join('');
@@ -103,22 +124,26 @@
       testa = `<div class="dr-dm-stato">✍️ I giocatori scrivono cosa fanno${mancano.length ? `. Aspettando: ${esc(mancano.join(', '))}` : ''}.${scritti ? ' <button type="button" class="dr-bt" data-az="dr-dm-manda">⏩ Leggi adesso quello che hanno scritto</button>' : ''}<small>Intanto puoi intervenire: racconta, chiedi una prova, fai partire uno scontro.</small></div>`;
     } else return `<div class="dr-sotto">${narra(ctx)}${piede}</div>`;
     const bozza = I.attesaBozza ? '<span class="dr-dm-pensa">🧠 L\'IA scrive la bozza…</span>' : '';
+    const rs = riscrivi(ctx, 'dmNarr');
     return `<div class="dr-sotto dr-dm-consolle">${testa}
-      <textarea class="dr-dm-testo" data-tieni="dmNarr" maxlength="9000" rows="${r ? 5 : 3}" placeholder="Racconta cosa succede: descrivi, fai parlare i personaggi che incontrano, lascia la scena aperta…">${esc(val(ctx, 'dmNarr'))}</textarea>
+      <textarea class="dr-dm-testo" data-tieni="dmNarr" maxlength="9000" rows="${r ? 5 : 3}" placeholder="Racconta cosa succede: descrivi, fai parlare i personaggi che incontrano, lascia la scena aperta… (anche di fretta: poi ✨ lo riscrive l'IA)">${esc(val(ctx, 'dmNarr'))}</textarea>
+      <div class="dr-dm-bottoni">${rs.bt}${rs.stato}</div>
       ${strumenti(ctx)}
       <div class="dr-dm-riga"><input data-tieni="dmScelte" maxlength="400" placeholder="Idee per i giocatori, separate da ; (facoltative)" value="${esc(val(ctx, 'dmScelte'))}">${sel('dmAtm', Object.entries(ATMOSFERE), '')}</div>
       <div class="dr-dm-bottoni"><button type="button" class="dr-bt dr-bt-oro" data-az="dr-dm-manda-risposta">📜 Manda ai giocatori</button>${r ? `<button type="button" class="dr-bt" data-az="dr-dm-bozza" ${I.attesaBozza ? 'disabled' : ''} title="L'IA scrive una proposta: la modifichi e la mandi tu">🧠 Proponimi una bozza</button><button type="button" class="dr-bt dr-bt-sec" data-az="dr-dm-ia" title="Risponde l'IA, solo questa volta">⚡ Rispondi tu, IA</button>` : ''}${bozza}</div>
       ${piede}</div>`;
   }
   function narra(ctx) {
-    return `<div class="dr-dm-narra"><textarea data-tieni="dmNarra" maxlength="3000" rows="2" placeholder="Racconta qualcosa ai giocatori (si aggiunge al racconto)">${esc(val(ctx, 'dmNarra'))}</textarea><button type="button" class="dr-bt" data-az="dr-dm-narra">🪶 Racconta</button></div>`;
+    const rs = riscrivi(ctx, 'dmNarra');
+    return `<div class="dr-dm-narra"><textarea data-tieni="dmNarra" maxlength="3000" rows="2" placeholder="Racconta qualcosa ai giocatori (si aggiunge al racconto)">${esc(val(ctx, 'dmNarra'))}</textarea><div class="dr-dm-narra-bt"><button type="button" class="dr-bt" data-az="dr-dm-narra">🪶 Racconta</button>${rs.bt}</div>${rs.stato ? `<div class="dr-dm-narra-stato">${rs.stato}</div>` : ''}</div>`;
   }
 
   // ---------- a fianco: master in battaglia, consigliere, mappa, bestiario, guida ----------
   function battaglia(ctx) {
-    const p = ctx.partita, x = info(ctx).libera;
+    const p = ctx.partita, x = info(ctx).libera, rs = riscrivi(ctx, 'dmLNarr');
     const lib = x ? `<div class="dr-dm-libera"><h4>⚔️ Azione libera da giudicare</h4><p><b>${esc(x.chi)}</b> tenta: <q>${esc(x.testo)}</q> <span class="dr-dm-d20">d20: <b>${x.d20}</b></span></p>
         <textarea data-tieni="dmLNarr" rows="3" maxlength="3000" placeholder="Racconta cosa succede">${esc(val(ctx, 'dmLNarr'))}</textarea>
+        <div class="dr-dm-bottoni">${rs.bt}${rs.stato}</div>
         <div class="dr-dm-riga">${sel('dmLB', [['', 'Nessun bersaglio'], ...x.creature.map((c) => [c.nome, `${c.nome} (${c.pf}/${c.pfMax} PF, CA ${c.ca})`])], '')}<input data-tieni="dmLD" placeholder="danno (es. 2d6)" maxlength="20" value="${esc(val(ctx, 'dmLD'))}">${sel('dmLC', [['', 'Nessuna condizione'], ...['prono', 'afferrato', 'accecato', 'spaventato', 'stordito', 'trattenuto', 'avvelenato', 'incapacitato'].map((c) => [c, c])], '')}</div>
         <div class="dr-dm-bottoni"><button type="button" class="dr-bt dr-bt-oro" data-az="dr-dm-libera" data-id="1">✔ Riesce</button><button type="button" class="dr-bt" data-az="dr-dm-libera" data-id="0">✖ Non riesce</button><button type="button" class="dr-bt dr-bt-sec" data-az="dr-dm-ia">⚡ Decida l'IA</button></div></div>` : '';
     return `<div class="dr-dm-cb">${lib}<p class="dr-nota">I nemici li muove il gioco con le regole. Tu racconti la battaglia e giudichi le azioni libere dei giocatori.</p>${p.combattimento ? narra(ctx) : ''}${CB().pannello(ctx)}</div>`;
@@ -177,6 +202,7 @@
     ultimo = ctx;
     const p = ctx.partita, ui = ctx.ui, cb = p.combattimento, tel = T().telefono();
     caricaBozza(ctx);
+    caricaRiscrittura(ctx);
     const scheda1 = ui.drScheda ? T().scheda(ctx, ui.drScheda) : '';
     if (cb && ui.drCbVisto !== cb.scena.g.length + cb.scena.stile) { ui.drCbVisto = cb.scena.g.length + cb.scena.stile; ui.drTab = 'battaglia'; ui.drLato = 'dm'; }
     if (!cb && ui.drTab === 'battaglia') ui.drTab = 'storia';
@@ -249,7 +275,7 @@
     if (L.nemici.length) out.combattimento = { nemici: L.nemici, scena: val(ctx, 'dmScena') || (info(ctx).scene || [])[0], luce: val(ctx, 'dmLuce') || null };
     return out;
   }
-  function svuota(ui) { ui.drDm = null; ui.t_dmNarr = ''; ui.t_dmScelte = ''; ui.t_dmAtm = ''; ui.drDmStr = null; ui.fuoco = null; }
+  function svuota(ui) { if (ui.drDmOrig && ui.drDmOrig.campo === 'dmNarr') ui.drDmOrig = null; ui.drDm = null; ui.t_dmNarr = ''; ui.t_dmScelte = ''; ui.t_dmAtm = ''; ui.drDmStr = null; ui.fuoco = null; }
   function clic(ctx, el) {
     const az = el.dataset.az, id = el.dataset.id, ui = ctx.ui, L = lista(ctx);
     switch (az) {
@@ -270,11 +296,19 @@
       case 'dr-dm-bozza': return ctx.invia({ tipo: 'dm-bozza' });
       case 'dr-dm-ia': svuota(ui); return ctx.invia({ tipo: 'dm-ia' });
       case 'dr-dm-auto': return ctx.invia({ tipo: 'dm-auto', si: id === '1' });
-      case 'dr-dm-narra': { const t = String(val(ctx, 'dmNarra')).trim(); if (!t) return ctx.avviso('Scrivi cosa racconti'); ui.t_dmNarra = ''; ui.fuoco = null; return ctx.invia({ tipo: 'dm-narra', testo: t }); }
+      case 'dr-dm-riscrivi': {
+        const campo = id || 'dmNarr', t = String(val(ctx, campo)).trim();
+        if (!t) return ctx.avviso('Scrivi prima cosa succede, anche in due parole: poi l\'IA lo racconta per bene');
+        ui.drDmChiesta = campo; ui.drDmOrig = null;
+        return ctx.invia({ tipo: 'dm-riscrivi', campo, testo: t });
+      }
+      case 'dr-dm-originale': { const o = ui.drDmOrig; if (o && o.campo === id) { ui[`t_${id}`] = o.testo; ui.drDmOrig = null; ui.fuoco = null; } return ctx.ridisegna(); }
+      case 'dr-dm-narra': { const t = String(val(ctx, 'dmNarra')).trim(); if (!t) return ctx.avviso('Scrivi cosa racconti'); if (ui.drDmOrig && ui.drDmOrig.campo === 'dmNarra') ui.drDmOrig = null; ui.t_dmNarra = ''; ui.fuoco = null; return ctx.invia({ tipo: 'dm-narra', testo: t }); }
       case 'dr-dm-libera': {
         const riesce = id === '1', b = val(ctx, 'dmLB'), d = String(val(ctx, 'dmLD')).trim(), c = val(ctx, 'dmLC');
         const effetti = riesce && b && (d || c) ? [{ bersaglio: b, danno: /^[\dd+\- ]+$/i.test(d) && d ? d.replace(/\s/g, '') : null, tipoDanno: 'contundente', condizione: c || null, turni: 1 }] : [];
         const esito = { narrazione: String(val(ctx, 'dmLNarr')).trim(), riuscita: riesce, effetti };
+        if (ui.drDmOrig && ui.drDmOrig.campo === 'dmLNarr') ui.drDmOrig = null;
         ui.t_dmLNarr = ''; ui.t_dmLD = ''; ui.t_dmLB = ''; ui.t_dmLC = '';
         return ctx.invia({ tipo: 'dm-libera', esito });
       }

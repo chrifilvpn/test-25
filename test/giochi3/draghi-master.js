@@ -41,6 +41,36 @@ async function finoA(g, cond, n = 40) { for (let k = 0; k < n && !cond(); k++) {
   await finoA(g, () => !g.attesaBozza);
   assert.ok(g.vista(1).dmInfo.bozza && g.vista(1).dmInfo.bozza.r.narrazione, 'la bozza dell\'IA arriva al master');
   assert.ok(g.attesaDM, 'la bozza non risponde da sola');
+  // ✨ riscrivi con l'IA: senza IA il testo resta del master, solo sistemato; non si manda da solo
+  assert.ok(g.azione(1, { tipo: 'dm-riscrivi', testo: '  ' }).errore, 'serve un testo da riscrivere');
+  assert.ok(g.azione(0, { tipo: 'dm-riscrivi', testo: 'x' }).errore, 'solo il master');
+  const nRacc = g.racconto.length;
+  assert.ok(!g.azione(1, { tipo: 'dm-riscrivi', campo: 'dmNarr', testo: 'arriva un orco  ,vi guarda male.dice dammi i soldi' }).errore);
+  assert.ok(g.azione(1, { tipo: 'dm-riscrivi', testo: 'altro' }).errore, 'una riscrittura alla volta');
+  await finoA(g, () => !g.attesaRiscrittura);
+  let rs = g.vista(1).dmInfo.riscrittura;
+  assert.strictEqual(rs.campo, 'dmNarr'); assert.ok(rs.riserva);
+  assert.strictEqual(rs.testo, 'Arriva un orco, vi guarda male. Dice dammi i soldi.');
+  assert.strictEqual(g.racconto.length, nRacc, 'la riscrittura non va nel racconto finché il master non la manda');
+  assert.ok(g.attesaDM, 'i giocatori aspettano ancora il master');
+  assert.strictEqual(g.vista(0).dmInfo, null, 'i giocatori non vedono la riscrittura');
+  // con l'IA (Gemini finto): il testo grossolano diventa racconto, senza markdown né presentazione
+  const chiesti = [];
+  g.chiave = 'finta';
+  g.fetch = async (_u, o) => { chiesti.push(JSON.parse(o.body)); return { ok: true, status: 200, json: async () => ({ candidates: [{ content: { parts: [{ text: 'Ecco il racconto:\n**Un orco** enorme sbuca dalla nebbia e vi squadra. «Datemi i vostri soldi» ringhia.' }] } }] }) }; };
+  g.azione(1, { tipo: 'dm-riscrivi', campo: 'dmLNarr', testo: 'orco arriva vuole soldi' });
+  await finoA(g, () => !g.attesaRiscrittura);
+  rs = g.vista(1).dmInfo.riscrittura;
+  assert.strictEqual(rs.campo, 'dmLNarr');
+  assert.strictEqual(rs.testo, 'Un orco enorme sbuca dalla nebbia e vi squadra. «Datemi i vostri soldi» ringhia.');
+  assert.ok(/orco arriva vuole soldi/.test(chiesti[0].contents[0].parts[0].text) && /RISCRIVI/.test(chiesti[0].systemInstruction.parts[0].text), 'a Gemini va il testo del master con le istruzioni del narratore');
+  assert.ok(!chiesti[0].generationConfig.responseMimeType, 'risposta in testo, non JSON');
+  g.fetch = async () => ({ ok: false, status: 500, json: async () => ({}) });
+  g.azione(1, { tipo: 'dm-riscrivi', campo: 'boh', testo: 'altro' });
+  await finoA(g, () => !g.attesaRiscrittura);
+  rs = g.vista(1).dmInfo.riscrittura;
+  assert.ok(rs.errore && !rs.testo && rs.campo === 'dmNarr', 'se l\'IA non risponde il master lo sa (e il campo sconosciuto diventa il racconto)');
+  g.chiave = ''; g.fetch = null;
   // la risposta del master: racconto, evento e una prova
   const nome = g.pg[0].nome;
   assert.ok(!g.azione(1, { tipo: 'dm-rispondi', risposta: { narrazione: 'Il faro è buio.', eventi: [{ tipo: 'oro', chi: nome, quantita: 7 }], prove: [{ chi: nome, tipo: 'percezione', cd: 12 }], scelte: ['Salire', 'Scendere'] } }).errore);
@@ -119,5 +149,5 @@ async function finoA(g, cond, n = 40) { for (let k = 0; k < n && !cond(); k++) {
   assert.ok(h.incubo.area === dove && dove !== prima, 'il gruppo cambia settore');
   assert.ok(h.incubo.rumore >= 2, 'il rumore sale');
   assert.ok(vd.dmInfo.chiaviTema.length, 'gli oggetti chiave della stazione');
-  console.log(`✓ Draghi e Segrete col master umano: scelta al tavolo, richieste che aspettano lui, consigliere, bozza, IA al posto suo e in automatico, azioni libere, horror (${Date.now() - t0} ms)`);
+  console.log(`✓ Draghi e Segrete col master umano: scelta al tavolo, richieste che aspettano lui, consigliere, bozza, riscrittura con l'IA, IA al posto suo e in automatico, azioni libere, horror (${Date.now() - t0} ms)`);
 })().catch((e) => { console.error(e); process.exit(1); });
