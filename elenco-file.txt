@@ -225,6 +225,7 @@ giochi3/picross-logica.js
 giochi3/picross.js
 giochi3/piramide.js
 giochi3/sfere.js
+giochi3/stickwar.js
 giochi3/wavelength-dati.js
 giochi3/wavelength.js
 giochi3/xiangqi.js
@@ -475,6 +476,8 @@ public/js/giochi3/piramide.css
 public/js/giochi3/piramide.js
 public/js/giochi3/sfere.css
 public/js/giochi3/sfere.js
+public/js/giochi3/stickwar.css
+public/js/giochi3/stickwar.js
 public/js/giochi3/tela-fissa.js
 public/js/giochi3/wavelength.css
 public/js/giochi3/wavelength.js
@@ -575,6 +578,7 @@ test/giochi3/nurikabe.js
 test/giochi3/picross.js
 test/giochi3/piramide.js
 test/giochi3/sfere.js
+test/giochi3/stickwar.js
 test/giochi3/wavelength.js
 test/giochi3/xiangqi.js
 test/migliorie3.js

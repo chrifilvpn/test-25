@@ -1,0 +1,46 @@
+/* GUERRA DEGLI STECCHINI: il campo è il canvas del motore comune (Arena); sopra gli ordini (in alto a sinistra),
+   l'armeria, i pulsanti per addestrare (in basso) e i comandi del soldato guidato a mano */
+.panno-stickwar .ar-tela { cursor: grab; touch-action: none; user-select: none; }
+.panno-stickwar .ar-tela:active { cursor: grabbing; }
+.panno-stickwar .ar-sopra { pointer-events: none; }
+.sw-ordini, .sw-unita, .sw-mano, .sw-armeria { pointer-events: auto; position: absolute; display: flex; gap: 5px; }
+.sw-ordini { top: 6px; left: 6px; flex-direction: column; align-items: flex-start; }
+.sw-bt { padding: 5px 10px; border-radius: 10px; border: 1.5px solid rgba(255,255,255,.35); background: rgba(20,24,32,.72); color: #fff; font: 700 13px system-ui; cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.3); }
+.sw-bt:hover { background: rgba(50,58,72,.85); }
+.sw-bt.sw-si { background: #c9961a; border-color: #ffe08a; }
+.sw-armeria { top: 6px; left: 132px; flex-direction: column; gap: 4px; padding: 6px; border-radius: 12px; background: rgba(20,24,32,.88); max-width: 230px; }
+.sw-pot { display: grid; grid-template-columns: 1fr auto; text-align: left; gap: 0 8px; padding: 5px 8px; border-radius: 8px; border: 1px solid rgba(255,255,255,.25); background: rgba(255,255,255,.07); color: #fff; font: 600 12px system-ui; cursor: pointer; }
+.sw-pot small { grid-column: 1; opacity: .75; font-size: 11px; }
+.sw-pot i { grid-row: 1 / 3; grid-column: 2; align-self: center; font-style: normal; color: #ffd23f; white-space: nowrap; }
+.sw-pot[disabled] { opacity: .45; cursor: not-allowed; }
+.sw-unita { left: 50%; bottom: 6px; transform: translateX(-50%); }
+.sw-u { position: relative; overflow: hidden; display: flex; flex-direction: column; align-items: center; width: 74px; padding: 4px 2px 6px; border-radius: 10px; border: 2px solid rgba(255,220,120,.55); background: linear-gradient(#3a3226, #221d16); color: #fff; font: 600 11px system-ui; cursor: pointer; box-shadow: 0 3px 8px rgba(0,0,0,.4); }
+.sw-u:hover:not([disabled]) { border-color: #ffd23f; transform: translateY(-2px); }
+.sw-u[disabled] { opacity: .5; cursor: not-allowed; }
+.sw-ic { font-size: 22px; line-height: 1.1; }
+.sw-nome { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.sw-u b { color: #ffd23f; font-size: 12px; }
+.sw-u em { position: absolute; top: 2px; right: 3px; min-width: 18px; padding: 1px 4px; border-radius: 9px; background: #e8453c; font: 800 11px system-ui; font-style: normal; cursor: pointer; pointer-events: auto; }
+.sw-bar { position: absolute; left: 0; bottom: 0; height: 4px; width: 0; background: #5fd35f; transition: width .1s linear; }
+.sw-mano { right: 6px; bottom: 90px; align-items: center; }
+.sw-aiuto { padding: 4px 8px; border-radius: 8px; background: rgba(0,0,0,.55); color: #fff; font: 600 12px system-ui; }
+.sw-dir, .sw-colpo { font-size: 20px; padding: 8px 16px; touch-action: none; }
+.sw-dir.sw-giu { background: #c9961a; }
+.sw-colpo { background: #a8322a; }
+/* sul telefono: pulsanti più piccoli, nomi delle unità e degli ordini nascosti */
+@media (max-width: 900px) {
+  .sw-bt { padding: 3px 6px; font-size: 11px; border-radius: 8px; }
+  .sw-bt span { display: none; }
+  .sw-ordini { top: 3px; left: 3px; gap: 3px; }
+  .sw-armeria { top: 3px; left: 36px; max-width: 190px; padding: 4px; }
+  .sw-pot { padding: 3px 6px; font-size: 11px; }
+  .sw-pot small { display: none; }
+  .sw-unita { bottom: 3px; gap: 3px; }
+  .sw-u { width: 40px; padding: 1px 1px 4px; font-size: 9px; border-width: 1.5px; border-radius: 8px; }
+  .sw-u b { font-size: 9px; }
+  .sw-u em { font-size: 9px; min-width: 14px; padding: 0 3px; }
+  .sw-nome { display: none; }
+  .sw-ic { font-size: 15px; }
+  .sw-mano { bottom: 48px; right: 3px; gap: 3px; }
+  .sw-dir, .sw-colpo { padding: 5px 11px; font-size: 16px; }
+}
