@@ -65,6 +65,14 @@ app.get('/js/tigerball-livelli.js', (_q, r) => r.sendFile(path.join(__dirname, '
 // Alien: Isolation 3D: la mappa (la stessa del server) e three.js (dalla dipendenza npm, niente CDN)
 app.get('/js/isolation-mappa.js', (_q, r) => r.sendFile(path.join(__dirname, 'giochi3', 'isolation', 'mappa.js')));
 app.get('/js/three.module.min.js', (_q, r) => r.type('application/javascript').sendFile(path.join(__dirname, 'node_modules', 'three', 'build', 'three.module.min.js')));
+// fotocamera magica: MediaPipe (mani e viso) dalla dipendenza npm, niente CDN; i modelli stanno in public/modelli
+const MEDIAPIPE = path.join(__dirname, 'node_modules', '@mediapipe', 'tasks-vision');
+app.get('/js/mediapipe/vision_bundle.mjs', (_q, r) => r.type('application/javascript').sendFile(path.join(MEDIAPIPE, 'vision_bundle.mjs')));
+app.get('/js/mediapipe/wasm/:file', (q, r, next) => {
+  const f = q.params.file;
+  if (!/^vision_wasm_(nosimd_)?internal\.(js|wasm)$/.test(f)) return next();
+  r.type(f.endsWith('.wasm') ? 'application/wasm' : 'application/javascript').sendFile(path.join(MEDIAPIPE, 'wasm', f));
+});
 // giochi nuovi: tutti i file di public/js/giochi2 e giochi3 (e i loro stili) in un colpo solo, così aggiungere un
 // gioco non richiede di toccare index.html
 function unisciCartella(cartella, est) {
