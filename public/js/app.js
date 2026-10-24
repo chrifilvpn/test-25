@@ -604,6 +604,7 @@
     const t = $('#testo-globale').value.trim();
     const nome = ($('#nome').value || mem.get('nome', '')).trim();
     if (!t) return;
+    if (window.Fotocamera && Fotocamera.comando(t)) { $('#testo-globale').value = ''; return; } // !foto resta qui
     if (!nome) { avviso('Scrivi prima il tuo nome nella pagina iniziale'); return; }
     socket.emit('chatGlobale', { testo: t, nome });
     $('#testo-globale').value = '';
@@ -1263,13 +1264,13 @@
   $('#form-chat-sala').addEventListener('submit', (e) => {
     e.preventDefault();
     const t = $('#testo-chat-sala').value.trim();
-    if (t) socket.emit('chat', t);
+    if (t && !(window.Fotocamera && Fotocamera.comando(t))) socket.emit('chat', t); // !foto resta qui
     $('#testo-chat-sala').value = '';
   });
   $('#form-chat').addEventListener('submit', (e) => {
     e.preventDefault();
     const t = $('#testo-chat').value.trim();
-    if (t) socket.emit('chat', t);
+    if (t && !(window.Fotocamera && Fotocamera.comando(t))) socket.emit('chat', t); // !foto resta qui
     $('#testo-chat').value = '';
   });
 })();

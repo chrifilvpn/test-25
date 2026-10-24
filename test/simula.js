@@ -563,3 +563,4 @@ fissa('migliorie3'); require('./migliorie3');
 fissa('giochi2'); require('./giochi2');
 fissa('novita'); require('./novita');
 fissa('trucco'); require('./trucco');
+fissa('fotocamera'); require('./fotocamera');
