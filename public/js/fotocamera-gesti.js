@@ -12,7 +12,8 @@
   }
 
   // il "67": due mani che salgono e scendono alternate. Si guarda la differenza di altezza tra mano sinistra e destra:
-  // con le mani alternate va su e giù più volte (con le mani insieme resta ferma).
+  // con le mani alternate va su e giù più volte (con le mani insieme resta ferma). Pronto ma per ora spento nella
+  // fotocamera: manca il file del suono "six seven".
   function crea67({ finestraMs = 2500, ampiezza = 0.08, inversioni = 3 } = {}) {
     let storia = [];
     return {

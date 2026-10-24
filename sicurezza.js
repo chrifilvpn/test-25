@@ -64,6 +64,7 @@ const CSP = [
   "font-src 'self' https://fonts.gstatic.com data:",
   "img-src 'self' data: blob:",
   "connect-src 'self' ws: wss:",
+  "frame-src https://www.youtube-nocookie.com", // il gatto sub della Fotocamera magica
   "media-src 'self' data: blob:",
   "object-src 'none'",
   "base-uri 'self'",

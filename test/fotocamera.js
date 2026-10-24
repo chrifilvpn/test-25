@@ -95,7 +95,8 @@ const app = fs.readFileSync(path.join(pub, 'js/app.js'), 'utf8');
 assert.strictEqual((app.match(/Fotocamera\.comando\(t\)/g) || []).length, 3, '!foto in tutte e tre le chat');
 assert.ok(fs.readFileSync(path.join(__dirname, '../server.js'), 'utf8').includes("'!foto':"), '!foto in !comandi');
 assert.ok(/function comando\(testo\)[\s\S]*\^!foto\$/.test(js), '!foto solo come messaggio intero');
-assert.ok(!/https?:\/\//.test(js), 'la fotocamera non scarica niente da fuori');
+assert.deepStrictEqual([...new Set(js.match(/https?:\/\/[^/'"`]+/g))], ['https://www.youtube-nocookie.com'], 'da fuori solo il video del gatto sub');
+assert.ok(/frame-src https:\/\/www\.youtube-nocookie\.com"/.test(sic), 'CSP: riquadri solo dal YouTube senza cookie');
 assert.ok(!/socket|fetch\([^)]*method: 'POST'/.test(js), 'la fotocamera non manda niente al server');
 
-console.log('✓ Fotocamera magica: dito alzato, 67, fermo, mano sulla bocca, lingua, bocca aperta, occhiolino, occhi socchiusi, triste; permessi e file');
+console.log('✓ Fotocamera magica: dito alzato, 67 (pronto), fermo, mano sulla bocca, lingua, bocca aperta, occhiolino, occhi socchiusi, triste; permessi e file');
