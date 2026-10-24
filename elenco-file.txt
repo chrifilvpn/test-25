@@ -233,6 +233,7 @@ guardia.js
 package-lock.json
 package.json
 public/boss.css
+public/fotocamera/gatto-arrabbiato.jpg
 public/fotocamera/gatto-dito.jpg
 public/fotocamera/gatto-giudice.jpg
 public/fotocamera/gatto-huh.jpg
@@ -451,6 +452,8 @@ public/js/giochi3/draghi-master.css
 public/js/giochi3/draghi-master.js
 public/js/giochi3/draghi-musica.css
 public/js/giochi3/draghi-musica.js
+public/js/giochi3/draghi-voce.css
+public/js/giochi3/draghi-voce.js
 public/js/giochi3/draghi.css
 public/js/giochi3/draghi.js
 public/js/giochi3/forza3d.css
@@ -565,6 +568,7 @@ test/giochi3/draghi-horror.js
 test/giochi3/draghi-master.js
 test/giochi3/draghi-musica.js
 test/giochi3/draghi-stessopc.js
+test/giochi3/draghi-voce.js
 test/giochi3/draghi.js
 test/giochi3/forza3d.js
 test/giochi3/freecell.js
@@ -597,3 +601,4 @@ test/trucco/rompicapo.js
 test/trucco/strategia.js
 tornei.js
 verifica.js
+voce.js

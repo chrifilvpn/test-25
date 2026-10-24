@@ -6,7 +6,7 @@
 // ha la sua schermata (draghi-master.js).
 (() => {
   const { esc, suono, primaVolta, trascorso } = window.Nuovi;
-  const A = () => window.DraghiArte, MP = () => window.DraghiMappe, CR = () => window.DraghiCrea, CB = () => window.DraghiCampo, IN = () => window.DraghiIncubo, DM = () => window.DraghiMaster, MU = () => window.DraghiMusica;
+  const A = () => window.DraghiArte, MP = () => window.DraghiMappe, CR = () => window.DraghiCrea, CB = () => window.DraghiCampo, IN = () => window.DraghiIncubo, DM = () => window.DraghiMaster, MU = () => window.DraghiMusica, VO = () => window.DraghiVoce;
   const ATMOSFERA = { calma: ['🌙', 'Calma'], tensione: ['⚠️', 'Tensione'], battaglia: ['⚔️', 'Battaglia'], mistero: ['🔮', 'Mistero'], festa: ['🎉', 'Festa'], orrore: ['💀', 'Orrore'], viaggio: ['🧭', 'In viaggio'] };
   const AMBIENTI = { classica: 'Fantasy classico', oscura: 'Oscura e horror', pirati: 'Mari e pirati', citta: 'Intrighi in città', selvaggia: 'Terre selvagge' };
   const NOMI_CAR = { for: 'Forza', des: 'Destrezza', cos: 'Costituzione', int: 'Intelligenza', sag: 'Saggezza', car: 'Carisma' };
@@ -322,6 +322,7 @@
     dopo(ctx) {
       ctx = locale(ctx);
       MU().aggiorna(ctx);
+      VO().aggiorna(ctx);
       if (sipario(ctx)) return;
       const p = ctx.partita, ui = ctx.ui;
       CB().dopo(ctx);

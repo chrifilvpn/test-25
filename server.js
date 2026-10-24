@@ -84,6 +84,9 @@ const GIOCHI2_JS = ['giochi2', 'giochi3'].map((c) => unisciCartella(c, '.js')).j
 app.get('/js/giochi2.js', (_q, r) => r.type('application/javascript').send(GIOCHI2_JS));
 app.get('/giochi2.css', (_q, r) => r.type('text/css').send(GIOCHI2_CSS));
 app.get('/salute', (_q, r) => r.send('ok'));
+// la voce narrante del master di Draghi e Segrete (voci neurali di Edge, vedi voce.js)
+const voce = new (require('./voce').Voce)();
+app.get('/voce', voce.rotta(sicurezza.ipDi));
 // la pagina finta delle dispense ha un suo indirizzo: se si ricarica, il sito riparte da lì
 app.get('/dispense', (_q, r) => r.sendFile(path.join(__dirname, 'public', 'index.html')));
 
