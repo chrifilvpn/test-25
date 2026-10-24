@@ -785,8 +785,10 @@
     const liberi = stato.giocatori.filter((g) => !g).length;
     disegnaSalaExtra(m, liberi);
     $('#inizia').hidden = !stato.sonoHost;
-    $('#inizia').disabled = liberi > 0;
-    $('#nota-attesa').textContent = liberi
+    $('#inizia').disabled = liberi > 0 && !m.postiLiberiAlComputer;
+    $('#nota-attesa').textContent = liberi && m.postiLiberiAlComputer
+      ? `${liberi === 1 ? 'C\'è un posto libero' : `Ci sono ${liberi} posti liberi`}: se iniziate così ${liberi === 1 ? 'diventa un compagno' : 'diventano compagni'} del computer.`
+      : liberi
       ? `${liberi === 1 ? 'Manca un giocatore' : `Mancano ${liberi} giocatori`}. ${stato.sonoHost ? (m.soloPersone ? 'Aspetta che arrivino gli amici: in questo gioco non si usa il computer.' : 'Aspetta gli amici o metti il computer nei posti liberi.') : ''}`
       : stato.sonoHost ? 'Tavolo al completo: puoi iniziare.' : 'Tavolo al completo: si aspetta che chi l\'ha aperto inizi la partita.';
   }
