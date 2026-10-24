@@ -1,4 +1,4 @@
-// SINTONIA (ispirato a Wavelength): sulla manopola c'è uno spettro tra due concetti opposti (Freddo ↔ Caldo) e un
+// WAVELENGTH: sulla manopola c'è uno spettro tra due concetti opposti (Freddo ↔ Caldo) e un
 // bersaglio nascosto che vede solo lo Psichico. Lo Psichico sceglie uno spettro tra due e dà un indizio (un esempio,
 // niente numeri); la sua squadra discute in chat e gira la manopola dove pensa che sia il bersaglio. Centro pieno 4
 // punti, vicino 3, nella zona 2. A squadre: gli avversari scommettono se il centro è a sinistra o a destra della
@@ -7,11 +7,11 @@
 // Le squadre si formano alternando i posti (pari = Viola, dispari = Verdi); lo Psichico gira dentro la squadra.
 // La manopola è una sola per la squadra: chiunque la gira e la blocca il primo che preme «Blocca»; con persone in
 // squadra i computer non toccano la manopola ma lasciano un segno con il loro consiglio.
-const { SPETTRI } = require('./sintonia-dati');
+const { SPETTRI } = require('./wavelength-dati');
 
 const VIOLA = 0, VERDI = 1;
 const NOMI_SQ = ['Viola', 'Verdi'];
-const PAUSA_RIVELA = Number(process.env.SINTONIA_PAUSA) || 6000; // il bersaglio scoperto resta qualche secondo
+const PAUSA_RIVELA = Number(process.env.WAVELENGTH_PAUSA) || 6000; // il bersaglio scoperto resta qualche secondo
 const MAX_TURNI = 60; // a squadre: oltre, vince chi è avanti (non succede mai davvero)
 const MAX_BONUS = 3; // in cooperativa al massimo 3 carte in più
 // le zone del bersaglio: distanza dal centro (in centesimi della manopola) → punti
@@ -41,9 +41,9 @@ const limita = (v) => Math.max(0, Math.min(100, Math.round(v)));
 // un rumore "a campana" (somma di tre casuali) largo ±ampiezza
 const rumore = (ampiezza) => ((Math.random() + Math.random() + Math.random()) / 1.5 - 1) * ampiezza;
 
-class Sintonia {
+class Wavelength {
   constructor({ n, primo = 0, opzioni = {}, bot = [] }) {
-    this.id = 'sintonia';
+    this.id = 'wavelength';
     this.n = n;
     this.bot = Array.from({ length: n }, (_, i) => bot[i] || null);
     // a squadre servono almeno due giocatori per squadra (Psichico + chi indovina): sotto i 4 si gioca insieme
@@ -188,12 +188,11 @@ class Sintonia {
     this.storia.push(r);
     this.rivelato = r;
     this.consigli.fill(null);
-    const sp = SPETTRI[this.spettro];
     const parti = [pt === 4 ? 'CENTRO PIENO! 🎯 4 punti' : pt ? `${pt} punti` : 'fuori dal bersaglio, 0 punti'];
     if (!this.coop) parti.push(latoOk ? `i ${NOMI_SQ[this.avversari]} indovinano il lato: +1` : this.lato ? `i ${NOMI_SQ[this.avversari]} sbagliano il lato` : '');
     if (rimonta) parti.push(`rimonta: i ${NOMI_SQ[this.sq]} giocano ancora!`);
     if (r.bonus) parti.push('carta bonus!');
-    this.annuncia(null, `Il bersaglio era a ${this.bersaglio} su ${sp.s} ↔ ${sp.d}: ${parti.filter(Boolean).join(' · ')}`, '', pt >= 3);
+    this.annuncia(null, `Bersaglio a ${this.bersaglio}: ${parti.filter(Boolean).join(' · ')}`, '', pt === 4);
     this.turno = null;
     this.fase = 'rivela';
     // fine partita?
@@ -373,12 +372,12 @@ function bot(g, p, livello) {
 
 module.exports = {
   meta: {
-    id: 'sintonia',
-    nome: 'Sintonia',
+    id: 'wavelength',
+    nome: 'Wavelength',
     tipo: 'tabellone',
     giocatori: [2, 3, 4, 5, 6, 7, 8, 9, 10],
-    descrizione: 'Lo Psichico vede il bersaglio su uno spettro (Freddo ↔ Caldo) e dà un indizio: la squadra gira la manopola dove pensa che sia. A squadre o tutti insieme. Ispirato a Wavelength.',
-    alias: ['sintonia', 'wavelength', 'lunghezza d\'onda', 'onda', 'psichico', 'spettro', 'manopola'],
+    descrizione: 'Lo Psichico vede il bersaglio su uno spettro (Freddo ↔ Caldo) e dà un indizio: la squadra gira la manopola dove pensa che sia. A squadre o tutti insieme.',
+    alias: ['wavelength', 'sintonia', 'lunghezza d\'onda', 'onda', 'psichico', 'spettro', 'manopola'],
     opzioni: [
       { id: 'modo', nome: 'Modalità', valori: ['squadre', 'cooperativa'], etichette: ['A squadre (da 4 giocatori)', 'Cooperativa (tutti insieme)'], predefinito: 'squadre' },
       { id: 'obiettivo', nome: 'A squadre si vince a', valori: [10, 6], etichette: ['10 punti', '6 punti (partita corta)'], predefinito: 10 },
@@ -396,7 +395,7 @@ module.exports = {
       'Il computer sa fare lo Psichico e sa girare la manopola: conosce più di 600 esempi su 50 spettri. Se gli dai un indizio che non conosce tira a indovinare (meglio giocare con amici!). Il facile capisce e spiega in modo più approssimativo, il difficile è molto preciso. Se in squadra ci sono persone, i computer non toccano la manopola: lasciano un segno con il loro consiglio.',
     ],
   },
-  crea: (o) => new Sintonia(o),
+  crea: (o) => new Wavelength(o),
   bot,
   _test: { puntiPer, controllaIndizio, psichicoComputer, stima, norm, SPETTRI, ZONE, VIOLA, VERDI },
 };

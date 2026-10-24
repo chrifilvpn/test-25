@@ -1,4 +1,4 @@
-// SINTONIA: il tavolo nel browser. In alto i punti e una fascia con la fase del turno; al centro la manopola a
+// WAVELENGTH: il tavolo nel browser. In alto i punti e una fascia con la fase del turno; al centro la manopola a
 // mezzaluna con i due estremi dello spettro ai lati e l'indizio sopra (lo Psichico vede il bersaglio colorato); sotto
 // i comandi (spettro e indizio per lo Psichico, manopola e «Blocca» per la squadra, sinistra/destra per gli avversari)
 // e a fianco il registro dei turni.
@@ -32,41 +32,41 @@
   }
   function bersaglio(t, st = '') {
     const zone = [[-8.5, -5.5, 2], [-5.5, -2.5, 3], [-2.5, 2.5, 4], [2.5, 5.5, 3], [5.5, 8.5, 2]];
-    let s = zone.map(([a, b, pt]) => spicchio(t + a, t + b, R - 6, `sin-zona sin-z${pt}`)).join('');
+    let s = zone.map(([a, b, pt]) => spicchio(t + a, t + b, R - 6, `wl-zona wl-z${pt}`)).join('');
     for (const [a, b, pt] of zone) {
       const m = t + (a + b) / 2;
       if (m < 1 || m > 99) continue;
       const [x, y] = punto(m, R - 26);
-      s += `<text class="sin-zona-n" x="${f(x)}" y="${f(y + 5)}" text-anchor="middle">${pt}</text>`;
+      s += `<text class="wl-zona-n" x="${f(x)}" y="${f(y + 5)}" text-anchor="middle">${pt}</text>`;
     }
-    return `<g class="sin-bersaglio ${st ? 'apri' : ''}" style="${st}">${s}</g>`;
+    return `<g class="wl-bersaglio ${st ? 'apri' : ''}" style="${st}">${s}</g>`;
   }
   function disegno(ctx) {
     const p = ctx.partita, ui = ctx.ui;
     const muovo = possoGirare(ctx);
-    let dentro = `<path class="sin-quadrante" d="M${CX - R - 8} ${CY} A${R + 8} ${R + 8} 0 0 1 ${CX + R + 8} ${CY} Z"/>`;
+    let dentro = `<path class="wl-quadrante" d="M${CX - R - 8} ${CY} A${R + 8} ${R + 8} 0 0 1 ${CX + R + 8} ${CY} Z"/>`;
     for (let v = 0; v <= 100; v += 10) {
       const [x1, y1] = punto(v, R + 2), [x2, y2] = punto(v, R - (v % 50 ? 6 : 12));
-      dentro += `<line class="sin-tacca" x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}"/>`;
+      dentro += `<line class="wl-tacca" x1="${f(x1)}" y1="${f(y1)}" x2="${f(x2)}" y2="${f(y2)}"/>`;
     }
     const scoperto = p.rivelato || p.finita;
-    if (p.bersaglio != null) dentro += bersaglio(p.bersaglio, scoperto ? ritardo(ui, `sin-${p.storia.length}`) : '');
+    if (p.bersaglio != null) dentro += bersaglio(p.bersaglio, scoperto ? ritardo(ui, `wl-${p.storia.length}`) : '');
     // lo schermo: copre il bersaglio a chi non è lo Psichico finché non si scopre
-    if (p.bersaglio == null && p.fase !== 'indizio') dentro += `<path class="sin-schermo" d="M${CX - R + 2} ${CY} A${R - 2} ${R - 2} 0 0 1 ${CX + R - 2} ${CY} Z"/>`;
+    if (p.bersaglio == null && p.fase !== 'indizio') dentro += `<path class="wl-schermo" d="M${CX - R + 2} ${CY} A${R - 2} ${R - 2} 0 0 1 ${CX + R - 2} ${CY} Z"/>`;
     // i consigli dei computer (con persone in squadra)
     (p.consigli || []).forEach((c, i) => {
       if (!c || c.valore == null) return;
       const [x, y] = punto(c.valore, R + 14);
-      dentro += `<g class="sin-consiglio"><circle cx="${f(x)}" cy="${f(y)}" r="10"/><text x="${f(x)}" y="${f(y + 4)}" text-anchor="middle">${esc(nomeCorto(ctx, i).slice(0, 2))}</text></g>`;
+      dentro += `<g class="wl-consiglio"><circle cx="${f(x)}" cy="${f(y)}" r="10"/><text x="${f(x)}" y="${f(y + 4)}" text-anchor="middle">${esc(nomeCorto(ctx, i).slice(0, 2))}</text></g>`;
     });
     if (p.fase !== 'indizio' || scoperto) {
       const v = valoreManopola(ctx);
       const [x, y] = punto(v, R - 4), [hx, hy] = punto(v, R - 40);
-      dentro += `<line class="sin-lancetta" x1="${CX}" y1="${CY}" x2="${f(x)}" y2="${f(y)}"/>`;
-      dentro += `<circle class="sin-maniglia ${muovo ? 'mia' : ''}" cx="${f(hx)}" cy="${f(hy)}" r="${muovo ? 15 : 9}"/>`;
+      dentro += `<line class="wl-lancetta" x1="${CX}" y1="${CY}" x2="${f(x)}" y2="${f(y)}"/>`;
+      dentro += `<circle class="wl-maniglia ${muovo ? 'mia' : ''}" cx="${f(hx)}" cy="${f(hy)}" r="${muovo ? 15 : 9}"/>`;
     }
-    dentro += `<circle class="sin-perno" cx="${CX}" cy="${CY}" r="14"/>`;
-    return `<svg viewBox="-4 2 408 214" class="sin-svg ${muovo ? 'muovibile' : ''}" role="img" aria-label="Manopola: ${esc(String(valoreManopola(ctx)))} su 100">${dentro}</svg>`;
+    dentro += `<circle class="wl-perno" cx="${CX}" cy="${CY}" r="14"/>`;
+    return `<svg viewBox="-4 2 408 214" class="wl-svg ${muovo ? 'muovibile' : ''}" role="img" aria-label="Manopola: ${esc(String(valoreManopola(ctx)))} su 100">${dentro}</svg>`;
   }
 
   // ---------------- parti del tavolo ----------------
@@ -74,38 +74,38 @@
     const p = ctx.partita;
     let punti;
     if (p.modo === 'cooperativa') {
-      punti = `<div class="sin-punti uno"><div class="sin-conta"><b>${p.punti[0]}</b><span>punti<small>carta ${Math.min(p.carteGiocate + (p.finita ? 0 : 1), p.totCarte)} di ${p.totCarte}</small></span></div></div>`;
+      punti = `<div class="wl-punti uno"><div class="wl-conta"><b>${p.punti[0]}</b><span>punti<small>carta ${Math.min(p.carteGiocate + (p.finita ? 0 : 1), p.totCarte)} di ${p.totCarte}</small></span></div></div>`;
     } else {
       const mia = squadra(ctx.mio, ctx);
-      punti = `<div class="sin-punti">${[0, 1].map((s) => `<div class="sin-conta sin-${CLASSE[s]} ${p.sq === s && !p.finita ? 'di-turno' : ''}"><b>${p.punti[s]}</b><span>${NOMI[s]}${s === mia && !ctx.stato.spettatore ? ' (voi)' : ''}<small>si vince a ${p.obiettivo}</small></span></div>`).join('')}</div>`;
+      punti = `<div class="wl-punti">${[0, 1].map((s) => `<div class="wl-conta wl-${CLASSE[s]} ${p.sq === s && !p.finita ? 'di-turno' : ''}"><b>${p.punti[s]}</b><span>${NOMI[s]}${s === mia && !ctx.stato.spettatore ? ' (voi)' : ''}<small>si vince a ${p.obiettivo}</small></span></div>`).join('')}</div>`;
     }
     const sq = p.modo === 'cooperativa' ? '' : `${NOMI[p.sq]} · `;
-    const cls = p.modo === 'cooperativa' ? 'sin-coop' : `sin-${CLASSE[p.sq]}`;
+    const cls = p.modo === 'cooperativa' ? 'wl-coop' : `wl-${CLASSE[p.sq]}`;
     let banner;
     if (p.finita) {
-      banner = p.modo === 'cooperativa' ? `<div class="sin-banner sin-coop fine">${esc(p.giudizio || '')} <small>${p.punti[0]} punti in ${p.carteGiocate} carte</small></div>`
-        : p.vincitore == null ? '<div class="sin-banner sin-coop fine">Pareggio!</div>' : `<div class="sin-banner sin-${CLASSE[p.vincitore]} fine">🏆 Vincono i ${NOMI[p.vincitore]}!</div>`;
+      banner = p.modo === 'cooperativa' ? `<div class="wl-banner wl-coop fine">${esc(p.giudizio || '')} <small>${p.punti[0]} punti in ${p.carteGiocate} carte</small></div>`
+        : p.vincitore == null ? '<div class="wl-banner wl-coop fine">Pareggio!</div>' : `<div class="wl-banner wl-${CLASSE[p.vincitore]} fine">🏆 Vincono i ${NOMI[p.vincitore]}!</div>`;
     } else if (p.fase === 'indizio') {
-      banner = `<div class="sin-banner ${cls}"><span>${sq}${sonoPsichico(ctx) ? '<b>sei lo Psichico</b>: scegli lo spettro e dai l\'indizio' : `lo Psichico <b>${esc(ctx.nome(p.psichico))}</b> pensa all'indizio<span class="sin-puntini"><i>.</i><i>.</i><i>.</i></span>`}</span></div>`;
+      banner = `<div class="wl-banner ${cls}"><span>${sq}${sonoPsichico(ctx) ? '<b>sei lo Psichico</b>: scegli lo spettro e dai l\'indizio' : `lo Psichico <b>${esc(ctx.nome(p.psichico))}</b> pensa all'indizio<span class="wl-puntini"><i>.</i><i>.</i><i>.</i></span>`}</span></div>`;
     } else if (p.fase === 'manopola') {
-      banner = `<div class="sin-banner ${cls}"><span>${sq}${possoGirare(ctx) ? '<b>girate la manopola</b> e bloccatela' : sonoPsichico(ctx) ? 'la tua squadra gira la manopola: <b>silenzio!</b> 🤐' : 'la squadra gira la manopola'}</span></div>`;
+      banner = `<div class="wl-banner ${cls}"><span>${sq}${possoGirare(ctx) ? '<b>girate la manopola</b> e bloccatela' : sonoPsichico(ctx) ? 'la tua squadra gira la manopola: <b>silenzio!</b> 🤐' : 'la squadra gira la manopola'}</span></div>`;
     } else if (p.fase === 'previsione') {
       const avv = 1 - p.sq;
-      banner = `<div class="sin-banner sin-${CLASSE[avv]}"><span>${NOMI[avv]} · ${possoScommettere(ctx) ? '<b>il centro è a sinistra o a destra?</b>' : 'scommettono: sinistra o destra?'}</span>${p.lato ? ` <small>per ora: ${p.lato}</small>` : ''}</div>`;
+      banner = `<div class="wl-banner wl-${CLASSE[avv]}"><span>${NOMI[avv]} · ${possoScommettere(ctx) ? '<b>il centro è a sinistra o a destra?</b>' : 'scommettono: sinistra o destra?'}</span>${p.lato ? ` <small>per ora: ${p.lato}</small>` : ''}</div>`;
     } else if (p.rivelato) {
       const r = p.rivelato;
-      banner = `<div class="sin-banner ${r.punti === 4 ? 'sin-centro' : cls}">${r.punti === 4 ? 'Centro pieno! 🎯' : r.punti ? `${r.punti} punti` : 'Fuori bersaglio'}${r.lato ? ` <small>${NOMI[1 - r.squadra]}: ${r.latoOk ? 'lato giusto, +1' : 'lato sbagliato'}</small>` : ''}${r.rimonta ? ' <small>rimonta: giocano ancora!</small>' : ''}${r.bonus ? ' <small>carta bonus!</small>' : ''}</div>`;
+      banner = `<div class="wl-banner ${r.punti === 4 ? 'wl-centro' : cls}">${r.punti === 4 ? 'Centro pieno! 🎯' : r.punti ? `${r.punti} punti` : 'Fuori bersaglio'}${r.lato ? ` <small>${NOMI[1 - r.squadra]}: ${r.latoOk ? 'lato giusto, +1' : 'lato sbagliato'}</small>` : ''}${r.rimonta ? ' <small>rimonta: giocano ancora!</small>' : ''}${r.bonus ? ' <small>carta bonus!</small>' : ''}</div>`;
     }
-    return `<div class="sin-testa">${punti}${banner}${ruolo(ctx)}</div>`;
+    return `<div class="wl-testa">${punti}${banner}${ruolo(ctx)}</div>`;
   }
 
   function ruolo(ctx) {
     const p = ctx.partita;
     if (ctx.stato.spettatore || p.finita) return '';
-    if (sonoPsichico(ctx)) return '<p class="sin-ruolo">🔮 Sei lo <b>Psichico</b>: solo tu vedi il bersaglio</p>';
+    if (sonoPsichico(ctx)) return '<p class="wl-ruolo">🔮 Sei lo <b>Psichico</b>: solo tu vedi il bersaglio</p>';
     const s = squadra(ctx.mio, ctx);
-    if (p.modo === 'cooperativa') return `<p class="sin-ruolo">Psichico: <b>${esc(ctx.nome(p.psichico))}</b> · giocate tutti insieme</p>`;
-    return `<p class="sin-ruolo"><i class="sin-pallino sin-${CLASSE[s]}"></i>Sei dei <b>${NOMI[s]}</b>${s === p.sq ? ` · Psichico: ${esc(nomeCorto(ctx, p.psichico))}` : ''}</p>`;
+    if (p.modo === 'cooperativa') return `<p class="wl-ruolo">Psichico: <b>${esc(ctx.nome(p.psichico))}</b> · giocate tutti insieme</p>`;
+    return `<p class="wl-ruolo"><i class="wl-pallino wl-${CLASSE[s]}"></i>Sei dei <b>${NOMI[s]}</b>${s === p.sq ? ` · Psichico: ${esc(nomeCorto(ctx, p.psichico))}` : ''}</p>`;
   }
 
   // lo spettro su cui si gioca (per lo Psichico, quello che sta scegliendo)
@@ -118,51 +118,51 @@
   function quadrante(ctx) {
     const p = ctx.partita;
     const sp = spettroAttuale(ctx);
-    const indizio = p.indizio ? `<p class="sin-indizio">«${esc(p.indizio)}»</p>` : `<p class="sin-indizio vuoto">${p.fase === 'indizio' ? 'in attesa dell\'indizio…' : ''}</p>`;
-    const estremi = sp ? `<div class="sin-estremi"><span class="sx">⬅ ${esc(sp.s)}</span><span class="dx">${esc(sp.d)} ➡</span></div>` : '<div class="sin-estremi"><span class="sx">?</span><span class="dx">?</span></div>';
-    const fine = possoGirare(ctx) ? `<div class="sin-fine"><button type="button" class="bottone" data-az="meno" aria-label="Un po' a sinistra">−</button><span>${valoreManopola(ctx)}</span><button type="button" class="bottone" data-az="piu" aria-label="Un po' a destra">+</button></div>` : '';
-    return `<div class="sin-quadro">${indizio}<div class="sin-svg-box">${disegno(ctx)}</div>${estremi}${fine}</div>`;
+    const indizio = p.indizio ? `<p class="wl-indizio">«${esc(p.indizio)}»</p>` : `<p class="wl-indizio vuoto">${p.fase === 'indizio' ? 'in attesa dell\'indizio…' : ''}</p>`;
+    const estremi = sp ? `<div class="wl-estremi"><span class="sx">⬅ ${esc(sp.s)}</span><span class="dx">${esc(sp.d)} ➡</span></div>` : '<div class="wl-estremi"><span class="sx">?</span><span class="dx">?</span></div>';
+    const fine = possoGirare(ctx) ? `<div class="wl-fine"><button type="button" class="bottone" data-az="meno" aria-label="Un po' a sinistra">−</button><span>${valoreManopola(ctx)}</span><button type="button" class="bottone" data-az="piu" aria-label="Un po' a destra">+</button></div>` : '';
+    return `<div class="wl-quadro">${indizio}<div class="wl-svg-box">${disegno(ctx)}</div>${estremi}${fine}</div>`;
   }
 
   function comandi(ctx) {
     const p = ctx.partita, ui = ctx.ui;
     if (possoIndizio(ctx)) {
       const c = ui.carta || 0;
-      return `<div class="sin-comandi">
-        <p class="sin-aiuto">Scegli lo spettro:</p>
-        <div class="sin-carte">${p.carte.map((x, i) => `<button type="button" class="sin-carta ${c === i ? 'scelta' : ''}" data-az="carta" data-c="${i}" aria-pressed="${c === i}"><span>${esc(x.s)}</span><i>↔</i><span>${esc(x.d)}</span></button>`).join('')}</div>
-        <label for="sin-indizio">Il tuo indizio: <b>un esempio</b> che sta proprio lì (niente numeri)</label>
-        <div class="riga"><input id="sin-indizio" maxlength="40" autocomplete="off" spellcheck="false" placeholder="Per esempio: caffè appena fatto" data-tieni="indizio" data-invio="indizio" value="${esc(ui.t_indizio || '')}">
+      return `<div class="wl-comandi">
+        <p class="wl-aiuto">Scegli lo spettro:</p>
+        <div class="wl-carte">${p.carte.map((x, i) => `<button type="button" class="wl-carta ${c === i ? 'scelta' : ''}" data-az="carta" data-c="${i}" aria-pressed="${c === i}"><span>${esc(x.s)}</span><i>↔</i><span>${esc(x.d)}</span></button>`).join('')}</div>
+        <label for="wl-indizio">Il tuo indizio: <b>un esempio</b> che sta proprio lì (niente numeri)</label>
+        <div class="riga"><input id="wl-indizio" maxlength="40" autocomplete="off" spellcheck="false" placeholder="Per esempio: caffè appena fatto" data-tieni="indizio" data-invio="indizio" value="${esc(ui.t_indizio || '')}">
         <button type="button" class="bottone primario-bt" data-az="indizio">Dai l'indizio</button></div></div>`;
     }
     if (possoGirare(ctx)) {
       const da = p.mossaDa != null && p.mossaDa !== ctx.mio ? ` · l'ha mossa ${esc(ctx.nome(p.mossaDa))}` : '';
-      return `<div class="sin-comandi"><p class="sin-aiuto">Trascina la manopola (o usa − e +, sul computer ← →). È una sola per tutta la squadra: decidete in chat${da}.</p>
+      return `<div class="wl-comandi"><p class="wl-aiuto">Trascina la manopola (o usa − e +, sul computer ← →). È una sola per tutta la squadra: decidete in chat${da}.</p>
         <button type="button" class="bottone primario-bt" data-az="blocca">Blocca a ${valoreManopola(ctx)} 🔒</button></div>`;
     }
     if (possoScommettere(ctx)) {
-      return `<div class="sin-comandi"><p class="sin-aiuto">La manopola è bloccata a <b>${p.manopola}</b>. Il centro del bersaglio è più a sinistra o più a destra?</p>
-        <div class="sin-lati"><button type="button" class="bottone ${p.lato === 'sinistra' ? 'primario-bt' : ''}" data-az="lato" data-lato="sinistra" aria-pressed="${p.lato === 'sinistra'}">⬅ A sinistra</button>
+      return `<div class="wl-comandi"><p class="wl-aiuto">La manopola è bloccata a <b>${p.manopola}</b>. Il centro del bersaglio è più a sinistra o più a destra?</p>
+        <div class="wl-lati"><button type="button" class="bottone ${p.lato === 'sinistra' ? 'primario-bt' : ''}" data-az="lato" data-lato="sinistra" aria-pressed="${p.lato === 'sinistra'}">⬅ A sinistra</button>
         <button type="button" class="bottone ${p.lato === 'destra' ? 'primario-bt' : ''}" data-az="lato" data-lato="destra" aria-pressed="${p.lato === 'destra'}">A destra ➡</button></div>
         ${consigliLato(ctx)}
         <button type="button" class="bottone primario-bt" data-az="confermaLato" ${p.lato ? '' : 'disabled'}>Conferma la scommessa</button></div>`;
     }
-    if (p.fase === 'previsione' && !p.finita) return `<div class="sin-comandi"><p class="sin-aiuto">Manopola bloccata a <b>${p.manopola}</b>. ${consigliLato(ctx)}</p></div>`;
+    if (p.fase === 'previsione' && !p.finita) return `<div class="wl-comandi"><p class="wl-aiuto">Manopola bloccata a <b>${p.manopola}</b>. ${consigliLato(ctx)}</p></div>`;
     return '';
   }
   function consigliLato(ctx) {
     const c = (ctx.partita.consigli || []).map((x, i) => (x && x.lato ? `${esc(nomeCorto(ctx, i))}: ${x.lato}` : null)).filter(Boolean);
-    return c.length ? `<span class="sin-consigli">💬 ${c.join(' · ')}</span>` : '';
+    return c.length ? `<span class="wl-consigli">💬 ${c.join(' · ')}</span>` : '';
   }
 
   function registro(ctx) {
     const p = ctx.partita;
-    if (!p.storia.length) return `<aside class="sin-registro"><h3>Turni</h3><p class="sin-vuoto">Ancora nessun turno. Centro pieno 4 punti, vicino 3, nella zona 2.</p></aside>`;
-    const righe = [...p.storia].reverse().map((r) => `<li class="${p.modo === 'cooperativa' ? '' : `sin-bordo-${CLASSE[r.squadra]}`}">
+    if (!p.storia.length) return `<aside class="wl-registro"><h3>Turni</h3><p class="wl-vuoto">Ancora nessun turno. Centro pieno 4 punti, vicino 3, nella zona 2.</p></aside>`;
+    const righe = [...p.storia].reverse().map((r) => `<li class="${p.modo === 'cooperativa' ? '' : `wl-bordo-${CLASSE[r.squadra]}`}">
       <p><b>«${esc(r.indizio)}»</b><small>${esc(nomeCorto(ctx, r.psichico))}</small></p>
-      <p class="sin-reg-sp">${esc(r.spettro.s)} ↔ ${esc(r.spettro.d)}</p>
-      <p class="sin-reg-es">🎯 ${r.bersaglio} · manopola ${r.manopola} · <b>+${r.punti}</b>${r.lato ? ` · ${r.lato} ${r.latoOk ? '✔' : '✘'}` : ''}</p></li>`).join('');
-    return `<aside class="sin-registro"><h3>Turni</h3><ol>${righe}</ol></aside>`;
+      <p class="wl-reg-sp">${esc(r.spettro.s)} ↔ ${esc(r.spettro.d)}</p>
+      <p class="wl-reg-es">🎯 ${r.bersaglio} · manopola ${r.manopola} · <b>+${r.punti}</b>${r.lato ? ` · ${r.lato} ${r.latoOk ? '✔' : '✘'}` : ''}</p></li>`).join('');
+    return `<aside class="wl-registro"><h3>Turni</h3><ol>${righe}</ol></aside>`;
   }
 
   const tavolo = {
@@ -179,8 +179,8 @@
     },
     panno(ctx) {
       const p = ctx.partita;
-      return `<div class="sin ${sonoPsichico(ctx) && !p.finita ? 'da-psichico' : ''}">
-        <div class="sin-centro">${testa(ctx)}${quadrante(ctx)}${comandi(ctx)}</div>${registro(ctx)}</div>`;
+      return `<div class="wl ${sonoPsichico(ctx) && !p.finita ? 'da-psichico' : ''}">
+        <div class="wl-centro">${testa(ctx)}${quadrante(ctx)}${comandi(ctx)}</div>${registro(ctx)}</div>`;
     },
     dopo(ctx) {
       const p = ctx.partita, ui = ctx.ui;
@@ -215,7 +215,7 @@
     punteggio(ctx) {
       const p = ctx.partita;
       if (p.modo === 'cooperativa') return `<span>Punti <b>${p.punti[0]}</b></span><span>Carte <b>${p.carteGiocate}/${p.totCarte}</b></span>`;
-      return `<span class="sin-p-viola">Viola <b>${p.punti[0]}</b></span><span class="sin-p-verde">Verdi <b>${p.punti[1]}</b></span>`;
+      return `<span class="wl-p-viola">Viola <b>${p.punti[0]}</b></span><span class="wl-p-verde">Verdi <b>${p.punti[1]}</b></span>`;
     },
     infoPosto(ctx, posto) {
       const p = ctx.partita;
@@ -223,7 +223,7 @@
       const ps = posto === p.psichico ? '🔮 Psichico' : p.modo === 'cooperativa' ? 'indovina' : NOMI[s].toLowerCase();
       const c = p.consigli && p.consigli[posto];
       const consiglio = c ? ` · 💬 ${c.valore != null ? c.valore : c.lato}` : '';
-      return `<span class="sin-info">${p.modo === 'cooperativa' ? '' : `<i class="sin-pallino sin-${CLASSE[s]}"></i>`}${ps}${consiglio}</span>`;
+      return `<span class="wl-info">${p.modo === 'cooperativa' ? '' : `<i class="wl-pallino wl-${CLASSE[s]}"></i>`}${ps}${consiglio}</span>`;
     },
     clic(ctx, el) {
       const ui = ctx.ui, az = el.dataset.az, p = ctx.partita;
@@ -259,7 +259,7 @@
   // trascinare la manopola
   let trascino = false;
   function daPuntatore(e) {
-    const svg = document.querySelector('.sin-svg.muovibile');
+    const svg = document.querySelector('.wl-svg.muovibile');
     if (!svg || !ctxS || !possoGirare(ctxS)) return;
     const r = svg.getBoundingClientRect();
     const x = ((e.clientX - r.left) / r.width) * 408 - 4 - CX, y = CY - (((e.clientY - r.top) / r.height) * 214 + 2);
@@ -270,12 +270,12 @@
     ctxS.ridisegna();
     manda(v);
   }
-  document.addEventListener('pointerdown', (e) => { if (e.target.closest && e.target.closest('.sin-svg.muovibile')) { trascino = true; e.preventDefault(); daPuntatore(e); } });
+  document.addEventListener('pointerdown', (e) => { if (e.target.closest && e.target.closest('.wl-svg.muovibile')) { trascino = true; e.preventDefault(); daPuntatore(e); } });
   document.addEventListener('pointermove', (e) => { if (trascino) { e.preventDefault(); daPuntatore(e); } });
   document.addEventListener('pointerup', () => { if (!trascino) return; trascino = false; if (daMandare != null) manda(daMandare, true); });
   document.addEventListener('keydown', (e) => {
     const p = ctxS && ctxS.stato && ctxS.partita;
-    if (!p || p.gioco !== 'sintonia' || !possoGirare(ctxS) || !['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+    if (!p || p.gioco !== 'wavelength' || !possoGirare(ctxS) || !['ArrowLeft', 'ArrowRight'].includes(e.key)) return;
     if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return; // si sta scrivendo in chat
     e.preventDefault();
     const v = Math.max(0, Math.min(100, valoreManopola(ctxS) + (e.key === 'ArrowLeft' ? -1 : 1) * (e.shiftKey ? 5 : 1)));
@@ -284,5 +284,5 @@
     manda(v);
   });
 
-  Object.assign(window.Tavoli, { sintonia: tavolo });
+  Object.assign(window.Tavoli, { wavelength: tavolo });
 })();

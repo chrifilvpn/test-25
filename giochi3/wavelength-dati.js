@@ -1,4 +1,4 @@
-// SINTONIA: gli spettri (due concetti opposti, sinistra ↔ destra) e, per ognuno, esempi con la loro posizione da 0
+// WAVELENGTH: gli spettri (due concetti opposti, sinistra ↔ destra) e, per ognuno, esempi con la loro posizione da 0
 // (tutto a sinistra) a 100 (tutto a destra). Il computer Psichico sceglie l'esempio più vicino al bersaglio; il computer
 // che indovina, se riconosce l'indizio tra gli esempi dello spettro, gira la manopola lì (con un po' di incertezza).
 // Le posizioni sono "di buon senso", non verità assolute: è proprio il bello del gioco.

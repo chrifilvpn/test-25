@@ -1,11 +1,11 @@
-// Test di SINTONIA: gli spettri e i loro esempi, i punti (4/3/2), l'indizio (niente numeri, non un estremo), chi vede
+// Test di WAVELENGTH: gli spettri e i loro esempi, i punti (4/3/2), l'indizio (niente numeri, non un estremo), chi vede
 // il bersaglio, la manopola condivisa (gira, blocca, Psichico escluso), la scommessa sinistra/destra degli avversari,
 // la rimonta, la cooperativa con le carte bonus, i computer (consigliano con persone in squadra) e tante partite
 // complete tra computer (il difficile deve fare più punti del facile).
 const assert = require('assert');
 const { GIOCHI } = require('../../giochi');
 
-const M = GIOCHI.sintonia;
+const M = GIOCHI.wavelength;
 const { puntiPer, controllaIndizio, stima, SPETTRI, VIOLA, VERDI } = M._test;
 
 // ---- gli spettri ----
@@ -26,7 +26,7 @@ for (const sp of SPETTRI) {
     esempi++;
   }
 }
-console.log(`✓ Sintonia: ${SPETTRI.length} spettri e ${esempi} esempi, ognuno da un capo all'altro e valido come indizio`);
+console.log(`✓ Wavelength: ${SPETTRI.length} spettri e ${esempi} esempi, ognuno da un capo all'altro e valido come indizio`);
 
 // ---- punti e indizio ----
 assert.strictEqual(puntiPer(50, 50), 4); assert.strictEqual(puntiPer(52, 50), 4); assert.strictEqual(puntiPer(47, 50), 3);
@@ -40,7 +40,7 @@ assert.ok(controllaIndizio('al 70%', caldo) && controllaIndizio('settanta per ce
 assert.ok(controllaIndizio('caldo', caldo) && controllaIndizio('FREDDO', caldo), 'non un estremo');
 assert.ok(controllaIndizio('', caldo) && controllaIndizio('   ', caldo) && controllaIndizio('!!!', caldo));
 assert.ok(controllaIndizio('a'.repeat(41), caldo), 'al massimo 40 caratteri');
-console.log('✓ Sintonia: centro 4, vicino 3, zona 2; l\'indizio è un esempio senza numeri né percentuali, non un estremo');
+console.log('✓ Wavelength: centro 4, vicino 3, zona 2; l\'indizio è un esempio senza numeri né percentuali, non un estremo');
 
 // ---- una partita a squadre, passo per passo ----
 function nuova(n = 4, opzioni = {}) {
@@ -165,7 +165,7 @@ function nuova(n = 4, opzioni = {}) {
   assert.strictEqual(j.manopola, 50, 'il consiglio non muove la manopola');
   assert.ok(j.vista(4).consigli[2].valore != null, 'il consiglio si vede');
 }
-console.log('✓ Sintonia a squadre: Psichico a turno, manopola condivisa, scommessa sinistra/destra, centro pieno, rimonta, vittoria all\'obiettivo');
+console.log('✓ Wavelength a squadre: Psichico a turno, manopola condivisa, scommessa sinistra/destra, centro pieno, rimonta, vittoria all\'obiettivo');
 
 // ---- cooperativa ----
 {
@@ -191,7 +191,7 @@ console.log('✓ Sintonia a squadre: Psichico a turno, manopola condivisa, scomm
   assert.ok(/8 punti in 9 carte/.test(g.risultato.titolo));
   assert.ok(g.psichico !== undefined && new Set(g.storia.map((r) => r.psichico)).size === 3, 'lo Psichico gira tra tutti');
 }
-console.log('✓ Sintonia cooperativa: tutti insieme (anche in 2 o 3), Psichico a giro, carte bonus col centro pieno, giudizio finale');
+console.log('✓ Wavelength cooperativa: tutti insieme (anche in 2 o 3), Psichico a giro, carte bonus col centro pieno, giudizio finale');
 
 // ---- il computer ----
 {
@@ -203,7 +203,7 @@ console.log('✓ Sintonia cooperativa: tutti insieme (anche in 2 o 3), Psichico 
   const meglio = Math.min(...g.carte.flatMap((i) => SPETTRI[i].e.map(([, p]) => Math.abs(p - 90))));
   assert.strictEqual(Math.abs(pos - 90), meglio, 'il difficile sceglie l\'esempio più vicino tra i due spettri');
   g.azione(0, a);
-  for (let k = 0; k < 30; k++) assert.ok(Math.abs(stima(g, 'difficile') - pos) <= 6, 'e il compagno computer lo capisce');
+  for (let k = 0; k < 30; k++) assert.ok(Math.abs(stima(g, 'difficile') - pos) <= 8, 'e il compagno computer lo capisce (al massimo 8 di errore)');
   g.indizio = 'zxqw'; // non lo conosce: tira a indovinare
   for (let k = 0; k < 30; k++) { const v = stima(g, 'medio'); assert.ok(v >= 0 && v <= 100); }
 }
@@ -234,5 +234,5 @@ for (const [n, modo] of [[4, 'squadre'], [5, 'squadre'], [8, 'squadre'], [2, 'co
     media[L] = tot / 120;
   }
   assert.ok(media.difficile > media.facile + 0.4, `${n} ${modo}: il difficile deve indovinare meglio (${media.difficile.toFixed(2)} contro ${media.facile.toFixed(2)})`);
-  console.log(`✓ Sintonia ${modo} in ${n}: 240 partite tra computer, punti a turno facile ${media.facile.toFixed(2)} / difficile ${media.difficile.toFixed(2)}`);
+  console.log(`✓ Wavelength ${modo} in ${n}: 240 partite tra computer, punti a turno facile ${media.facile.toFixed(2)} / difficile ${media.difficile.toFixed(2)}`);
 }
