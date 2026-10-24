@@ -268,7 +268,7 @@
       if (m && m.giocatori.includes(n)) scelto.posti = n;
     }
     $('#elenco-giochi').innerHTML = visibili.map((g) => `
-      <button type="button" class="gioco-tessera" data-gioco="${g.id}" aria-pressed="${g.id === scelto.gioco}">
+      <button type="button" class="gioco-tessera" data-gioco="${g.id}" data-cat="${esc(g.categoria || 'altri')}" aria-pressed="${g.id === scelto.gioco}">
         <span class="g-stella ${preferiti.has(g.id) ? 'si' : ''}" data-preferito="${g.id}" role="switch" aria-checked="${preferiti.has(g.id)}" aria-label="Preferito" title="${preferiti.has(g.id) ? 'Togli dai preferiti' : 'Aggiungi ai preferiti'}">${preferiti.has(g.id) ? '★' : '☆'}</span>
         <span class="g-nome">${esc(g.nome)}</span>
         <span class="g-desc">${esc(g.descrizione)}</span>
