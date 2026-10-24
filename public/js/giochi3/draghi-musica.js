@@ -10,7 +10,8 @@
 //   archi tremolanti, battito veloce), caccia (vi insegue: tamburi e archi a martello), battaglia, festa, morte.
 //   In tempo reale lo decide quello che vede e sente il personaggio (tick); a turni l'atmosfera del master, la caccia
 //   della creatura e il combattimento
-// Suona solo con l'audio del sito acceso (🔇 all'apertura); il pulsante 🎵 in alto la spegne solo per te.
+// Suona solo con l'audio del sito acceso (🔇 all'apertura); il pulsante 🎵 in alto la spegne solo per te. Quando il
+// master parla (la voce narrante, draghi-voce.js) si abbassa.
 (() => {
   const SCALE = { minore: [0, 2, 3, 5, 7, 8, 10], frigio: [0, 1, 3, 5, 7, 8, 10], dorico: [0, 2, 3, 5, 7, 9, 10], maggiore: [0, 2, 4, 5, 7, 9, 11], misolidio: [0, 2, 4, 5, 7, 9, 10], armonica: [0, 2, 3, 5, 7, 8, 11], lidio: [0, 2, 4, 6, 7, 9, 11], locrio: [0, 1, 3, 5, 6, 8, 10] };
   // la musica di ogni ambientazione: radice (nota MIDI del basso), scala, battiti al minuto, giro di accordi (gradi
@@ -219,7 +220,7 @@
     if (si && !M.suona) {
       if (!avvia()) return;
       M.suona = true;
-      M.uscita.gain.cancelScheduledValues(M.ac.currentTime); M.uscita.gain.setTargetAtTime(0.55, M.ac.currentTime, 1.2);
+      M.uscita.gain.cancelScheduledValues(M.ac.currentTime); M.uscita.gain.setTargetAtTime(0.55 * sotto, M.ac.currentTime, 1.2);
       M.prossimo = M.ac.currentTime + 0.1;
       clearInterval(M.timer); M.timer = setInterval(programma, 90);
     } else if (!si && M.suona) {
@@ -229,6 +230,14 @@
       setTimeout(() => { if (!M.suona) cambiaLetto(null); }, 1500);
     }
     if (M.suona) aggiornaLetto();
+  }
+  // mentre parla la voce narrante (draghi-voce.js) la musica si abbassa
+  let sotto = 1;
+  function abbassa(si) {
+    const v = si ? 0.4 : 1;
+    if (v === sotto) return;
+    sotto = v;
+    if (M.suona && M.ac) M.uscita.gain.setTargetAtTime(0.55 * sotto, M.ac.currentTime, si ? 0.25 : 1);
   }
   // fuori dal gioco (o col sito zittito) la musica si spegne da sola
   setInterval(() => { if (S.inGioco && !document.querySelector('#panno .dr')) S.inGioco = false; controlla(); }, 1000);
@@ -470,5 +479,5 @@
     b.setAttribute('aria-label', b.title);
   }
 
-  window.DraghiMusica = { aggiorna, tick, TEMI, ZONE, AREE, LETTI, UMORI, stato: () => ({ tema: S.tema, zona: S.zona, umore: S.umore, suona: M.suona }), _prova: { S, M, avvia, passo, evento, colpo, cambiaLetto, vuoiUmore } };
+  window.DraghiMusica = { aggiorna, tick, abbassa, TEMI, ZONE, AREE, LETTI, UMORI, stato: () => ({ tema: S.tema, zona: S.zona, umore: S.umore, suona: M.suona }), _prova: { S, M, avvia, passo, evento, colpo, cambiaLetto, vuoiUmore } };
 })();
