@@ -13,13 +13,17 @@ const M = require('./mappe');
 const CELLA = 1.5;
 const durataInTurni = (durata) => { const s = String(durata || ''); if (/round/.test(s)) return 1; if (/minut/.test(s)) return 10 * (parseInt(s, 10) || 1); if (/or[ae]/.test(s)) return 600; return 10; };
 const nomeDi = (c) => c.ref.nome;
+// modalità pazza: +5 ai tiri per colpire e ai tiri salvezza del gruppo, metà danni ai personaggi, nemici col 60% dei PF
+const PAZZA_BONUS = 5, PAZZA_DANNI_PG = 0.5, PAZZA_PF_NEMICI = 0.6;
 
 class Combattimento {
   // gruppo: personaggi (oggetti di regole.creaPersonaggio, modificati sul posto); nemici: oggetti di regole.mostroDa;
   // alleati: altre creature dalla parte del gruppo (mostroDa); sorpresa: 'gruppo' | 'nemici' | null (chi è sorpreso)
-  constructor({ scena, gruppo, nemici, alleati = [], sorpresa = null, livelloIA = 'medio' }) {
+  // pazza: la modalità pazza è per ridere, non per morire (vedi PAZZA_* qui sotto)
+  constructor({ scena, gruppo, nemici, alleati = [], sorpresa = null, livelloIA = 'medio', pazza = false }) {
     this.scena = scena;
-    this.livelloIA = livelloIA;
+    this.pazza = !!pazza;
+    this.livelloIA = this.pazza ? 'facile' : livelloIA;
     this.round = 1;
     this.eventi = []; this.nEv = 0;
     this.creature = [];
@@ -35,6 +39,8 @@ class Combattimento {
     for (const p of gruppo) if (!p.morto) metti(p, 'gruppo', pg);
     for (const a of alleati) metti(a, 'gruppo', pg);
     for (const m of nemici) metti(m, 'nemici', pn);
+    // modalità pazza: nemici più fragili, così gli scontri sono brevi e si vince
+    if (this.pazza) for (const c of this.creature) if (c.lato === 'nemici' && !c.pg) { c.ref.pfMax = Math.max(1, Math.ceil(c.ref.pfMax * PAZZA_PF_NEMICI)); c.ref.pf = Math.min(c.ref.pf, c.ref.pfMax); }
     // iniziativa: d20 + Destrezza (le creature uguali dei nemici tirano insieme, come al tavolo)
     const perNome = {};
     for (const c of this.creature) {
@@ -274,6 +280,9 @@ class Combattimento {
     if (!att.pg && (att.ref.tratti || []).includes('sensibileLuce') && this.scena.luce === 'giorno') s.push('luce del sole');
     if (this.effetto(ber, 'protezioneMale') && !att.pg && ['aberrazione', 'celestiale', 'elementale', 'folletto', 'immondo', 'non morto'].includes(String(att.ref.tipo).split(' ')[0])) s.push('protezione dal male');
     if ((att.ref.esaurimento || 0) >= 3) s.push('esaurimento');
+    // modalità pazza: il gruppo tira con vantaggio, i nemici contro il gruppo con svantaggio
+    if (this.pazza && att.pg) v.push('modalità pazza');
+    if (this.pazza && !att.pg && ber.pg) s.push('modalità pazza');
     return { vantaggio: v.length > 0, svantaggio: s.length > 0, perche: [...v.map((x) => `+${x}`), ...s.map((x) => `-${x}`)] };
   }
   risolviAttacco(att, ber, a, opz = {}) {
@@ -283,6 +292,7 @@ class Combattimento {
     const t = R.d20({ vantaggio, svantaggio, fortunato, venti: this.ventiPer(att) });
     let bonus = a.colpire;
     const extraTiro = [];
+    if (this.pazza && att.pg) { bonus += PAZZA_BONUS; extraTiro.push(`modalità pazza +${PAZZA_BONUS}`); }
     if (att.pg && this.effetto(att, 'benedizione')) { const b = R.d(4); bonus += b; extraTiro.push(`benedizione +${b}`); }
     if (att.pg && this.effetto(att, 'armaSacra')) bonus += Math.max(1, att.ref.mod.car);
     let ca = ber.ref.ca;
@@ -375,7 +385,23 @@ class Combattimento {
   danneggia(c, quanti, tipo, opz = {}) {
     const primaPf = c.ref.pf;
     if (quanti > 0) this.ultimoDannoRound = this.round;
+    // modalità pazza: i personaggi prendono metà danni e non vanno mai giù con un colpo solo (restano a 1 PF);
+    // a terra un colpo conta come un fallimento, mai la morte sul colpo
+    const pazzaPg = this.pazza && c.pg;
+    if (pazzaPg && quanti > 0) quanti = Math.max(1, Math.floor(quanti * PAZZA_DANNI_PG));
+    const primaProno = c.ref.condizioni.includes('prono');
     const subiti = R.applicaDanno(c.ref, quanti, tipo, opz);
+    if (pazzaPg && primaPf > 1 && c.ref.pf <= 0) {
+      c.ref.pf = 1; c.ref.morto = false;
+      c.ref.condizioni = c.ref.condizioni.filter((x) => x !== 'privo' && (primaProno || x !== 'prono'));
+      this.evento({ tipo: 'nota', id: c.id, testo: `${nomeDi(c)} resta in piedi per miracolo con 1 PF! (modalità pazza)` });
+      return subiti;
+    }
+    if (pazzaPg && primaPf > 0 && c.ref.morto) {
+      c.ref.morto = false; c.ref.pf = 0; c.ref.morte = { successi: 0, fallimenti: 0 }; c.ref.stabile = false;
+      for (const x of ['privo', 'prono']) if (!c.ref.condizioni.includes(x)) c.ref.condizioni.push(x);
+    }
+    if (pazzaPg && primaPf <= 0 && c.ref.morto && c.ref.morte && c.ref.morte.fallimenti < 3) { c.ref.morte.fallimenti += 1; c.ref.morto = c.ref.morte.fallimenti >= 3; }
     if (tipo === 'fuoco' || tipo === 'acido') c.bruciato = true;
     if (c.ref.ultimoEvento === 'concentrazione') { c.ref.ultimoEvento = null; this.fineConcentrazione(c); this.evento({ tipo: 'nota', id: c.id, testo: `${nomeDi(c)} perde la concentrazione.` }); }
     if (c.ref.ultimoEvento === 'tenacia') { c.ref.ultimoEvento = null; this.evento({ tipo: 'nota', id: c.id, testo: `${nomeDi(c)} resiste con tenacia implacabile e resta in piedi!` }); }
@@ -401,6 +427,7 @@ class Combattimento {
       // aura di protezione: un paladino alleato entro 3 metri aggiunge il suo Carisma
       let aura = 0;
       for (const x of this.creature) if (x.pg && x.lato === c.lato && this.inPiedi(x) && R.haEffetto(x.ref, 'auraProtezione') && this.dist(x, c) <= 3) aura = Math.max(aura, Math.max(1, x.ref.mod.car));
+      if (this.pazza) opz = { ...opz, bonusExtra: (opz.bonusExtra || 0) + PAZZA_BONUS };
       const r = R.salvezza(c.ref, car, { cd, aura, ...opz, venti: this.ventiPer(c) });
       if (!r.riuscita && R.haEffetto(c.ref, 'indomito') && c.ref.risorse.indomito && c.ref.risorse.indomito.usati < c.ref.risorse.indomito.max && cd - r.totale <= 6) {
         c.ref.risorse.indomito.usati++;
@@ -731,7 +758,7 @@ class Combattimento {
           const t = R.d20({ vantaggio, svantaggio, venti: this.ventiPer(c) });
           const cop = e.mischia ? 0 : M.copertura(this.scena, c.x, c.y, b.x, b.y);
           const critico = t.valore === 20;
-          const colpito = t.valore !== 1 && (critico || t.valore + di.attacco >= b.ref.ca + cop);
+          const colpito = t.valore !== 1 && (critico || t.valore + di.attacco + (this.pazza && c.pg ? PAZZA_BONUS : 0) >= b.ref.ca + cop);
           if (!colpito) { this.evento({ tipo: 'attacco', da: c.id, a: b.id, arma: inc.nome, valore: t.valore, totale: t.valore + di.attacco, ca: b.ref.ca + cop, colpito: false, perche, testo: `${inc.nome} manca ${b.ref.nome} (${t.valore + di.attacco} contro CA ${b.ref.ca + cop}).` }); continue; }
           let q = R.tira(dadiDanno, { critico }).totale + (e.piuCar ? di.mod : 0) + evocatore;
           if (incId === 'deflagrazione' && c.pg && (c.ref.suppliche || []).includes('agonizzante')) q += di.mod;

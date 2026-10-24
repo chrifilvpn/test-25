@@ -153,6 +153,37 @@ const { R, B, CLASSI, INCANTESIMI, MOSTRI, MAP, Combattimento, MASTER } = G._tes
     assert.ok(cb.lancia(cm.id, 'dardoIncantato', { bersagli: [g3.id] }).errore, 'una sola azione');
     assert.ok(cb.lancia(cm.id, 'desiderio', {}).errore, 'non conosce quell\'incantesimo');
   }
+  // ---------- modalità pazza: per ridere, non per morire ----------
+  {
+    const N = 120;
+    let vinte = 0, morti = 0, att = 0, colpiti = 0;
+    for (let k = 0; k < N; k++) {
+      const gruppo = [0, 1].map((i) => R.creaPersonaggio(R.completaScelte({ classe: Object.keys(CLASSI)[(k + i * 5) % 12], livello: 1 })).pg);
+      const nem = [['goblin', 'goblin', 'goblin'], ['orco', 'goblin'], ['lupo', 'lupo'], ['bandito', 'bandito', 'capoBandito']][k % 4].map((id) => R.mostroDa(id));
+      const cb = new Combattimento({ scena: MAP.scena(MAP.STILI_SCENA[k % MAP.STILI_SCENA.length], k * 7 + 3), gruppo, nemici: nem, livelloIA: 'difficile', pazza: true });
+      assert.strictEqual(cb.livelloIA, 'facile', 'in modalità pazza i nemici giocano da facili');
+      let giri = 0; while (!cb.finito && giri++ < 3000) cb.turnoAutomatico();
+      if (cb.finito === 'vittoria') vinte++;
+      morti += gruppo.filter((p) => p.morto).length;
+      const ids = new Set(cb.creature.filter((c) => c.pg).map((c) => c.id));
+      for (const e of cb.eventi) if (e.tipo === 'attacco' && ids.has(e.da)) { att++; if (e.colpito) colpiti++; }
+      assert.ok(!cb.eventi.some((e) => e.tipo === 'cade' && /sul colpo/.test(e.testo)), 'nessuno muore sul colpo');
+    }
+    assert.ok(vinte > N * 0.9, `in modalità pazza si vince quasi sempre (${vinte}/${N})`);
+    assert.ok(morti < N * 0.1, `in modalità pazza si muore pochissimo (${morti} su ${N * 2})`);
+    assert.ok(colpiti / att > 0.8, `in modalità pazza si colpisce quasi sempre (${Math.round(colpiti / att * 100)}%)`);
+    // un colpo enorme a un personaggio sano: resta in piedi a 1 PF
+    const pg = R.creaPersonaggio(R.completaScelte({ classe: 'mago', livello: 1 })).pg;
+    const gob = R.mostroDa('goblin'), pfGob = gob.pfMax;
+    const cb = new Combattimento({ scena: MAP.scena('taverna', 5), gruppo: [pg], nemici: [gob], pazza: true });
+    assert.ok(gob.pfMax < pfGob, 'i nemici hanno meno punti ferita');
+    const cp = cb.creature.find((c) => c.pg), cg = cb.creature.find((c) => !c.pg);
+    cb.danneggia(cp, 500, 'taglio', { da: cg });
+    assert.ok(pg.pf === 1 && !pg.morto && !pg.condizioni.includes('privo'), 'resta in piedi con 1 PF');
+    cb.danneggia(cp, 500, 'taglio', { da: cg });
+    assert.ok(pg.pf === 0 && !pg.morto, 'a 1 PF cade a terra, ma non muore sul colpo');
+    console.log(`  modalità pazza: ${vinte}/${N} vinti, ${morti} morti, ${Math.round(colpiti / att * 100)}% di colpi a segno`);
+  }
   // ---------- master: lettura delle risposte ----------
   {
     const r = MASTER.leggiRisposta('Ecco:\n```json\n{"narrazione":"Ciao","prove":[{"chi":"Ada","tipo":"furtivita","cd":12}],"scelte":["a","b"]}\n```');

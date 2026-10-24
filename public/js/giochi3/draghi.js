@@ -306,9 +306,8 @@
       const tab = ui.drTab || (cb ? 'battaglia' : 'storia');
       let centro;
       if (cb) {
-        const ultima = p.racconto.slice().reverse().find((v) => v.tipo === 'master');
-        const narr = ultima && ultima.combattimento ? `<div class="dr-cb-narr ${trascorso(ui, `dr-v${ultima.id}`) < 1500 ? 'nuova' : ''}" title="Il master racconta">${formatta(ultima.testo, p)}</div>` : '';
-        centro = `<section class="dr-centro dr-centro-cb">${CB().filaIniziativa(ctx)}<div id="dr-campo-posto" class="dr-campo-posto"></div>${narr}</section>`;
+        // il racconto del master in battaglia si legge solo nella scheda «Racconto» a lato, non sotto la mappa
+        centro = `<section class="dr-centro dr-centro-cb">${CB().filaIniziativa(ctx)}<div id="dr-campo-posto" class="dr-campo-posto"></div></section>`;
       } else centro = `<section class="dr-centro">${testaStoria(ctx)}${racconto(ctx)}${composer(ctx)}</section>`;
       const MAPPA = p.incubo ? ['stazione', '🛰️', 'Stazione'] : ['mappa', '🗺️', 'Mappa'];
       const schede = cb ? (tel ? [['turno', '🎲', 'Turno'], ['racconto', '💬', 'Racconto'], MAPPA, ['missioni', '📜', 'Missioni'], ['diario', '📖', 'Diario']] : [['turno', '🎲', 'Turno'], ['racconto', '💬', 'Racconto'], MAPPA, ['missioni', '📜', 'Missioni']])
