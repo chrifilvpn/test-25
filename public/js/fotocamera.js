@@ -3,8 +3,9 @@
 // altri gesti mettono un gatto davanti a te (dito alzato, lingua fuori, bocca aperta, occhiolino, occhi
 // socchiusi, faccia triste, fermo per qualche secondo).
 // Le immagini restano nel browser: mani e viso li riconosce MediaPipe qui dentro (file serviti dal sito, niente
-// CDN), niente viene inviato al server né salvato. Si spegne col pulsante, chiudendo la finestra, cambiando scheda o
-// aprendo le dispense (Boss Key).
+// CDN), niente viene inviato al server né salvato. Si accende dalla home o con !foto in chat; è una finestrella che si
+// sposta trascinandola, così si gioca intanto. Si spegne col pulsante (o di nuovo !foto), cambiando scheda o aprendo le
+// dispense (Boss Key).
 window.Fotocamera = (() => {
   const G = window.FotocameraGesti;
   const $ = (s) => document.querySelector(s);
@@ -31,7 +32,9 @@ window.Fotocamera = (() => {
     el.setAttribute('aria-label', 'Fotocamera magica');
     el.innerHTML = `
       <div class="fcam-box">
-        <div class="fcam-testa"><h2>📷 Fotocamera magica</h2><button type="button" class="bottone mini-bt fcam-spegni">⏹ Spegni fotocamera</button></div>
+        <div class="fcam-testa" title="Trascina per spostare la finestra"><h2>📷 Fotocamera</h2>
+          <button type="button" class="bottone mini-bt fcam-aiuto" aria-expanded="false" title="Mostra i trucchi">❔</button>
+          <button type="button" class="bottone mini-bt fcam-spegni" title="Spegni la fotocamera">⏹ Spegni</button></div>
         <div class="fcam-schermo">
           <video class="fcam-video" playsinline muted></video>
           ${Object.values(GATTI).flat().map((f) => `<img class="fcam-filtro fcam-${f}" src="/fotocamera/gatto-${f}.jpg" alt="" hidden>`).join('')}
@@ -39,7 +42,7 @@ window.Fotocamera = (() => {
           <div class="fcam-67" hidden><span>6</span><span>7</span></div>
           <p class="fcam-stato" role="status"></p>
         </div>
-        <ul class="fcam-trucchi">
+        <ul class="fcam-trucchi" hidden>
           <li>🙌 <b>67</b>: alza e abbassa le mani alternate</li>
           <li>☝️ <b>Dito alzato</b>: il gatto con gli occhiali, finché non lo abbassi</li>
           <li>🤫 <b>Mano sulla bocca</b>: il gatto sub</li>
@@ -54,12 +57,51 @@ window.Fotocamera = (() => {
       </div>`;
     document.body.appendChild(el);
     el.querySelector('.fcam-spegni').addEventListener('click', spegni);
-    el.addEventListener('click', (e) => { if (e.target === el) spegni(); });
+    el.querySelector('.fcam-aiuto').addEventListener('click', (e) => {
+      const l = el.querySelector('.fcam-trucchi');
+      l.hidden = !l.hidden; e.currentTarget.setAttribute('aria-expanded', String(!l.hidden));
+      tieniDentro(el);
+    });
+    trascinabile(el);
     el.querySelector('.fcam-scuba video').addEventListener('ended', () => mostraScuba(false));
     return el;
   }
   // come il resto del sito: con l'audio spento (🔇) niente suoni, i video partono muti
   const muto = () => { const b = document.getElementById('suono'); return !!b && b.getAttribute('aria-pressed') === 'false'; };
+  // la finestra si sposta trascinando la barra in alto (mouse o dito) e ricorda dove l'hai messa
+  function trascinabile(el) {
+    const testa = el.querySelector('.fcam-testa');
+    let presa = null;
+    try { const p = JSON.parse(localStorage.getItem('if:fotocamera:posto') || 'null'); if (p) { el.style.left = `${p.x}px`; el.style.top = `${p.y}px`; } } catch { /* niente */ }
+    testa.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('button')) return;
+      const r = el.getBoundingClientRect();
+      presa = { dx: e.clientX - r.left, dy: e.clientY - r.top };
+      testa.setPointerCapture(e.pointerId);
+      el.classList.add('fcam-presa');
+    });
+    testa.addEventListener('pointermove', (e) => {
+      if (!presa) return;
+      el.style.left = `${e.clientX - presa.dx}px`; el.style.top = `${e.clientY - presa.dy}px`;
+      tieniDentro(el);
+    });
+    const lascia = () => {
+      if (!presa) return;
+      presa = null; el.classList.remove('fcam-presa');
+      try { localStorage.setItem('if:fotocamera:posto', JSON.stringify({ x: parseInt(el.style.left, 10), y: parseInt(el.style.top, 10) })); } catch { /* niente */ }
+    };
+    testa.addEventListener('pointerup', lascia);
+    testa.addEventListener('pointercancel', lascia);
+    window.addEventListener('resize', () => tieniDentro(el));
+  }
+  // la finestra resta sempre dentro lo schermo (almeno la barra per riprenderla)
+  function tieniDentro(el) {
+    if (el.hidden) return;
+    const r = el.getBoundingClientRect();
+    const x = Math.min(Math.max(0, r.left), Math.max(0, innerWidth - r.width));
+    const y = Math.min(Math.max(0, r.top), Math.max(0, innerHeight - 48));
+    el.style.left = `${x}px`; el.style.top = `${y}px`;
+  }
   const stato = (t) => { const p = $('#fcam .fcam-stato'); if (p) p.textContent = t; };
   const mostra = (sel, si) => { const x = $(`#fcam ${sel}`); if (x && x.hidden === si) x.hidden = !si; };
 
@@ -68,6 +110,7 @@ window.Fotocamera = (() => {
     if (window.Boss && Boss.attivo) return;
     const el = finestra();
     el.hidden = false;
+    tieniDentro(el);
     if (flusso) return;
     try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); audio.resume(); } catch { /* niente audio */ }
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -90,7 +133,7 @@ window.Fotocamera = (() => {
     try { await v.play(); } catch { /* parte da sola */ }
     controllaFile();
     stato('⏳ Preparo il riconoscimento delle mani…');
-    caricaModelli().then((ok) => { if (flusso) stato(ok ? `✨ Prova i trucchi qui sotto!${muto() ? ' (audio del sito spento: niente suoni)' : ''}` : '⚠️ Riconoscimento delle mani non disponibile: funziona solo il gatto soldato.'); });
+    caricaModelli().then((ok) => { if (flusso) stato(ok ? `✨ Pronta! Tocca ❔ per i trucchi${muto() ? ' (audio del sito spento: niente suoni)' : ''}` : '⚠️ Riconoscimento delle mani non disponibile: funziona solo il gatto soldato.'); });
     ultimaFoto = 0; grigiPrima = null; fermoDa = performance.now();
     cancelAnimationFrame(giro);
     giro = requestAnimationFrame(passo);
@@ -281,5 +324,12 @@ window.Fotocamera = (() => {
   document.addEventListener('visibilitychange', () => { if (document.hidden && flusso) spegni(); });
   if (window.Boss && Boss.onCambio) Boss.onCambio((a) => { if (a) spegni(); });
 
-  return { attiva, spegni, get accesa() { return !!flusso; } };
+  // "!foto" in chat: accende (o spegne) la fotocamera solo per chi lo scrive, non va agli altri
+  function comando(testo) {
+    if (!/^!foto$/i.test(String(testo).trim())) return false;
+    if (flusso) spegni(); else attiva();
+    return true;
+  }
+
+  return { attiva, spegni, comando, get accesa() { return !!flusso; } };
 })();

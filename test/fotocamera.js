@@ -90,6 +90,11 @@ const js = fs.readFileSync(path.join(pub, 'js/fotocamera.js'), 'utf8');
 const gatti = [...js.match(/const GATTI = \{([^}]*)\}/)[1].matchAll(/'([a-z0-9]+)'/g)].map((m) => m[1]);
 assert.ok(gatti.length >= 9, 'tutti i gatti elencati');
 for (const nome of gatti) assert.ok(fs.existsSync(path.join(pub, `fotocamera/gatto-${nome}.jpg`)), `manca la foto gatto-${nome}.jpg`);
+// !foto: lo intercettano le tre chat (tavolo, sala, globale) prima di mandarlo, ed è nell'elenco dei comandi
+const app = fs.readFileSync(path.join(pub, 'js/app.js'), 'utf8');
+assert.strictEqual((app.match(/Fotocamera\.comando\(t\)/g) || []).length, 3, '!foto in tutte e tre le chat');
+assert.ok(fs.readFileSync(path.join(__dirname, '../server.js'), 'utf8').includes("'!foto':"), '!foto in !comandi');
+assert.ok(/function comando\(testo\)[\s\S]*\^!foto\$/.test(js), '!foto solo come messaggio intero');
 assert.ok(!/https?:\/\//.test(js), 'la fotocamera non scarica niente da fuori');
 assert.ok(!/socket|fetch\([^)]*method: 'POST'/.test(js), 'la fotocamera non manda niente al server');
 

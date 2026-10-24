@@ -368,6 +368,7 @@ const AIUTO_COMANDI = {
   '!restart': 'propone di ricominciare la partita da capo (se qualcosa è andato storto): decide la maggioranza del tavolo',
   '!fantasia': 'seguito da una domanda (per esempio !fantasia chi ha inventato il computer?): risponde fantasIA, la mini IA del sito. Una domanda ogni 20 secondi, al massimo 100 al giorno per tutto il sito',
   '!revive': 'in Draghi e Segrete riporta in vita i personaggi morti, con tutti i punti ferita e le stesse cose che avevano',
+  '!foto': 'accende (o spegne) la Fotocamera magica solo per te: ti vedi in una finestrella da spostare dove vuoi e i gatti reagiscono ai tuoi gesti',
   '!comandi': 'mostra questo elenco',
   // il 67 non si elenca: è un easter egg che si scopre giocando
 };
