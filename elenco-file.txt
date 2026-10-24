@@ -233,6 +233,7 @@ guardia.js
 package-lock.json
 package.json
 public/boss.css
+public/fotocamera/gatto-arrabbiato.jpg
 public/fotocamera/gatto-dito.jpg
 public/fotocamera/gatto-giudice.jpg
 public/fotocamera/gatto-huh.jpg

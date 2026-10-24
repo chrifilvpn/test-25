@@ -45,11 +45,6 @@ assert.strictEqual(G.movimento(a, a), 0);
 assert.strictEqual(G.movimento(a, b), 1);
 assert.strictEqual(G.movimento(null, a), 1, 'senza immagine prima conta come movimento');
 
-// mano sulla bocca
-const bocca = { x: 0.5, y: 0.55, larghezza: 0.3 };
-assert.ok(G.manoSullaBocca(mano(0.5, 0.68, [1, 2, 3, 4]), bocca), 'dita sulla bocca: sì');
-assert.ok(!G.manoSullaBocca(mano(0.15, 0.9, [1]), bocca), 'mano lontana: no');
-
 // espressioni del viso
 assert.ok(G.triste({ mouthFrownLeft: 0.5, mouthFrownRight: 0.4 }), 'bocca all\'ingiù: triste');
 assert.ok(G.triste({ browInnerUp: 0.6, mouthFrownLeft: 0.1, mouthFrownRight: 0.1 }), 'sopracciglia da cucciolo: triste');
@@ -62,20 +57,38 @@ assert.ok(!G.occhiSocchiusi({ eyeBlinkLeft: 0.05, eyeBlinkRight: 0.05 }), 'occhi
 assert.ok(G.occhiolino({ eyeBlinkLeft: 0.9, eyeBlinkRight: 0.05 }) && G.occhiolino({ eyeBlinkLeft: 0.1, eyeBlinkRight: 0.8 }), 'occhiolino con tutti e due gli occhi');
 assert.ok(!G.occhiolino({ eyeBlinkLeft: 0.9, eyeBlinkRight: 0.9 }), 'tutti e due chiusi: non è un occhiolino');
 
-// lingua fuori: rosso sotto il labbro, guance color pelle
-const W = 40, H = 40;
-function viso(lingua) {
+// lingua fuori: rosso che scende dal labbro verso il mento; le labbra da sole (striscia sottile) non bastano
+const W = 80, H = 80;
+function viso(rossoDa, rossoA) {
   const px = new Uint8Array(W * H * 4);
   for (let i = 0; i < W * H; i++) px.set([205, 160, 140, 255], i * 4); // pelle
-  if (lingua) for (let y = 23; y <= 27; y++) for (let x = 17; x <= 23; x++) px.set([215, 70, 95, 255], (y * W + x) * 4);
+  for (let y = rossoDa; y <= rossoA; y++) for (let x = 34; x <= 46; x++) px.set([215, 70, 95, 255], (y * W + x) * 4);
   const k = Array.from({ length: 468 }, () => ({ x: 0.5, y: 0.5 }));
-  k[61] = { x: 0.35, y: 0.55 }; k[291] = { x: 0.65, y: 0.55 }; k[17] = { x: 0.5, y: 0.55 }; k[152] = { x: 0.5, y: 0.8 };
-  k[205] = { x: 0.3, y: 0.45 }; k[425] = { x: 0.7, y: 0.45 };
+  k[10] = { x: 0.5, y: 0.1 }; k[152] = { x: 0.5, y: 0.9 }; // viso alto 0,8
+  k[61] = { x: 0.38, y: 0.62 }; k[291] = { x: 0.62, y: 0.62 }; k[14] = { x: 0.5, y: 0.62 }; k[17] = { x: 0.5, y: 0.66 };
+  k[205] = { x: 0.3, y: 0.5 }; k[425] = { x: 0.7, y: 0.5 };
   return [px, W, H, k];
 }
-assert.ok(G.linguaFuori(...viso(true), {}), 'lingua rossa sotto il labbro: sì');
-assert.ok(!G.linguaFuori(...viso(false), {}), 'solo pelle: no');
-assert.ok(G.linguaFuori(null, 0, 0, null, { tongueOut: 0.6 }), 'se MediaPipe vede la lingua basta quello');
+assert.ok(G.linguaFuori(...viso(50, 62), {}), 'lingua lunga sotto il labbro: sì');
+assert.ok(!G.linguaFuori(...viso(50, 53), {}), 'solo il labbro: no');
+assert.ok(!G.linguaFuori(...viso(1, 0), {}), 'solo pelle: no');
+assert.ok(G.linguaFuori(null, 0, 0, null, { tongueOut: 0.4 }), 'se MediaPipe vede la lingua basta quello');
+
+// faccia arrabbiata: conta quanto si aggrottano le sopracciglia rispetto alla faccia calma di chi guarda
+const calmo = { browDownLeft: 0.05, browDownRight: 0.05 }, cattivo = { browDownLeft: 0.6, browDownRight: 0.55, noseSneerLeft: 0.2, noseSneerRight: 0.2 };
+let R = G.creaRabbia();
+for (let i = 0; i < 60; i++) assert.ok(!R.aggiungi(calmo), 'faccia calma: no');
+assert.ok(R.aggiungi(cattivo), 'sopracciglia aggrottate: arrabbiato');
+assert.ok(!R.aggiungi({ ...cattivo, mouthSmileLeft: 0.6, mouthSmileRight: 0.6 }), 'se sorridi non sei arrabbiato');
+// con gli occhiali le sopracciglia sembrano sempre un po' giù: dopo un po' quello è il riposo e non scatta più
+R = G.creaRabbia();
+const occhiali = { browDownLeft: 0.4, browDownRight: 0.4 };
+for (let i = 0; i < 200; i++) assert.ok(!R.aggiungi(occhiali), 'occhiali, faccia calma: mai arrabbiato');
+assert.ok(R.aggiungi({ browDownLeft: 0.75, browDownRight: 0.75 }), 'occhiali e sopracciglia aggrottate: arrabbiato');
+// tenere la faccia arrabbiata non sposta il riposo (resta arrabbiato)
+for (let i = 0; i < 100; i++) R.aggiungi({ browDownLeft: 0.75, browDownRight: 0.75 });
+assert.ok(R.aggiungi({ browDownLeft: 0.75, browDownRight: 0.75 }), 'arrabbiato a lungo: resta arrabbiato');
+assert.ok(!R.aggiungi(null), 'senza viso: no');
 
 // il sito: fotocamera permessa solo a sé stesso, wasm permesso, MediaPipe dalla dipendenza (niente CDN)
 const S = require('../sicurezza');
@@ -95,8 +108,8 @@ const app = fs.readFileSync(path.join(pub, 'js/app.js'), 'utf8');
 assert.strictEqual((app.match(/Fotocamera\.comando\(t\)/g) || []).length, 3, '!foto in tutte e tre le chat');
 assert.ok(fs.readFileSync(path.join(__dirname, '../server.js'), 'utf8').includes("'!foto':"), '!foto in !comandi');
 assert.ok(/function comando\(testo\)[\s\S]*\^!foto\$/.test(js), '!foto solo come messaggio intero');
-assert.deepStrictEqual([...new Set(js.match(/https?:\/\/[^/'"`]+/g))], ['https://www.youtube-nocookie.com'], 'da fuori solo il video del gatto sub');
-assert.ok(/frame-src https:\/\/www\.youtube-nocookie\.com"/.test(sic), 'CSP: riquadri solo dal YouTube senza cookie');
+assert.ok(!/https?:\/\//.test(js), 'la fotocamera non scarica niente da fuori');
+assert.ok(!/frame-src/.test(S.CSP), 'CSP: niente riquadri da altri siti');
 assert.ok(!/socket|fetch\([^)]*method: 'POST'/.test(js), 'la fotocamera non manda niente al server');
 
-console.log('✓ Fotocamera magica: dito alzato, 67 (pronto), fermo, mano sulla bocca, lingua, bocca aperta, occhiolino, occhi socchiusi, triste; permessi e file');
+console.log('✓ Fotocamera magica: dito alzato, 67 (pronto), fermo, lingua, bocca aperta, arrabbiato (anche con gli occhiali), occhiolino, occhi socchiusi, triste; permessi e file');

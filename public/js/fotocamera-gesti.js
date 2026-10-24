@@ -49,15 +49,6 @@
     return n / dopo.length;
   }
 
-  // mano sulla bocca: almeno 4 punti delle dita vicini alla bocca (bocca = {x, y, larghezza del viso})
-  function manoSullaBocca(m, bocca) {
-    if (!m || m.length < 21 || !bocca) return false;
-    const r = bocca.larghezza * 0.35;
-    let n = 0;
-    for (let i = 5; i < 21; i++) if (Math.hypot(m[i].x - bocca.x, m[i].y - bocca.y) < r) n++;
-    return n >= 4;
-  }
-
   // faccia triste dalle espressioni del viso di MediaPipe (nome → punteggio da 0 a 1): angoli della bocca in giù,
   // sopracciglia alzate al centro, niente sorriso
   function tristezza(e) {
@@ -78,8 +69,10 @@
     return s > 0.3 && d > 0.3 && s < 0.85 && d < 0.85;
   }
 
-  // lingua fuori: MediaPipe ha "tongueOut" ma quasi sempre vale 0, quindi si guarda anche il colore. Sotto il labbro
-  // di sotto (tra il punto 17 e il mento, 152) la lingua è molto più rossa della guancia (punti 205 e 425).
+  // lingua fuori: MediaPipe ha "tongueOut" ma quasi sempre vale 0, quindi si guarda il colore. Si scende dal labbro di
+  // sotto (punto 14) fino al mento (152) al centro della bocca e si contano le righe più rosse della guancia (punti 205
+  // e 425): le labbra da sole sono una striscia sottile, con la lingua fuori la parte rossa è lunga almeno il doppio.
+  // Si misura rispetto all'altezza del viso (fronte 10 → mento 152), così non conta quanto sei lontano.
   // px: pixel RGBA dell'immagine larga w e alta h; k: i punti del viso (da 0 a 1).
   function rossore(px, w, h, cx, cy, rx, ry) {
     let somma = 0, n = 0;
@@ -92,14 +85,16 @@
     return n ? somma / n : 0;
   }
   function linguaFuori(px, w, h, k, e) {
-    if (e && (e.tongueOut || 0) > 0.3) return true;
+    if (e && (e.tongueOut || 0) > 0.15) return true;
     if (!px || !k || k.length < 426) return false;
     const larga = Math.abs(k[291].x - k[61].x); // larghezza della bocca
-    const sotto = k[152].y - k[17].y;
-    if (larga <= 0 || sotto <= 0) return false;
-    const lingua = rossore(px, w, h, k[17].x, k[17].y + sotto * 0.3, larga * 0.18, sotto * 0.2);
-    const guancia = (rossore(px, w, h, k[205].x, k[205].y, larga * 0.1, sotto * 0.12) + rossore(px, w, h, k[425].x, k[425].y, larga * 0.1, sotto * 0.12)) / 2;
-    return lingua > guancia * 1.25 && lingua > 1.45;
+    const viso = k[152].y - k[10].y;
+    const da = Math.round(k[14].y * h), a = Math.round(k[152].y * h);
+    if (larga <= 0 || viso <= 0 || a <= da) return false;
+    const guancia = (rossore(px, w, h, k[205].x, k[205].y, larga * 0.1, viso * 0.03) + rossore(px, w, h, k[425].x, k[425].y, larga * 0.1, viso * 0.03)) / 2;
+    let rosse = 0;
+    for (let y = da; y <= a; y++) if (rossore(px, w, h, k[14].x, y / h, larga * 0.15, 0) > guancia * 1.12) rosse++;
+    return rosse / h > viso * 0.09;
   }
 
   // occhiolino: un occhio chiuso e l'altro aperto
@@ -109,7 +104,27 @@
     return Math.max(s, d) > 0.55 && Math.min(s, d) < 0.3 && Math.abs(s - d) > 0.35;
   }
 
-  const api = { ditoAlzato, crea67, movimento, manoSullaBocca, tristezza, triste, boccaAperta, linguaFuori, occhiSocchiusi, occhiolino };
+  // faccia arrabbiata: sopracciglia aggrottate (e naso arricciato). Ognuno ha la sua faccia "normale" e gli occhiali
+  // possono far sembrare le sopracciglia sempre un po' giù: si impara piano piano il valore di riposo di chi guarda e
+  // conta solo quanto si aggrotta in più. Restituisce un oggetto con aggiungi(espressioni) → true se arrabbiato.
+  function creaRabbia({ scarto = 0.22, minimo = 0.3, lento = 0.03 } = {}) {
+    let riposo = null;
+    return {
+      aggiungi(e) {
+        if (!e) return false;
+        const v = (k) => e[k] || 0;
+        const giu = (v('browDownLeft') + v('browDownRight')) / 2 + 0.5 * (v('noseSneerLeft') + v('noseSneerRight')) / 2;
+        const sorriso = (v('mouthSmileLeft') + v('mouthSmileRight')) / 2;
+        if (riposo == null) riposo = giu;
+        const arrabbiato = giu - riposo > scarto && giu > minimo && sorriso < 0.3;
+        if (!arrabbiato && giu < riposo + scarto / 2) riposo += (giu - riposo) * lento; // il riposo segue solo la faccia calma
+        return arrabbiato;
+      },
+      get riposo() { return riposo; },
+    };
+  }
+
+  const api = { ditoAlzato, crea67, movimento, creaRabbia, tristezza, triste, boccaAperta, linguaFuori, occhiSocchiusi, occhiolino };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else radice.FotocameraGesti = api;
 })(typeof window !== 'undefined' ? window : globalThis);
