@@ -450,7 +450,7 @@ export async function crea({ M }) {
     if (vicinoX) { const p = vicinoX.oggetto.position; luceXeno.position.set(p.x, 2.4, p.z); luceXeno.intensity = dVicino < 6 ? 1.2 : 0; } else luceXeno.intensity = 0;
     if (C.modo === 'morte' && vicinoX) {
       // la telecamera guarda la bocca dello xenomorfo
-      vicinoX.testa(v3); camera.lookAt(v3.x, v3.y - 0.1, v3.z);
+      vicinoX.bocca(v3); camera.lookAt(v3.x, v3.y, v3.z); camera.rotateX(C.pitch || 0); camera.rotateZ(C.rollio || 0); // il tremolio e la caduta
     }
     // ---------- gli altri sopravvissuti ----------
     const visti = new Set();

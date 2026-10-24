@@ -77,8 +77,24 @@ export async function carica(envMap) {
   mesh.scale.setScalar(k); mesh.position.y = 0.95 * k;
   corpo.add(mesh);
   const xeno = new THREE.Group(); xeno.add(corpo);
+  // la seconda mascella: un tubo con i denti argentati nascosto in bocca, scatta fuori quando uccide
+  const mascella = new THREE.Group();
+  const matM = new THREE.MeshStandardMaterial({ color: 0x1a1416, roughness: 0.25, metalness: 0.1, envMap, envMapIntensity: 0.5 });
+  const matD = new THREE.MeshStandardMaterial({ color: 0xc8c8c0, roughness: 0.15, metalness: 0.6, envMap, envMapIntensity: 0.8 });
+  const tubo = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.028, 0.24, 10), matM); tubo.rotation.x = Math.PI / 2; tubo.position.z = -0.12; mascella.add(tubo);
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2, d = new THREE.Mesh(new THREE.ConeGeometry(0.006, 0.03, 5), matD);
+    d.rotation.x = Math.PI / 2; d.position.set(Math.cos(a) * 0.018, Math.sin(a) * 0.018, 0.012); mascella.add(d);
+  }
+  const bava = new THREE.Mesh(new THREE.CylinderGeometry(0.002, 0.001, 0.12, 4), new THREE.MeshStandardMaterial({ color: 0xd8e0e0, roughness: 0.05, metalness: 0.3, transparent: true, opacity: 0.6 }));
+  bava.position.set(0, -0.06, -0.02); mascella.add(bava);
+  const ossoTesta = scheletro.getBoneByName('testa');
+  const bocca = new THREE.Group(); bocca.position.set(0.03, -0.07, 0.3); ossoTesta.add(bocca); bocca.add(mascella);
+  mascella.scale.setScalar(0.001);
   // gli occhi non ci sono: sotto la cupola un riflesso; la bava (filo argentato) quando ringhia
-  return new Animatore(xeno, corpo, mesh, scheletro, mat);
+  const A = new Animatore(xeno, corpo, mesh, scheletro, mat);
+  A.mascella = mascella;
+  return A;
 }
 
 const B = (s, n) => s.getBoneByName(n);
@@ -103,7 +119,9 @@ class Animatore {
     const voglio = {
       cammina: passo && !corsa ? 1 : 0, corre: passo && corsa ? 1 : 0,
       fiuta: anim === 'fiuta' || anim === 'annusa' ? 1 : 0,
-      attacca: anim === 'attacca' || anim === 'tira' || anim === 'uccide' ? 1 : 0,
+      attacca: anim === 'attacca' ? 1 : 0,
+      // l'uccisione: balzo, presa con le braccia, testa sopra la vittima, la seconda mascella che scatta
+      uccide: anim === 'uccide' || anim === 'tira' ? (this.tAnim < 1.9 ? 1 : 0) : 0,
       brucia: anim === 'brucia' ? 1 : 0,
     };
     for (const [n, v] of Object.entries(voglio)) this.peso[n] = dolce(this.peso[n] || 0, v, dt * 6);
@@ -112,33 +130,40 @@ class Animatore {
     const resp = Math.sin(t * 1.7);
     // si azzera tutto e si sommano le pose
     for (const b of Object.values(o)) b.rotation.set(0, 0, 0);
-    const cam = P.cammina, cor = P.corre, fiu = P.fiuta, att = P.attacca, bru = P.brucia;
+    const cam = P.cammina, cor = P.corre, fiu = P.fiuta, att = P.attacca, bru = P.brucia, U = P.uccide || 0;
+    const ta = this.tAnim, uccide = anim === 'uccide' || anim === 'tira';
+    const tra = (a, b, x) => Math.max(0, Math.min(1, (x - a) / (b - a)));
+    const balzo = uccide ? tra(0, 0.28, ta) * (1 - tra(1.4, 1.9, ta)) : 0; // il salto addosso
+    // il morso: la mascella esce di colpo (0.85-0.95 s), resta un attimo, rientra
+    const morso = uccide ? tra(0.82, 0.92, ta) * (1 - tra(1.08, 1.3, ta)) : 0;
+    const trema = uccide && ta < 0.85 ? Math.sin(t * 38) * 0.025 * U : 0;
     // il busto: sempre un po' curvo da predatore, molto curvo correndo
     o.anca.rotation.x = 0;
     o.anca.rotation.z = (cam * 0.05 + cor * 0.06) * s;
     o.anca.rotation.y = (cam * 0.08 + cor * 0.05) * s;
-    o.schiena.rotation.x = 0.2 + cam * 0.15 + cor * 0.4 + resp * 0.02 + att * 0.25 - bru * 0.35;
-    o.petto.rotation.x = 0.08 + cor * 0.12 + resp * 0.025 + att * 0.2 - bru * 0.3;
+    o.schiena.rotation.x = 0.2 + cam * 0.15 + cor * 0.4 + resp * 0.02 + att * 0.25 - bru * 0.35 + U * 0.3;
+    o.petto.rotation.x = 0.08 + cor * 0.12 + resp * 0.025 + att * 0.2 - bru * 0.3 + U * 0.15 + morso * 0.1;
     o.petto.rotation.y = -(cam * 0.07 + cor * 0.05) * s;
     // collo e testa: compensano la curva (la testa resta orizzontale), cercano e annusano
-    o.collo.rotation.x = -0.15 - cor * 0.35 - cam * 0.08 + att * 0.15 + bru * 0.4;
-    o.testa.rotation.x = -0.1 - cor * 0.18 + fiu * (0.25 + Math.sin(t * 5) * 0.08) + att * 0.2 + bru * Math.sin(t * 20) * 0.15;
+    o.collo.rotation.x = -0.15 - cor * 0.35 - cam * 0.08 + att * 0.15 + bru * 0.4 + U * 0.12 - morso * 0.2;
+    o.testa.rotation.x = -0.1 - cor * 0.18 + fiu * (0.25 + Math.sin(t * 5) * 0.08) + att * 0.2 + bru * Math.sin(t * 20) * 0.15 - morso * 0.1 + trema;
     o.testa.rotation.y = fiu * Math.sin(t * 1.6) * 0.55 + bru * Math.sin(t * 13) * 0.25 + (1 - cam - cor) * Math.sin(t * 0.7) * 0.12;
-    o.testa.rotation.z = fiu * Math.sin(t * 2.3) * 0.18;
+    o.testa.rotation.z = fiu * Math.sin(t * 2.3) * 0.18 + U * 0.18 * Math.sin(Math.min(ta, 0.8) * 2) + trema;
     // gambe (digitigradi): la coscia oscilla, il ginocchio si piega quando la gamba torna avanti
     const amp = cam * 0.32 + cor * 0.62;
     for (const [lato, sg] of [['S', 1], ['D', -1]]) {
       const sl = s * sg, cl = c * sg;
       const pieg = Math.max(0, cl) * (cam * 0.55 + cor * 0.9);
-      o[`coscia${lato}`].rotation.x = -sl * amp - 0.12 - cor * 0.3 - att * 0.2 + (lato === 'S' ? 0.24 : -0.08);
-      o[`ginocchio${lato}`].rotation.x = 0.35 + pieg + cor * 0.35 + att * 0.15 + (lato === 'D' ? -0.36 : 0);
-      o[`caviglia${lato}`].rotation.x = -0.25 - pieg * 0.7 + sl * amp * 0.5 - cor * 0.1;
+      o[`coscia${lato}`].rotation.x = -sl * amp - 0.12 - cor * 0.3 - att * 0.2 + (lato === 'S' ? 0.24 : -0.08) - U * 0.4;
+      o[`ginocchio${lato}`].rotation.x = 0.35 + pieg + cor * 0.35 + att * 0.15 + (lato === 'D' ? -0.36 : 0) + U * 0.5;
+      o[`caviglia${lato}`].rotation.x = -0.25 - pieg * 0.7 + sl * amp * 0.5 - cor * 0.1 - U * 0.18;
       // braccia: oscillano al contrario delle gambe; correndo stanno avanti, attaccando si alzano con gli artigli aperti
       const br = lato === 'S' ? 'D' : 'S';
-      o[`spalla${br}`].rotation.x = -(sl * (cam * 0.25 + cor * 0.5)) - cor * 0.5 - att * (1.3 + Math.sin(this.tAnim * 9) * 0.2) - fiu * 0.15 - bru * 0.9;
-      o[`spalla${br}`].rotation.z = (br === 'S' ? -1 : 1) * (0.05 + att * 0.35 + bru * 0.5 * Math.abs(Math.sin(t * 9)));
-      o[`gomito${br}`].rotation.x = -0.25 - cor * 0.6 - att * 0.5 - fiu * 0.2;
-      o[`polso${br}`].rotation.x = -0.1 - att * 0.3 + Math.sin(t * 2 + sg) * 0.05;
+      // uccidendo: le braccia afferrano la vittima davanti (spalle avanti, gomiti piegati, mani chiuse verso il centro)
+      o[`spalla${br}`].rotation.x = -(sl * (cam * 0.25 + cor * 0.5)) - cor * 0.5 - att * (1.3 + Math.sin(this.tAnim * 9) * 0.2) - fiu * 0.15 - bru * 0.9 - U * (2.0 - balzo * 0.2);
+      o[`spalla${br}`].rotation.z = (br === 'S' ? -1 : 1) * (0.05 + att * 0.35 + bru * 0.5 * Math.abs(Math.sin(t * 9)) - U * 0.45);
+      o[`gomito${br}`].rotation.x = -0.25 - cor * 0.6 - att * 0.5 - fiu * 0.2 - U * 0.55;
+      o[`polso${br}`].rotation.x = -0.1 - att * 0.3 + Math.sin(t * 2 + sg) * 0.05 - U * 0.5;
     }
     // la coda: un'onda che scorre (lenta da fermo, tesa e alta correndo), si alza dietro quando caccia
     const onda = cor ? 6 : cam ? 3.2 : 1.6, larga = 0.07 + cam * 0.04 - cor * 0.03;
@@ -146,12 +171,15 @@ class Animatore {
       b.rotation.y = Math.sin(t * onda - i * 0.65) * larga * (1 + i * 0.12);
       b.rotation.x = Math.sin(t * onda * 0.5 - i * 0.5) * 0.03;
     });
-    this.coda[0].rotation.x += 0.35 * cor + 0.15 * cam + 0.25 * att;
+    this.coda[0].rotation.x += 0.35 * cor + 0.15 * cam + 0.25 * att + 0.5 * U;
+    if (U) this.coda.forEach((b, i) => { b.rotation.y += Math.sin(t * 9 - i * 0.8) * 0.06 * U; });
     this.coda[1].rotation.x += 0.25 * cor;
     this.coda[2].rotation.x += 0.15 * cor;
     // il corpo sale e scende col passo; esce dal condotto cadendo dal soffitto, entra saltando su
-    let y = (cam * 0.03 + cor * 0.06) * Math.abs(c) - cor * 0.12 - att * 0.05;
+    let y = (cam * 0.03 + cor * 0.06) * Math.abs(c) - cor * 0.12 - att * 0.05 - U * 0.16;
     let rotx = 0;
+    this.corpo.position.z = balzo * 0.25 + morso * 0.08;
+    if (this.mascella) this.mascella.scale.setScalar(Math.max(0.001, morso * 1.6)), this.mascella.position.z = morso * 0.22;
     if (this.anim === 'esce') { const k = Math.min(1, this.tAnim / 0.7); y += (1 - k * k) * 2.6; rotx = (1 - k) * -1.2; }
     if (this.anim === 'entra') { const k = Math.min(1, this.tAnim / 0.8); y += k * k * 3; rotx = k * -1.0; }
     this.corpo.position.y = y; this.corpo.rotation.x = rotx;
@@ -159,4 +187,5 @@ class Animatore {
   }
   // la testa in coordinate del mondo (per la telecamera della morte e i suoni)
   testa(v = new THREE.Vector3()) { return this.o.testa.getWorldPosition(v); }
+  bocca(v = new THREE.Vector3()) { return this.mascella ? this.mascella.parent.getWorldPosition(v) : this.testa(v); }
 }

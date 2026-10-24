@@ -301,7 +301,10 @@
       cam = { x, y, h: h + (Math.random() - 0.5) * (s3 + scossa * 0.04), yaw: yaw + (Math.random() - 0.5) * scossa * 0.02, pitch: io.pitch, rollio: Math.sin(bob.fase * 0.5) * 0.006 * bob.amp, torcia: !!(mu.f & 32) && !nascosto, batteria: st.me ? st.me[0] : 100, modo: 'umano', fiamma: !!(mu.f & 128) };
     } else if (morto && ora - morteT < 3200) {
       // la morte: lo xenomorfo ti è addosso
-      cam = { x: mu.x, y: mu.y, h: Math.max(0.5, 1.6 - (ora - morteT) / 2500), yaw: io.yaw, pitch: 0, torcia: true, batteria: 100, modo: 'morte', rollio: Math.min(0.5, (ora - morteT) / 3000) };
+      // il balzo ti butta giù (0-0.3 s), poi ti tiene fermo, il morso della seconda mascella arriva a 0.87 s
+      const tm = (ora - morteT) / 1000, urto = Math.max(0, 1 - tm / 0.35), morso = tm > 0.85 && tm < 1.25 ? 1 - (tm - 0.85) / 0.4 : 0;
+      const sc = urto * 0.08 + morso * 0.12 + (tm < 0.85 ? 0.006 : 0), ri = () => (Math.random() - 0.5) * sc;
+      cam = { x: mu.x, y: mu.y, h: Math.max(0.4, 1.6 - Math.min(1, tm / 0.3) * 0.85 - Math.max(0, tm - 1.2) * 0.3) + ri(), yaw: io.yaw + ri(), pitch: ri(), torcia: true, batteria: 100, modo: 'morte', rollio: Math.min(0.35, tm * 0.6) + ri() + (tm > 1.2 ? Math.min(0.5, (tm - 1.2) * 0.4) : 0) };
     } else {
       // si guarda un altro sopravvissuto (clic o Tab per cambiare)
       const vivi = I.umani.filter((x) => (x.f & 1) && !(x.f & 64) && x.k !== mio);
@@ -419,9 +422,12 @@
     testo(g, `${m}:${sec}`, W - 28, 40, { size: 20, al: 'right' });
     if (morto || salvo) {
       if (morto && morteT !== null && ora - morteT < 3200) {
-        const k = (ora - morteT) / 3200;
-        g.fillStyle = `rgba(90,0,0,${0.15 + k * 0.5})`; g.fillRect(0, 0, W, H);
-        if (k > 0.55) { g.fillStyle = `rgba(0,0,0,${(k - 0.55) * 2.2})`; g.fillRect(0, 0, W, H); }
+        const k = (ora - morteT) / 3200, tm = (ora - morteT) / 1000;
+        g.fillStyle = `rgba(90,0,0,${0.1 + k * 0.5})`; g.fillRect(0, 0, W, H);
+        // il lampo rosso del morso, poi il buio
+        if (tm > 0.85 && tm < 1.5) { g.fillStyle = `rgba(200,0,0,${0.75 * (1 - (tm - 0.85) / 0.65)})`; g.fillRect(0, 0, W, H); }
+        if (tm > 1.3) { g.fillStyle = `rgba(0,0,0,${Math.min(1, (tm - 1.3) * 0.7)})`; g.fillRect(0, 0, W, H); }
+        if (tm < 1.3) return; // prima il morso, poi la scritta
       }
       testo(g, morto ? 'SEI MORTO' : 'SEI SALVO: SEI SUL TORRENS', W / 2, H / 2 - 60, { size: 40, al: 'center', col: morto ? '#ff6a5a' : '#9fffa0', peso: 700 });
       if (vistaDi) testo(g, `Stai guardando ${ctx.nome(vistaDi.k)} · clic o Tab per cambiare`, W / 2, H - 40, { size: 16, al: 'center' });
