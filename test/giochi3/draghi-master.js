@@ -92,6 +92,10 @@ async function finoA(g, cond, n = 40) { for (let k = 0; k < n && !cond(); k++) {
   assert.ok(!g.azione(0, { tipo: 'dm-lascia' }).errore, 'chi ha aperto il tavolo può ridare il master all\'IA');
   assert.ok(g.dm == null && !g.attesaDM);
   await finoA(g, () => !g.attesaIA);
+  // il master scelto nella sala d'attesa (server.js passa il suo posto)
+  const sala = G.crea({ n: 3, bot: [null, null, 'medio'], opzioni: {}, master: 1 });
+  assert.strictEqual(sala.dm, 1, 'il master della sala');
+  assert.strictEqual(G.crea({ n: 3, bot: [null, null, 'medio'], opzioni: {}, master: 2 }).dm, null, 'il computer no');
   // non nello stesso computer né in tempo reale, e non da soli
   const loc = G.crea({ n: 3, bot: [null, 'medio', null], opzioni: { stessoPc: 2 } });
   assert.ok(loc.azione(0, { tipo: 'dm-scegli', posto: 1 }).errore, 'chi gioca sul computer passato non fa il master');

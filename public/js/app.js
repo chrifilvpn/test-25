@@ -776,6 +776,7 @@
       const etichetta = g.bot ? `<span class="distintivo">computer${m.senzaLivelli ? '' : ` ${g.bot}`}</span>` : io ? '<span class="distintivo">tu</span>' : '';
       return `<li class="${io ? 'mio' : ''}"><span>${esc(g.nome)} ${etichetta}${!g.connesso ? ' <small>(non connesso)</small>' : ''}</span>${coppia}
         <span class="posto-az">
+          ${m.masterUmano && !g.bot && stato.numPosti > 1 && !(Number(stato.opzioni.stessoPc) > 1) && stato.opzioni.modalita !== 'reale' ? (stato.sonoHost ? `<button class="bottone mini-bt" data-master="${i}" title="${g.master ? 'Torna a fare il master l\'IA' : 'Fa il master al posto dell\'IA'}">🎩 ${g.master ? 'Master ✕' : 'Master'}</button>` : g.master ? '<span class="distintivo">🎩 master</span>' : '') : ''}
           ${!io ? `<button class="bottone mini-bt" data-cambia="${i}">Scambia posto</button>` : ''}
           ${stato.sonoHost && !io ? `<button class="bottone mini-bt" data-togli="${i}">Togli</button>` : ''}
         </span></li>`;
@@ -795,6 +796,7 @@
     if (!b) return;
     if (b.dataset.bot) socket.emit('aggiungiBot', { posto: Number(b.dataset.posto), livello: b.dataset.bot });
     if (b.dataset.togli) socket.emit('togliPosto', { posto: Number(b.dataset.togli) });
+    if (b.dataset.master) socket.emit('scegliMaster', { posto: Number(b.dataset.master) });
     if (b.dataset.cambia) socket.emit('cambiaPosto', { posto: Number(b.dataset.cambia) });
     if (b.dataset.prendi) socket.emit('prendiPosto', { posto: Number(b.dataset.prendi) });
   });

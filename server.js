@@ -145,7 +145,7 @@ function invia(s) {
       numPosti: s.posti.length,
       mioPosto: posto,
       sonoHost: s.host === g.id,
-      giocatori: s.posti.map((x, i) => (x ? { nome: x.nome, connesso: x.connesso, bot: x.bot || null, autoplay: !!x.autoplay, nascosto: !!x.nascosto, uscito: !!x.uscito, inSala: !!x.inSala, fiche: x.fiche, vittorie: s.vittorie[i] } : null)),
+      giocatori: s.posti.map((x, i) => (x ? { nome: x.nome, connesso: x.connesso, bot: x.bot || null, autoplay: !!x.autoplay, nascosto: !!x.nascosto, uscito: !!x.uscito, inSala: !!x.inSala, fiche: x.fiche, vittorie: s.vittorie[i], master: !!(s.master && s.master === x.id && !x.bot) } : null)),
       inPausa: inPausa(s),
       ricaricaConsigliata: !!(s.partita && s.partita.ficheDi && !g.bot && s.partita.ficheDi(posto) <= 0 && !(s.partita.ficheInGioco && s.partita.ficheInGioco(posto) > 0)),
       votoFine: s.votoFine ? { tipo: s.votoFine.tipo, da: s.votoFine.da, si: s.votoFine.si, no: s.votoFine.no, servono: s.votoFine.servono, votanti: s.votoFine.votanti, resta: Math.max(0, s.votoFine.scade - Date.now()) } : null,
@@ -174,7 +174,7 @@ function inviaSpettatori(s) {
       codice: s.codice, gioco: s.gioco, opzioni: s.opzioni, numPosti: s.posti.length,
       mioPosto: posto, spettatore: true, segue: posto, mioNome: sp.nome, postiLiberi: liberi,
       sonoHost: false,
-      giocatori: s.posti.map((x, i) => (x ? { nome: x.nome, connesso: x.connesso, bot: x.bot || null, autoplay: !!x.autoplay, nascosto: !!x.nascosto, uscito: !!x.uscito, inSala: !!x.inSala, fiche: x.fiche, vittorie: s.vittorie[i] } : null)),
+      giocatori: s.posti.map((x, i) => (x ? { nome: x.nome, connesso: x.connesso, bot: x.bot || null, autoplay: !!x.autoplay, nascosto: !!x.nascosto, uscito: !!x.uscito, inSala: !!x.inSala, fiche: x.fiche, vittorie: s.vittorie[i], master: !!(s.master && s.master === x.id && !x.bot) } : null)),
       spettatori: [...s.spettatori.values()].map((x) => x.nome),
       torneo: tornei.vistaTorneo(s), serata: tornei.vistaSerata(s),
       inPausa: inPausa(s), ricaricaConsigliata: false, votoFine: null,
@@ -516,6 +516,8 @@ function iniziaPartita(s) {
   ripristinaInSala(s);
   const mod = GIOCHI[s.gioco];
   const dati = { n: s.posti.length, primo: s.primo, opzioni: s.opzioni, fiche: s.posti.map((g) => (g ? g.fiche : FICHE_INIZIALI)), bot: s.posti.map((g) => (g && g.bot) || null) };
+  // il master umano scelto nella sala (Draghi e Segrete): il posto di quel giocatore, se c'è ancora
+  if (mod.meta.masterUmano && s.master) { const k = s.posti.findIndex((g) => g && !g.bot && g.id === s.master); if (k >= 0) dati.master = k; }
   // sfida del giorno: la stessa partita per tutti (seme = data + gioco); una rivincita è solo per allenarsi
   if (s.sfida && s.sfida.gioco === s.gioco) {
     if (s.sfida.registrata) s.sfida = { ...s.sfida, prova: true, registrata: false };
@@ -908,6 +910,17 @@ io.on('connection', (socket) => {
     if (!(posto >= 0 && posto < s.posti.length) || s.posti[posto]) return;
     if (senzaBot(s)) return errore(`${GIOCHI[s.gioco].meta.nome} si gioca solo con altre persone`);
     s.posti[posto] = creaBot(s, LIVELLI.includes(livello) ? livello : 'medio');
+    aggiorna(s);
+  });
+
+  // Draghi e Segrete: chi ha aperto il tavolo sceglie chi fa il master al posto dell'IA (di nuovo per tornare all'IA)
+  socket.on('scegliMaster', ({ posto } = {}) => {
+    const s = stanza;
+    if (!s || s.partita || !sonoHost() || !GIOCHI[s.gioco].meta.masterUmano) return;
+    const g = s.posti[Number(posto)];
+    if (!g || g.bot) return errore('Il master deve essere una persona');
+    s.master = s.master === g.id ? null : g.id;
+    if (s.master) messaggioSistema(s, `🎩 ${g.nome} farà il master`);
     aggiorna(s);
   });
 

@@ -32,7 +32,7 @@ const ao = (pg, m = 'o', f = 'a') => (pg && pg.genere === 'f' ? f : m); // pront
 const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
 
 class Draghi {
-  constructor({ n, bot = [], opzioni = {}, primo = 0 }) {
+  constructor({ n, bot = [], opzioni = {}, primo = 0, master = null }) {
     this.id = 'draghi';
     this.n = n;
     this.bot = Array.from({ length: n }, (_, i) => bot[i] || null);
@@ -78,6 +78,8 @@ class Draghi {
     this.scenaVista = null; // la mappa tattica dell'ultimo combattimento (si vede anche dopo)
     if (this.cp) this.preparaIncubo();
     this.preparaDm();
+    // il master scelto nella sala d'attesa (server.js): come il 🎩 della creazione
+    if (master != null) this.azioneDm(this.host, { tipo: 'dm-scegli', posto: master });
     if (this.modalita === 'reale') {
       // tempo reale: il server chiama tick() ogni 50 ms e manda a ognuno vistaTick(posto); i comandi arrivano da input()
       this.tickMs = 50;
@@ -751,6 +753,7 @@ module.exports = {
     tipo: 'tabellone',
     giocatori: [1, 2, 3, 4, 5, 6],
     descrizione: 'Il gioco di ruolo fantasy con l\'IA che fa da master: crea il tuo eroe, esplora un mondo che nasce mentre giocate e combatti sulla mappa tattica. Possibilità infinite.',
+    masterUmano: true, // nella sala d'attesa chi ha aperto il tavolo può scegliere chi fa il master (🎩)
     alias: ['draghi e segrete', 'gioco di ruolo', 'gdr', 'dungeons', 'dungeon', 'dragons', 'd&d', 'dnd', 'master', 'avventura', 'fantasy', 'rpg'],
     opzioni: [
       { id: 'ambientazione', nome: 'Ambientazione', valori: ['classica', 'oscura', 'pirati', 'citta', 'selvaggia', 'caso', 'sevastopol', 'pathos', 'manicomio'], etichette: ['Fantasy classico', 'Oscura e horror', 'Mari e pirati', 'Intrighi in città', 'Terre selvagge', 'A sorpresa (fantasy)', '🛰️ Stazione Sevastopol (Alien: Isolation)', '🌊 Base PATHOS-II (SOMA)', '🏚️ Manicomio Mount Massive (Outlast)'], predefinito: 'classica' },
