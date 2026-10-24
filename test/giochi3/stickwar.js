@@ -1,4 +1,4 @@
-// GUERRA DEGLI STECCHINI: minatori e oro, addestramento (costo, coda, posti), ordini, combattimento (gittata, area,
+// STICK WAR: minatori e oro, addestramento (costo, coda, posti), ordini, combattimento (gittata, area,
 // armatura), comando a mano, potenziamenti, statue, campagna, sfida, non morti, !win e partite intere tra computer.
 const assert = require('assert');
 const M = require('../../giochi3/stickwar');
@@ -113,6 +113,16 @@ assert.strictEqual(LIVELLI.length, 8);
   assert.ok(g.u.some((u) => u.lato === 1 && u.tipo === 'zombi' && u.x > L - 100), 'gli zombi arrivano da destra');
   assert.ok(g.compOndata(5).some((x) => x[1] === 'gigante') && g.compOndata(10).some((x) => x[1] === 'medusa'));
 }
+// ---- torneo Crown of Inamorta: 5 battaglie, alla prima sconfitta si è fuori ----
+{
+  const g = M.crea({ n: 1, opzioni: { modo: 'torneo' }, bot: [null] }); parti(g);
+  assert.strictEqual(g.nRound, 5); assert.strictEqual(g.livello, M._test.TORNEO[0]);
+  assert.strictEqual(g.eserciti[0].tipi.length, 6, 'tutte le unità');
+  g.eserciti[1].statua = 0; passa(g, 0.05); g.vinto = 0; g.fineRound();
+  assert.strictEqual(g.nRound, 5, 'vinta: si va avanti');
+  g.round = 2; g.vinto = 1; g.fineRound(); assert.strictEqual(g.nRound, 2, 'persa: fuori');
+  g.chiudi(); assert.ok(/eliminato alla battaglia 2/.test(g.risultato.titolo) && !g.risultato.vincitori.length);
+}
 // ---- con persone e computer: le persone insieme a sinistra, i computer guidano la tribù nemica ----
 {
   const g = M.crea({ n: 3, opzioni: {}, bot: [null, 'medio', null] });
@@ -135,6 +145,7 @@ assert.strictEqual(LIVELLI.length, 8);
   assert.ok(vinte.difficile > vinte.facile, `il difficile vince di più (${JSON.stringify(vinte)})`);
   for (let lv = 1; lv <= 8; lv++) gioca({ livello: lv }, ['medio']);
   const nm = gioca({ modo: 'nonmorti', notti: 5 }, ['medio']);
+  const to = gioca({ modo: 'torneo' }, ['difficile']); assert.ok(/Crown|Torneo/.test(to.risultato.titolo));
   assert.ok(nm.risultato.titolo);
-  console.log(`✓ Guerra degli Stecchini: minatori e oro, addestramento (coda, annulla, posti), combattimento (arcieri, magia ad area, armatura), ordini, comando a mano, potenziamenti, statue, non morti, posti, !win; partite tra computer: sfida f/d ${vinte.facile}/${vinte.difficile}, 8 livelli, notti (${Date.now() - t0} ms)`);
+  console.log(`✓ Stick War: minatori e oro, addestramento (coda, annulla, posti), combattimento (arcieri, magia ad area, armatura), ordini, comando a mano, potenziamenti, statue, non morti, posti, !win; partite tra computer: sfida f/d ${vinte.facile}/${vinte.difficile}, 8 livelli, notti (${Date.now() - t0} ms)`);
 }

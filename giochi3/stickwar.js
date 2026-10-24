@@ -1,10 +1,10 @@
-// GUERRA DEGLI STECCHINI (ispirato a Stick War: Legacy): due statue ai capi di un lungo campo di battaglia. I minatori
+// STICK WAR (come Stick War: Legacy, con i nomi originali): due statue ai capi di un lungo campo di battaglia. I minatori
 // scavano l'oro e lo portano alla statua; con l'oro si addestrano spadaccini, arcieri, lancieri, maghi e giganti.
 // L'esercito obbedisce a tre ordini (difesa, tieni la linea, attacco) e si può prendere il comando di un soldato e
 // muoverlo a mano (più forte del solito). Vince chi distrugge la statua nemica.
-// Modalità: "campagna" (8 livelli contro tribù diverse, ognuna con le sue unità e il suo paesaggio; si gioca da soli
-// o in squadra con l'esercito in comune), "sfida" (uno contro uno, ognuno il suo esercito) e "non morti" (notti di
-// ondate di zombi contro la statua, da soli o insieme).
+// Modalità: "campagna" (8 livelli contro nazioni diverse, ognuna con le sue unità e il suo paesaggio; si gioca da soli
+// o in squadra con l'esercito in comune), "torneo" (Crown of Inamorta: 5 battaglie di fila, chi perde è fuori),
+// "sfida" (uno contro uno, ognuno il suo esercito) e "Endless Deads" (notti di ondate di non morti contro la statua).
 const { Arena } = require('../giochi/arena');
 const T = require('../giochi/trucco');
 
@@ -12,17 +12,17 @@ const W = 960, H = 540, L = 3000, STATUA = 140, VITA_STATUA = 3000, POP = 40, CO
 // le unità: costo, secondi per addestrarla, vita, danno, gittata, secondi tra un colpo e l'altro, velocità,
 // posti nell'esercito (pop), armatura (parte di danno tolta), area del colpo, chi è a distanza
 const UNITA = {
-  minatore: { nome: 'Minatore', costo: 150, tempo: 4, vita: 100, danno: 5, gitt: 26, ogni: 1.2, v: 72, pop: 1 },
-  spada: { nome: 'Spadaccino', costo: 125, tempo: 3, vita: 120, danno: 14, gitt: 32, ogni: 0.85, v: 108, pop: 1 },
-  arciere: { nome: 'Arciere', costo: 300, tempo: 4.5, vita: 90, danno: 17, gitt: 390, ogni: 1.6, v: 86, pop: 1, lontano: true },
-  lanciere: { nome: 'Lanciere', costo: 500, tempo: 6, vita: 560, danno: 24, gitt: 46, ogni: 1.3, v: 76, pop: 2, arm: 0.3 },
-  mago: { nome: 'Mago', costo: 900, tempo: 8, vita: 170, danno: 46, gitt: 300, ogni: 3.4, v: 70, pop: 3, area: 75, lontano: true },
-  gigante: { nome: 'Gigante', costo: 1500, tempo: 12, vita: 2300, danno: 95, gitt: 60, ogni: 2.4, v: 46, pop: 4, area: 48 },
-  // il Caos (tribù nemica) e i non morti
-  zombi: { nome: 'Zombi', costo: 90, tempo: 2, vita: 110, danno: 11, gitt: 28, ogni: 1.1, v: 56, pop: 1 },
-  strisciante: { nome: 'Strisciante', costo: 100, tempo: 2, vita: 75, danno: 9, gitt: 26, ogni: 0.7, v: 150, pop: 1 },
-  morto: { nome: 'Morto velenoso', costo: 250, tempo: 4, vita: 140, danno: 14, gitt: 220, ogni: 1.6, v: 74, pop: 1, lontano: true },
-  cavaliere: { nome: 'Cavaliere oscuro', costo: 600, tempo: 7, vita: 950, danno: 32, gitt: 48, ogni: 1.4, v: 70, pop: 3, arm: 0.3 },
+  minatore: { nome: 'Miner', costo: 150, tempo: 4, vita: 100, danno: 5, gitt: 26, ogni: 1.2, v: 72, pop: 1 },
+  spada: { nome: 'Swordwrath', costo: 125, tempo: 3, vita: 120, danno: 14, gitt: 32, ogni: 0.85, v: 108, pop: 1 },
+  arciere: { nome: 'Archidon', costo: 300, tempo: 4.5, vita: 90, danno: 17, gitt: 390, ogni: 1.6, v: 86, pop: 1, lontano: true },
+  lanciere: { nome: 'Spearton', costo: 500, tempo: 6, vita: 560, danno: 24, gitt: 46, ogni: 1.3, v: 76, pop: 2, arm: 0.3 },
+  mago: { nome: 'Magikill', costo: 900, tempo: 8, vita: 170, danno: 46, gitt: 300, ogni: 3.4, v: 70, pop: 3, area: 75, lontano: true },
+  gigante: { nome: 'Giant', costo: 1500, tempo: 12, vita: 2300, danno: 95, gitt: 60, ogni: 2.4, v: 46, pop: 4, area: 48 },
+  // il Chaos (nazione nemica) e i non morti di Endless Deads
+  zombi: { nome: 'Dead', costo: 90, tempo: 2, vita: 110, danno: 11, gitt: 28, ogni: 1.1, v: 56, pop: 1 },
+  strisciante: { nome: 'Crawler', costo: 100, tempo: 2, vita: 75, danno: 9, gitt: 26, ogni: 0.7, v: 150, pop: 1 },
+  morto: { nome: 'Dead velenoso', costo: 250, tempo: 4, vita: 140, danno: 14, gitt: 220, ogni: 1.6, v: 74, pop: 1, lontano: true },
+  cavaliere: { nome: 'Juggerknight', costo: 600, tempo: 7, vita: 950, danno: 32, gitt: 48, ogni: 1.4, v: 70, pop: 3, arm: 0.3 },
   medusa: { nome: 'Medusa', costo: 2500, tempo: 15, vita: 3200, danno: 120, gitt: 270, ogni: 4, v: 40, pop: 6, area: 120, lontano: true },
 };
 const ORDINE = ['minatore', 'spada', 'arciere', 'lanciere', 'mago', 'gigante'];
@@ -39,16 +39,17 @@ const POTENZIAMENTI = {
 };
 // la campagna: la tribù nemica, le sue unità (quante di ognuna, in proporzione) e le unità che hai tu
 const LIVELLI = [
-  { nome: 'La tribù delle Spade', scena: 'prato', mix: { spada: 1 }, mie: 2, oro: 0.8 },
-  { nome: 'Gli Arcieri del bosco', scena: 'bosco', mix: { arciere: 2, spada: 2 }, mie: 3, oro: 0.85 },
-  { nome: 'I Lancieri delle colline', scena: 'colline', mix: { lanciere: 2, arciere: 1, spada: 2 }, mie: 4, oro: 0.9 },
-  { nome: 'I Maghi del deserto', scena: 'deserto', mix: { mago: 1, lanciere: 1, arciere: 2, spada: 1 }, mie: 5, oro: 0.95 },
-  { nome: 'I Giganti delle nevi', scena: 'neve', mix: { gigante: 1, spada: 3, arciere: 2 }, mie: 6, oro: 1 },
-  { nome: 'L\'orda del Caos', scena: 'palude', mix: { strisciante: 4, morto: 2, cavaliere: 1 }, mie: 6, oro: 1.05, caos: true },
-  { nome: 'L\'Ordine ribelle', scena: 'tramonto', mix: { spada: 2, arciere: 2, lanciere: 2, mago: 1, gigante: 1 }, mie: 6, oro: 1.1 },
-  { nome: 'Medusa, regina del Caos', scena: 'notte', mix: { strisciante: 3, morto: 2, cavaliere: 2, medusa: 1 }, mie: 6, oro: 1.15, caos: true, guardia: 'medusa' },
+  { nome: 'La nazione degli Swordwrath', scena: 'prato', mix: { spada: 1 }, mie: 2, oro: 0.8 },
+  { nome: 'Gli Archidonis del bosco', scena: 'bosco', mix: { arciere: 2, spada: 2 }, mie: 3, oro: 0.85 },
+  { nome: 'Gli Speartos delle colline', scena: 'colline', mix: { lanciere: 2, arciere: 1, spada: 2 }, mie: 4, oro: 0.9 },
+  { nome: 'I Magikill del deserto', scena: 'deserto', mix: { mago: 1, lanciere: 1, arciere: 2, spada: 1 }, mie: 5, oro: 0.95 },
+  { nome: 'I Giant delle nevi', scena: 'neve', mix: { gigante: 1, spada: 3, arciere: 2 }, mie: 6, oro: 1 },
+  { nome: 'L\'orda del Chaos', scena: 'palude', mix: { strisciante: 4, morto: 2, cavaliere: 1 }, mie: 6, oro: 1.05, caos: true },
+  { nome: 'L\'Order ribelle', scena: 'tramonto', mix: { spada: 2, arciere: 2, lanciere: 2, mago: 1, gigante: 1 }, mie: 6, oro: 1.1 },
+  { nome: 'Medusa, regina del Chaos', scena: 'notte', mix: { strisciante: 3, morto: 2, cavaliere: 2, medusa: 1 }, mie: 6, oro: 1.15, caos: true, guardia: 'medusa' },
 ];
 const NOTTI = [5, 10, 20];
+const TORNEO = [3, 4, 5, 7, 8]; // Crown of Inamorta: le cinque nazioni da battere, una per round
 const DIFF = { facile: { oro: 0.75, miniere: 3, attacco: 1.5, pausa: 1.6 }, medio: { oro: 1, miniere: 5, attacco: 1.25, pausa: 0.9 }, difficile: { oro: 1.3, miniere: 7, attacco: 1.1, pausa: 0.5 } };
 const MORTE_IMPROVVISA = 12 * 60; // dopo 12 minuti le statue si sgretolano piano: la partita finisce sempre
 
@@ -60,10 +61,10 @@ const fDa = (lato, x) => (lato ? L - STATUA - x : x - STATUA);
 class StickWar extends Arena {
   constructor(o) {
     super(o, { id: 'stickwar', round: 1, tickMs: 50 });
-    this.nRound = 1;
     this.W = W; this.H = H;
     const op = o.opzioni || {};
-    this.modo = ['campagna', 'sfida', 'nonmorti'].includes(op.modo) ? op.modo : 'campagna';
+    this.nRound = op.modo === 'torneo' ? TORNEO.length : 1;
+    this.modo = ['campagna', 'torneo', 'sfida', 'nonmorti'].includes(op.modo) ? op.modo : 'campagna';
     if (this.modo === 'sfida' && this.n < 2) this.modo = 'campagna';
     this.livello = Math.max(1, Math.min(LIVELLI.length, Number(op.livello) || 1));
     this.diff = DIFF[op.difficolta] ? op.difficolta : 'medio';
@@ -77,7 +78,9 @@ class StickWar extends Arena {
   }
 
   // ---- il campo ----
+  contro() { return this.modo === 'campagna' || this.modo === 'torneo'; }
   iniziaRound() {
+    if (this.modo === 'torneo') this.livello = TORNEO[this.round - 1];
     const lv = LIVELLI[this.livello - 1];
     this.u = []; this.nId = 0; this.effetti = []; this.esito = null; this.vinto = null;
     this.scena = this.modo === 'nonmorti' ? 'cimitero' : this.modo === 'sfida' ? 'prato' : lv.scena;
@@ -93,7 +96,7 @@ class StickWar extends Arena {
       for (let k = 0; k < 2; k++) this.nasce(e.lato, 'minatore', 60 + k * 30);
       this.nasce(e.lato, e.tipi.includes('spada') ? 'spada' : 'strisciante', 120);
     }
-    if (this.modo === 'campagna' && lv.guardia) this.nasce(1, lv.guardia, 200);
+    if (this.contro() && lv.guardia) this.nasce(1, lv.guardia, 200);
     this.comando = new Array(this.n).fill(null); // l'unità comandata a mano da ogni giocatore
     this.dito = new Array(this.n).fill(0); // la direzione dai pulsanti sul telefono
     this.colpo = new Array(this.n).fill(0);
@@ -103,7 +106,7 @@ class StickWar extends Arena {
   spostaTempi() {}
   tipiDi(lato) {
     if (this.modo === 'sfida') return ORDINE.slice();
-    if (lato === 0) return this.modo === 'nonmorti' ? ORDINE.slice() : ORDINE.slice(0, Math.min(6, LIVELLI[this.livello - 1].mie));
+    if (lato === 0) return this.modo !== 'campagna' ? ORDINE.slice() : ORDINE.slice(0, Math.min(6, LIVELLI[this.livello - 1].mie));
     const lv = LIVELLI[this.livello - 1];
     return ['minatore', ...Object.keys(lv.mix)];
   }
@@ -346,7 +349,7 @@ class StickWar extends Arena {
     if (u.t >= SCAVO) { u.t = 0; u.oro = ORO_VIAGGIO * (e.pot.miniera ? 1.5 : 1); }
   }
   oroIa() {
-    if (this.modo !== 'campagna') return DIFF[this.diff].oro;
+    if (!this.contro()) return DIFF[this.diff].oro;
     return DIFF[this.diff].oro * LIVELLI[this.livello - 1].oro;
   }
   // comandato a mano: più veloce e più forte; colpisce chi ha davanti
@@ -371,13 +374,19 @@ class StickWar extends Arena {
     else { u.ric = d.ogni * 0.6; this.effetti.push(['a', u.id, Math.round(u.x + u.verso * d.gitt), 0]); } // colpo a vuoto
   }
 
-  fineRound() {}
+  // nel torneo chi perde una battaglia è fuori: si chiude subito
+  fineRound() {
+    if (this.modo !== 'torneo') return;
+    this.vinte = (this.vinte || 0) + (this.vinto === 0 ? 1 : 0);
+    if (this.vinto !== 0) this.nRound = this.round;
+  }
   chiudi() {
     super.chiudi();
     const r = this.risultato, tutti = Array.from({ length: this.n }, (_, i) => i);
     const vinti = tutti.filter((p) => this.lati[p] === this.vinto);
     r.vincitori = vinti; r.pareggio = false;
-    if (this.modo === 'sfida') r.titolo = this.vinto === null ? 'Partita finita' : `La statua ${this.vinto ? 'di sinistra' : 'di destra'} è caduta: vince ${this.vinto ? 'l\'esercito di destra' : 'l\'Ordine'}!`;
+    if (this.modo === 'torneo') r.titolo = this.vinte === TORNEO.length ? 'Hai conquistato la Crown of Inamorta! 👑' : `Torneo: eliminato alla battaglia ${this.round} di ${TORNEO.length} (${LIVELLI[this.livello - 1].nome})`;
+    else if (this.modo === 'sfida') r.titolo = this.vinto === null ? 'Partita finita' : `La statua ${this.vinto ? 'di sinistra' : 'di destra'} è caduta: vince ${this.vinto ? 'l\'esercito di destra' : 'l\'Order'}!`;
     else if (this.modo === 'nonmorti') r.titolo = this.vinto === 0 ? `Statua salva: ${this.notti} notti superate! 🌅` : `La statua è caduta alla notte ${this.notte} di ${this.notti} 🧟`;
     else {
       const lv = LIVELLI[this.livello - 1];
@@ -393,7 +402,7 @@ class StickWar extends Arena {
     if (m.pausa > 0) return;
     m.pausa = B.pausa * (0.6 + Math.random() * 0.8);
     const mie = (t) => this.u.filter((u) => u.lato === lato && u.tipo === t).length + ((e.coda[t] && e.coda[t].n) || 0);
-    const mix = this.modo === 'campagna' && lato === 1 ? LIVELLI[this.livello - 1].mix : { spada: 3, arciere: 2, lanciere: 2, mago: 1, gigante: 1 };
+    const mix = this.contro() && lato === 1 ? LIVELLI[this.livello - 1].mix : { spada: 3, arciere: 2, lanciere: 2, mago: 1, gigante: 1 };
     const voglio = Math.min(B.miniere + (this.tempoRound > 120 ? 1 : 0), 9);
     const minacciato = this.u.some((u) => u.lato !== lato && u.tipo !== 'minatore' && fDa(lato, u.x) < 600);
     // potenziamenti quando avanza oro
@@ -435,7 +444,7 @@ class StickWar extends Arena {
     const r = super.tick(ora);
     if (this.fase === 'gioco' && !this.finita && !this.inPausa) {
       const e = this.eserciti[1];
-      if (e.ia && this.modo === 'campagna') this.gioca(1, this.diff);
+      if (e.ia && this.contro()) this.gioca(1, this.diff);
     }
     return r;
   }
@@ -443,10 +452,10 @@ class StickWar extends Arena {
   vistaExtra() {
     return {
       W, H, L, STATUA, POP, CODA, modo: this.modo, scena: this.scena, livello: this.livello, notti: this.notti,
-      lati: this.lati, miniere: MINIERE, nomeLivello: this.modo === 'campagna' ? LIVELLI[this.livello - 1].nome : null,
+      lati: this.lati, miniere: MINIERE, nomeLivello: this.contro() ? LIVELLI[this.livello - 1].nome : null, torneo: this.modo === 'torneo' ? TORNEO.length : null,
       unita: Object.fromEntries(Object.entries(UNITA).map(([k, d]) => [k, { nome: d.nome, costo: d.costo, tempo: d.tempo, pop: d.pop, gitt: d.gitt }])),
       pot: Object.fromEntries(Object.entries(POTENZIAMENTI).map(([k, d]) => [k, { nome: d.nome, costo: d.costo, testo: d.testo }])),
-      caos: this.modo === 'nonmorti' || (this.modo === 'campagna' && !!LIVELLI[this.livello - 1].caos),
+      caos: this.modo === 'nonmorti' || (this.contro() && !!LIVELLI[this.livello - 1].caos),
     };
   }
   statoTick() {
@@ -464,30 +473,30 @@ class StickWar extends Arena {
 module.exports = {
   meta: {
     id: 'stickwar',
-    nome: 'Guerra degli Stecchini',
+    nome: 'Stick War',
     tipo: 'tabellone',
     tempoReale: true,
     pausaBoss: true,
     giocatori: [1, 2, 3, 4],
-    descrizione: 'Ispirato a Stick War: Legacy. Minatori, spadaccini, arcieri, lancieri, maghi e giganti: raccogli l\'oro, addestra l\'esercito, dai gli ordini o comanda un soldato a mano e distruggi la statua nemica. Campagna, sfida e notti dei non morti.',
+    descrizione: 'Come Stick War: Legacy. Miner, Swordwrath, Archidon, Spearton, Magikill e Giant: raccogli l\'oro, addestra l\'esercito dell\'Order, dai gli ordini o comanda un soldato a mano e distruggi la statua nemica. Campagna, torneo Crown of Inamorta, sfida ed Endless Deads.',
     alias: ['guerra degli stecchini', 'stick war', 'stickwar', 'stick war legacy', 'stecchini', 'stickman'],
     opzioni: [
-      { id: 'modo', nome: 'Modalità', valori: ['campagna', 'sfida', 'nonmorti'], etichette: ['Campagna (contro le tribù)', 'Sfida (uno contro uno)', 'Notti dei non morti'], predefinito: 'campagna' },
+      { id: 'modo', nome: 'Modalità', valori: ['campagna', 'torneo', 'sfida', 'nonmorti'], etichette: ['Campagna classica', 'Torneo: Crown of Inamorta', 'Sfida (uno contro uno)', 'Endless Deads (non morti)'], predefinito: 'campagna' },
       { id: 'livello', nome: 'Livello della campagna', valori: LIVELLI.map((_, k) => k + 1), etichette: LIVELLI.map((l, k) => `${k + 1}. ${l.nome}`), predefinito: 1, se: { modo: ['campagna'] } },
-      { id: 'notti', nome: 'Notti dei non morti', valori: NOTTI, etichette: NOTTI.map((n) => `${n} notti`), predefinito: 5, se: { modo: ['nonmorti'] } },
+      { id: 'notti', nome: 'Notti di Endless Deads', valori: NOTTI, etichette: NOTTI.map((n) => `${n} notti`), predefinito: 5, se: { modo: ['nonmorti'] } },
       { id: 'difficolta', nome: 'Difficoltà', valori: ['facile', 'medio', 'difficile'], etichette: ['Facile', 'Media', 'Difficile'], predefinito: 'medio' },
     ],
     regole: [
-      'Ogni esercito ha una statua: chi perde la statua perde la battaglia. I minatori scavano l\'oro nelle miniere vicino alla statua e lo riportano indietro; con l\'oro si addestrano i soldati (pulsanti in basso, fino a 5 in coda per tipo, al massimo 40 posti nell\'esercito).',
-      'Unità: Minatore (150, raccoglie oro), Spadaccino (125, veloce), Arciere (300, tira da lontano), Lanciere (500, scudo e lancia, regge la prima linea), Mago (900, magia che colpisce tutti i nemici vicini) e Gigante (1500, lento ma fortissimo).',
-      'Tre ordini per tutto l\'esercito: 🛡️ Difesa (davanti alla statua), ✋ Tieni la linea (a metà del proprio campo) e ⚔️ Attacco (avanti fino alla statua nemica). In formazione i lancieri stanno davanti e arcieri e maghi dietro.',
+      'Ogni esercito ha una statua: chi perde la statua perde la battaglia. I Miner scavano l\'oro nelle miniere vicino alla statua e lo riportano indietro; con l\'oro si addestrano i soldati (pulsanti in basso, fino a 5 in coda per tipo, al massimo 40 posti nell\'esercito).',
+      'Unità dell\'Order: Miner (150, raccoglie oro), Swordwrath (125, spadaccino veloce), Archidon (300, arciere che tira da lontano), Spearton (500, scudo e lancia, regge la prima linea), Magikill (900, magia che colpisce tutti i nemici vicini) e Giant (1500, lento ma fortissimo).',
+      'Tre ordini per tutto l\'esercito: 🛡️ Difesa (davanti alla statua), ✋ Tieni la linea (a metà del proprio campo) e ⚔️ Attacco (avanti fino alla statua nemica). In formazione gli Spearton stanno davanti e Archidon e Magikill dietro.',
       'Clicca (o tocca) un tuo soldato per comandarlo a mano: si muove con A/D o le frecce e colpisce con lo spazio (sul telefono con i pulsanti). Comandato va più veloce e fa il 50% di danni in più. "Lascia" lo rimette con gli altri.',
-      'Potenziamenti nell\'armeria: picconi d\'oro (+50% oro), armi affilate (+25% danni), armature (+25% vita) e statua di pietra (+1500 vita).',
-      'Campagna: 8 livelli contro tribù diverse (Spade, Arcieri, Lancieri, Maghi, Giganti, l\'orda del Caos, l\'Ordine ribelle e Medusa), ognuna con il suo paesaggio; a ogni livello hai un\'unità in più. In più giocatori l\'esercito è in comune. Sfida: uno contro uno (posti pari a sinistra, dispari a destra). Notti dei non morti: di giorno ti prepari, di notte arrivano zombi, striscianti, morti velenosi e cavalieri, sempre di più.',
+      'Potenziamenti nell\'armeria (valgono per la partita): picconi d\'oro (+50% oro), armi affilate (+25% danni), armature (+25% vita) e statua di pietra (+1500 vita).',
+      'Campagna classica: 8 livelli contro nazioni diverse (Swordwrath, Archidonis, Speartos, Magikill, Giant, l\'orda del Chaos con Crawler, Dead e Juggerknight, l\'Order ribelle e Medusa), ognuna col suo paesaggio; a ogni livello hai un\'unità in più. Torneo Crown of Inamorta: 5 battaglie di fila con tutte le unità, alla prima sconfitta sei fuori. In più giocatori l\'esercito è in comune e i computer del tavolo guidano i nemici. Sfida: uno contro uno (posti pari a sinistra, dispari a destra). Endless Deads: di giorno ti prepari, di notte arrivano i non morti, sempre di più.',
       'Il computer facile ha meno oro e attacca tardi; il medio bilancia miniere ed esercito; il difficile ha più oro, compra i potenziamenti e risponde a quello che schieri tu.',
     ],
   },
   crea: (o) => new StickWar(o),
   bot: () => ({}),
-  _test: { StickWar, UNITA, LIVELLI, POTENZIAMENTI, MINIERE, L, STATUA, VITA_STATUA, POP },
+  _test: { StickWar, TORNEO, UNITA, LIVELLI, POTENZIAMENTI, MINIERE, L, STATUA, VITA_STATUA, POP },
 };

@@ -1,4 +1,4 @@
-// GUERRA DEGLI STECCHINI: il campo è lungo tre schermi e si scorre (trascinando, con A/D o le frecce, con la rotella o
+// STICK WAR: il campo è lungo tre schermi e si scorre (trascinando, con A/D o le frecce, con la rotella o
 // dalla minimappa in alto). Paesaggio a strati che scorrono a velocità diverse (montagne lontane, colline, terreno),
 // diverso per ogni livello; stickman disegnati a mano con le loro armi e le pose (camminata, colpo, scavo); frecce,
 // palle di veleno, magie e lo sguardo di Medusa. Sopra il campo lo strato HTML con gli ordini, l'armeria e i
@@ -168,7 +168,7 @@
     g.fillStyle = 'rgba(0,0,0,.25)'; g.beginPath(); g.ellipse(x, y + 1, 12 * s, 3.2 * s, 0, 0, Math.PI * 2); g.fill();
     g.save(); g.translate(x, y); g.scale(verso * s, s);
     g.lineCap = 'round'; g.lineJoin = 'round';
-    // l'Ordine è nero, l'esercito di destra rosso scuro, il Caos coi suoi colori
+    // l'Order è nero, l'esercito di destra rosso scuro, il Chaos coi suoi colori
     const nero = CAOS.has(tipo) ? { zombi: '#3e5a3a', morto: '#33503a', strisciante: '#2b2236', cavaliere: '#262a33', medusa: '#2f4a33' }[tipo] : lato ? '#4a1512' : '#141414';
     g.strokeStyle = nero; g.fillStyle = nero; g.lineWidth = tipo === 'gigante' ? 3.4 : tipo === 'cavaliere' ? 3.2 : 2.7;
     if (tipo === 'strisciante') strisciante(g, ph, cammina, f, acc);
@@ -332,7 +332,7 @@
     g.beginPath(); g.arc(5.5, -41, brilla ? 1.8 : 1.1, 0, Math.PI * 2); g.fill();
     g.restore();
   }
-  // una statua: l'Ordine (pietra con l'oro), la tribù (pietra rossa) o il Caos (obelisco viola)
+  // una statua: l'Order (pietra con l'oro), la nazione nemica (pietra rossa) o il Chaos (obelisco viola)
   function statua(g, lato, es, adesso) {
     const x = (lato ? ex.L - ex.STATUA : ex.STATUA) - cam, y = BASE + 40;
     if (x < -160 || x > ex.W + 160) return;
@@ -419,7 +419,7 @@
     comandi: 'nessuno',
     obiettivo: 'punti',
     istruzioni: () => `${window.Arena.touch() ? 'Trascina il campo per guardarti intorno, tocca' : 'Trascina il campo (o A/D, la rotella, la minimappa) per guardarti intorno, clicca'} un tuo soldato per comandarlo a mano. Addestra con i pulsanti in basso${window.Arena.touch() ? '' : ' (o i tasti 1-6), ordini con Q/W/E'}. Distruggi la statua nemica!`,
-    statoGioco: (ctx, s) => (ex && ex.modo === 'nonmorti' ? (s.s.gi ? `Giorno: la notte ${s.s.nt + 1} arriva tra ${s.s.gi} s` : `Notte ${s.s.nt} di ${ex.notti}`) : ex && ex.nomeLivello ? `Livello ${ex.livello}: ${ex.nomeLivello}` : 'Battaglia!'),
+    statoGioco: (ctx, s) => (ex && ex.torneo ? `Crown of Inamorta, battaglia ${s.round} di ${ex.torneo}: ${ex.nomeLivello}` : ex && ex.modo === 'nonmorti' ? (s.s.gi ? `Giorno: la notte ${s.s.nt + 1} arriva tra ${s.s.gi} s` : `Notte ${s.s.nt} di ${ex.notti}`) : ex && ex.nomeLivello ? `Livello ${ex.livello}: ${ex.nomeLivello}` : 'Battaglia!'),
     hud: (ctx, s) => { const e = s.s.es[mioLato()]; return `<span>🪙 ${e.oro}</span><span>👥 ${e.pop}/${ex ? ex.POP : 40}</span><span>🗿 ${e.st}</span>${ex && ex.modo === 'nonmorti' ? `<span>🌙 ${s.s.nt}/${ex.notti}</span>` : ''}${s.s.w.includes(ctx.mio) ? '<span>✨ esercito potenziato</span>' : ''}`; },
     fineRound: (p) => (p.risultato && p.risultato.titolo) || '',
     sopra,
@@ -468,7 +468,8 @@
     disegna(g, p, st, prima, u, ctx) {
       ctxD = ctx; ex = p.extra || ex;
       if (!ex) return;
-      if (!scena || scena.nome !== ex.scena) preparaScena();
+      // paesaggio nuovo (livello o battaglia del torneo): si riparte dalla propria statua
+      if (!scena || scena.nome !== ex.scena) { preparaScena(); cam = null; }
       // lo strato dei pulsanti sta sopra il campo (non su tutta la larghezza della pagina)
       const so = g.canvas.parentElement && g.canvas.parentElement.querySelector('.ar-sopra');
       if (so) { const l = `${g.canvas.offsetLeft}px`, w = `${g.canvas.offsetWidth}px`, h = `${g.canvas.offsetHeight}px`; if (so.style.left !== l || so.style.width !== w || so.style.height !== h) Object.assign(so.style, { left: l, width: w, height: h, right: 'auto', bottom: 'auto' }); }
