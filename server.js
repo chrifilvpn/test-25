@@ -978,6 +978,8 @@ io.on('connection', (socket) => {
     const s = stanza;
     if (!s || s.partita || !sonoHost()) return;
     tornei.annulla(s);
+    // giochi dove i posti vuoti diventano compagni del computer (Draghi e Segrete): li prende il computer da solo
+    if (GIOCHI[s.gioco].meta.postiLiberiAlComputer && !senzaBot(s)) s.posti.forEach((g, i) => { if (!g) s.posti[i] = creaBot(s, 'medio'); });
     if (s.posti.some((g) => !g)) return errore('Riempi tutti i posti, anche con il computer');
     iniziaPartita(s);
     messaggioSistema(s, `Si gioca a ${GIOCHI[s.gioco].meta.nome}`);

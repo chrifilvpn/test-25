@@ -753,6 +753,7 @@ module.exports = {
     tipo: 'tabellone',
     giocatori: [1, 2, 3, 4, 5, 6],
     descrizione: 'Il gioco di ruolo fantasy con l\'IA che fa da master: crea il tuo eroe, esplora un mondo che nasce mentre giocate e combatti sulla mappa tattica. Possibilità infinite.',
+    postiLiberiAlComputer: true, // si può iniziare con posti vuoti: diventano compagni del computer
     masterUmano: true, // nella sala d'attesa chi ha aperto il tavolo può scegliere chi fa il master (🎩)
     alias: ['draghi e segrete', 'gioco di ruolo', 'gdr', 'dungeons', 'dungeon', 'dragons', 'd&d', 'dnd', 'master', 'avventura', 'fantasy', 'rpg'],
     opzioni: [
