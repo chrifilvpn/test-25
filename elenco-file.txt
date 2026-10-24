@@ -225,6 +225,8 @@ giochi3/picross-logica.js
 giochi3/picross.js
 giochi3/piramide.js
 giochi3/sfere.js
+giochi3/sintonia-dati.js
+giochi3/sintonia.js
 giochi3/xiangqi.js
 guardia.js
 package-lock.json
@@ -462,6 +464,8 @@ public/js/giochi3/piramide.css
 public/js/giochi3/piramide.js
 public/js/giochi3/sfere.css
 public/js/giochi3/sfere.js
+public/js/giochi3/sintonia.css
+public/js/giochi3/sintonia.js
 public/js/giochi3/tela-fissa.js
 public/js/giochi3/xiangqi.css
 public/js/giochi3/xiangqi.js
@@ -557,6 +561,7 @@ test/giochi3/nurikabe.js
 test/giochi3/picross.js
 test/giochi3/piramide.js
 test/giochi3/sfere.js
+test/giochi3/sintonia.js
 test/giochi3/xiangqi.js
 test/migliorie3.js
 test/novita.js
