@@ -552,7 +552,8 @@
   const tSveglia = setTimeout(() => { if (!giochi.length) $('#sveglia').hidden = false; }, 2500);
   socket.on('giochi', (g) => {
     clearTimeout(tSveglia); $('#sveglia').hidden = true;
-    giochi = g;
+    // i giochi in ordine alfabetico (nella home, nella sala e ovunque si elencano); "Ü" e "u", "2" e "10" come ci si aspetta
+    giochi = [...g].sort((a, b) => a.nome.localeCompare(b.nome, 'it', { sensitivity: 'base', numeric: true }));
     // un gioco salvato nel browser che non esiste più (un gioco tolto dal sito): si torna alla scopa
     if (!giochi.some((x) => x.id === scelto.gioco)) { scelto.gioco = 'scopa'; scelto.opzioni = {}; mem.set('gioco', 'scopa'); }
     disegnaGiochi(); if (stato) disegnaTutto(); });
