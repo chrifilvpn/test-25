@@ -232,6 +232,15 @@ guardia.js
 package-lock.json
 package.json
 public/boss.css
+public/fotocamera/gatto-dito.jpg
+public/fotocamera/gatto-giudice.jpg
+public/fotocamera/gatto-huh.jpg
+public/fotocamera/gatto-lingua.jpg
+public/fotocamera/gatto-lingua2.jpg
+public/fotocamera/gatto-occhiolino.jpg
+public/fotocamera/gatto-offeso.jpg
+public/fotocamera/gatto-soldato.jpg
+public/fotocamera/gatto-triste.jpg
 public/index.html
 public/js/app.js
 public/js/boss-contenuti/esercizi-gpoi.js
@@ -255,6 +264,8 @@ public/js/boss.js
 public/js/carte.js
 public/js/esecuzione.js
 public/js/esilio.js
+public/js/fotocamera-gesti.js
+public/js/fotocamera.js
 public/js/giochi/airhockey.js
 public/js/giochi/alieno-compiti.js
 public/js/giochi/alieno-temi.js
@@ -474,6 +485,8 @@ public/js/isolation/texture.js
 public/js/isolation/xenomorfo.js
 public/js/tavoli-tabellone.js
 public/js/tavoli.js
+public/modelli/mani.task
+public/modelli/viso.task
 public/modelli/xenomorfo.bin
 public/nuovi.css
 public/style.css
@@ -484,6 +497,7 @@ sfida.js
 sicurezza.js
 test/browser.js
 test/fortuna.js
+test/fotocamera.js
 test/giochi2.js
 test/giochi2/affari.js
 test/giochi2/anagrammi.js
