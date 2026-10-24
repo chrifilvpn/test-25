@@ -268,7 +268,7 @@
       if (m && m.giocatori.includes(n)) scelto.posti = n;
     }
     $('#elenco-giochi').innerHTML = visibili.map((g) => `
-      <button type="button" class="gioco-tessera" data-gioco="${g.id}" aria-pressed="${g.id === scelto.gioco}">
+      <button type="button" class="gioco-tessera" data-gioco="${g.id}" data-cat="${esc(g.categoria || 'altri')}" aria-pressed="${g.id === scelto.gioco}">
         <span class="g-stella ${preferiti.has(g.id) ? 'si' : ''}" data-preferito="${g.id}" role="switch" aria-checked="${preferiti.has(g.id)}" aria-label="Preferito" title="${preferiti.has(g.id) ? 'Togli dai preferiti' : 'Aggiungi ai preferiti'}">${preferiti.has(g.id) ? '★' : '☆'}</span>
         <span class="g-nome">${esc(g.nome)}</span>
         <span class="g-desc">${esc(g.descrizione)}</span>
@@ -296,6 +296,87 @@
       return `<figure data-v="${esc(v)}" ${String(v) === String(valore) ? '' : 'hidden'}>${disegno}<figcaption>${nome}</figcaption></figure>`;
     }).join('')}</div>`;
   }
+  // Le opzioni non si mostrano più come tendine bianche del browser: ogni <select> resta nascosto (è lui che tiene il
+  // valore e manda "change", così il resto del codice non cambia) e al suo posto c'è un controllo nel tema del sito:
+  // poche scelte brevi = pulsanti affiancati; tante o lunghe = un menu scuro a tendina con le voci in griglia.
+  const ICONA_INIZIO = /^(\p{Extended_Pictographic}|\p{Regional_Indicator}{2})(️|‍\p{Extended_Pictographic})*\s*/u;
+  const separaIcona = (t) => { const m = String(t).match(ICONA_INIZIO); return m ? [m[0].trim(), String(t).slice(m[0].length)] : ['', String(t)]; };
+  const chiaveOpz = (sel) => sel.dataset.opz || sel.id;
+  function abbellisciOpzioni(radice, scelta = 'select[data-opz]') {
+    if (!radice) return;
+    for (const sel of radice.querySelectorAll(scelta)) {
+      // una tendina che si ridisegna da sola (come quella dei giochi nella sala): si rifà anche il controllo
+      if (sel.dataset.bello) { const vecchio = sel.nextElementSibling; if (vecchio && vecchio.dataset.per === chiaveOpz(sel)) vecchio.remove(); }
+      sel.dataset.bello = '1';
+      sel.classList.add('opz-nativa'); sel.tabIndex = -1; sel.setAttribute('aria-hidden', 'true');
+      const voci = [...sel.options].map((o) => ({ v: o.value, t: o.textContent }));
+      const brevi = voci.length <= 4 && voci.every((x) => x.t.length <= 24) && voci.reduce((s, x) => s + x.t.length, 0) <= 64;
+      const box = document.createElement('div');
+      box.className = brevi ? 'opz-chip' : 'opz-menu';
+      box.dataset.per = chiaveOpz(sel);
+      const conIcone = voci.some((x) => separaIcona(x.t)[0]);
+      if (brevi) {
+        box.setAttribute('role', 'radiogroup');
+        box.style.setProperty('--n', voci.length);
+        box.innerHTML = voci.map((x) => { const [ic, t] = separaIcona(x.t); return `<button type="button" role="radio" data-v="${esc(x.v)}">${ic ? `<i>${ic}</i>` : ''}<span>${esc(t)}</span></button>`; }).join('');
+      } else {
+        box.innerHTML = `<button type="button" class="opz-apri" aria-haspopup="listbox" aria-expanded="false"><i></i><span></span><b aria-hidden="true">▾</b></button>
+          <div class="opz-lista" role="listbox" hidden>${voci.map((x) => { const [ic, t] = separaIcona(x.t); return `<button type="button" role="option" data-v="${esc(x.v)}">${conIcone ? `<i>${ic}</i>` : ''}<span>${esc(t)}</span></button>`; }).join('')}</div>`;
+      }
+      sel.after(box);
+      sincronizzaOpzione(sel);
+    }
+  }
+  function sincronizzaOpzione(sel) {
+    const box = sel.nextElementSibling;
+    if (!box || box.dataset.per !== chiaveOpz(sel)) return;
+    for (const b of box.querySelectorAll('[data-v]')) { const si = b.dataset.v === sel.value; b.setAttribute(b.getAttribute('role') === 'radio' ? 'aria-checked' : 'aria-selected', String(si)); }
+    const apri = box.querySelector('.opz-apri');
+    if (apri) {
+      const o = sel.options[sel.selectedIndex];
+      const [ic, t] = separaIcona(o ? o.textContent : '');
+      apri.querySelector('i').textContent = ic; apri.querySelector('i').hidden = !ic;
+      apri.querySelector('span').textContent = t;
+    }
+  }
+  function chiudiMenuOpzioni(tranne) {
+    for (const m of $$('.opz-menu.aperto')) {
+      if (m === tranne) continue;
+      m.classList.remove('aperto'); m.querySelector('.opz-lista').hidden = true; m.querySelector('.opz-apri').setAttribute('aria-expanded', 'false');
+    }
+  }
+  function scegliOpzione(box, v) {
+    const sel = box.previousElementSibling;
+    if (!sel || sel.tagName !== 'SELECT') return;
+    if (sel.value !== v) { sel.value = v; sel.dispatchEvent(new Event('change', { bubbles: true })); }
+    sincronizzaOpzione(sel);
+  }
+  document.addEventListener('click', (e) => {
+    const box = e.target.closest && e.target.closest('.opz-chip, .opz-menu');
+    if (!box) { chiudiMenuOpzioni(); return; }
+    if (box.classList.contains('opz-menu') && e.target.closest('.opz-apri')) {
+      const aperto = !box.classList.contains('aperto');
+      chiudiMenuOpzioni(box);
+      box.classList.toggle('aperto', aperto);
+      const lista = box.querySelector('.opz-lista');
+      lista.hidden = !aperto;
+      box.querySelector('.opz-apri').setAttribute('aria-expanded', String(aperto));
+      if (aperto) { const sc = lista.querySelector('[aria-selected="true"]') || lista.querySelector('[data-v]'); if (sc) sc.focus({ preventScroll: true }); }
+      return;
+    }
+    const b = e.target.closest('[data-v]');
+    if (!b) return;
+    scegliOpzione(box, b.dataset.v);
+    if (box.classList.contains('opz-menu')) { chiudiMenuOpzioni(); box.querySelector('.opz-apri').focus({ preventScroll: true }); }
+  });
+  document.addEventListener('keydown', (e) => {
+    const box = e.target.closest && e.target.closest('.opz-menu.aperto');
+    if (!box) return;
+    const voci = [...box.querySelectorAll('.opz-lista [data-v]')];
+    const i = voci.indexOf(document.activeElement);
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); chiudiMenuOpzioni(); box.querySelector('.opz-apri').focus(); }
+    else if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); const k = Math.max(0, Math.min(voci.length - 1, i + (e.key === 'ArrowDown' ? 1 : -1))); voci[k].focus(); }
+  }, true);
   function opzioniVisibili(radice) {
     if (!radice) return;
     const valori = {};
@@ -308,6 +389,7 @@
   document.addEventListener('change', (e) => {
     const sel = e.target.closest && e.target.closest('select[data-opz]');
     if (!sel) return;
+    sincronizzaOpzione(sel);
     opzioniVisibili(sel.closest('#imp-opzioni, #sala-opzioni'));
     const box = sel.closest('.imp-riga') && sel.closest('.imp-riga').nextElementSibling;
     if (box && box.dataset.anteprime === sel.dataset.opz) for (const f of box.querySelectorAll('figure')) f.hidden = f.dataset.v !== sel.value;
@@ -318,10 +400,12 @@
     if (!m) { $('#impostazioni').hidden = true; return; }
     $('#impostazioni').hidden = false;
     $('#imp-titolo').textContent = m.nome;
+    $('#imp-desc').textContent = m.descrizione || '';
     $('#impostazioni [data-regole-di]').dataset.regoleDi = m.id;
     if (!m.giocatori.includes(scelto.posti)) scelto.posti = m.giocatori[0];
     $('#scelta-posti').innerHTML = m.giocatori.map((n) => `<button type="button" data-posti="${n}" aria-pressed="${n === scelto.posti}">${n}${m.id !== 'scopone' && n === 4 && ['briscola', 'scopa'].includes(m.id) ? ' <small>in coppia</small>' : ''}</button>`).join('');
     $('#imp-opzioni').innerHTML = m.opzioni.map((o) => selectOpzione(o, scelto.opzioni[o.id] ?? o.predefinito, 'class="imp-select"')).join('');
+    abbellisciOpzioni($('#imp-opzioni'));
     opzioniVisibili($('#imp-opzioni'));
     for (const b of $$('#scelta-livello button')) b.setAttribute('aria-pressed', String(b.dataset.livello === scelto.livello));
     // giochi solo tra persone: niente computer; con un solo posto si gioca da soli
@@ -662,10 +746,15 @@
     $('#sala-gioco-scelta').hidden = !stato.sonoHost;
     $('#sala-gioco-nome').hidden = stato.sonoHost;
     $('.sala-gioco [data-regole-di]').dataset.regoleDi = stato.gioco;
-    if (stato.sonoHost) {
+    // si ridisegna solo se il gioco o le opzioni cambiano (così un menu aperto non si chiude a ogni messaggio)
+    const firmaSala = JSON.stringify([stato.codice, stato.gioco, stato.numPosti, stato.opzioni, giochi.length]);
+    if (stato.sonoHost && firmaSala !== $('#sala-gioco-scelta').dataset.firma) {
+      $('#sala-gioco-scelta').dataset.firma = firmaSala;
       $('#sala-select').innerHTML = giochi.filter((g) => g.giocatori.includes(stato.numPosti))
         .map((g) => `<option value="${g.id}" ${g.id === stato.gioco ? 'selected' : ''}>${esc(g.nome)}</option>`).join('');
       $('#sala-opzioni').innerHTML = m.opzioni.map((o) => selectOpzione(o, stato.opzioni[o.id], '')).join('');
+      abbellisciOpzioni($('#sala-gioco-scelta'), '#sala-select');
+      abbellisciOpzioni($('#sala-opzioni'));
       opzioniVisibili($('#sala-opzioni'));
     }
 

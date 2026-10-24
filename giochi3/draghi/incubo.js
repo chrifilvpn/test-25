@@ -292,7 +292,7 @@ const metodi = {
       if (ar.pressione && !this.chiaviDelGruppo().has(ar.pressione)) { const q = R.tira('1d6').totale; R.applicaDanno(this.pg[k], q, 'contundente', {}); this.scrivi('sistema', `🌊 La pressione schiaccia la tuta di ${this.pg[k].nome}: ${q} danni. Serve la tuta rinforzata!`, { posto: k }); if (this.pg[k].pf <= 0) { this.pg[k].pf = 0; this.pg[k].morto = true; this.scrivi('master', `💀 ${this.pg[k].nome}: il vetro del casco si incrina, poi l'oceano entra.`); } }
       else if (ar.luce === 'accesa' && Math.random() < 0.5) this.paura(k, -1);
     }
-    if (!this.pgVivi().length) { this.tuttiMorti(); return; }
+    if (!this.umaniVivi().length) { this.tuttiMorti(); return; }
     const prima = inc.rumore;
     inc.rumore = Math.max(0, inc.rumore - 1);
     if (!c.attiva) return;
