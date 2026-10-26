@@ -85,9 +85,11 @@ window.Esecuzione = (() => {
     const el = document.createElement('div');
     el.className = 'ex-papi';
     el.setAttribute('role', 'alert');
-    el.innerHTML = `<video playsinline preload="auto"><source src="/video/enrico-papi.webm" type="video/webm"><source src="/video/enrico-papi.mp4" type="video/mp4"></video><p>🚗 ${esc(nome || '')} ha chiamato Enrico Papi</p>`;
+    el.innerHTML = `<video playsinline preload="auto"><source src="/video/enrico-papi.webm" type="video/webm"><source src="/video/enrico-papi.mp4" type="video/mp4"></video><p>🚗 ${esc(nome || '')} ha chiamato Enrico Papi</p><button type="button" class="ex-papi-chiudi" aria-label="Chiudi il video" title="Chiudi">✕</button>`;
     document.body.append(el);
     const v = el.querySelector('video');
+    // la X in alto a destra chiude il video solo per te (il gioco resta fermo per tutti fino alla fine dello spot)
+    el.querySelector('.ex-papi-chiudi').addEventListener('click', () => { v.pause(); togli(); });
     v.muted = muto();
     // senza un clic recente il browser può bloccare l'audio: allora si riprova muto
     v.play().catch(() => { v.muted = true; v.play().catch(() => {}); });

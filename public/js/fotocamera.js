@@ -12,7 +12,13 @@ window.Fotocamera = (() => {
   let flusso = null, giro = 0, mani = null, viso = null, caricamento = null;
   let ultimoGiro = 0, ultimaFoto = 0, grigiPrima = null, fermoDa = 0;
   let conti = {}, volte = {}, gestoPrima = null, espressioni = null, puntiViso = null;
-  let rabbia = G.creaRabbia();
+  let visoVistoA = 0, luce = 128, base = '';
+  // le espressioni che imparano la faccia normale di chi guarda (si riparte da capo con 🎯 o spegnendo)
+  let rabbia, lingua, occhio, socchiusi, tristezza;
+  const impara = () => { rabbia = G.creaRabbia(); lingua = G.creaLingua(); occhio = G.creaOcchiolino(); socchiusi = G.creaSocchiusi(); tristezza = G.creaTristezza(); };
+  impara();
+  // cosa scrivere quando un gesto è riconosciuto (così si capisce cosa ha visto)
+  const NOMI = { dito: '☝️ Dito alzato', lingua: '😛 Lingua fuori', aperta: '😮 Bocca aperta', arrabbiato: '😠 Arrabbiato', occhiolino: '😉 Occhiolino', socchiusi: '😑 Occhi socchiusi', triste: '😢 Triste', fermo: '🧍 Fermo' };
   // i gatti per ogni gesto (foto in public/fotocamera/gatto-<nome>.jpg); se sono due si alternano, uno per volta
   const GATTI = { dito: ['dito'], lingua: ['lingua', 'lingua2'], aperta: ['huh'], arrabbiato: ['arrabbiato'], occhiolino: ['occhiolino'], socchiusi: ['giudice'], triste: ['triste', 'offeso'], fermo: ['soldato'] };
   const TUTTI = Object.values(GATTI).flat().map((f) => `.fcam-${f}`);
@@ -31,6 +37,7 @@ window.Fotocamera = (() => {
       <div class="fcam-box">
         <div class="fcam-testa" title="Trascina per spostare la finestra"><h2>📷 Fotocamera</h2>
           <button type="button" class="bottone mini-bt fcam-aiuto" aria-expanded="false" title="Mostra i trucchi">❔</button>
+          <button type="button" class="bottone mini-bt fcam-impara" title="Se i gesti scattano da soli o non scattano: guarda la fotocamera con la faccia normale e premi qui">🎯</button>
           <button type="button" class="bottone mini-bt fcam-spegni" title="Spegni la fotocamera">⏹ Spegni</button></div>
         <div class="fcam-schermo">
           <video class="fcam-video" playsinline muted></video>
@@ -46,11 +53,20 @@ window.Fotocamera = (() => {
           <li>😑 <b>Occhi socchiusi</b>: il gatto che ti giudica</li>
           <li>😢 <b>Faccia triste</b>: il gatto bagnato o quello offeso</li>
           <li>🧍 <b>Fermo</b> per qualche secondo: il gatto soldato</li>
+          <li>🎯 Il sito impara la tua faccia normale nei primi secondi: se un gesto scatta da solo o non scatta, guarda la fotocamera tranquillo e premi 🎯</li>
+          <li>💡 Va meglio con la faccia ben illuminata, dritta davanti alla fotocamera e non troppo lontana</li>
         </ul>
         <p class="piccolo fcam-nota">Le immagini restano nel tuo browser: niente viene inviato o salvato.</p>
       </div>`;
     document.body.appendChild(el);
     el.querySelector('.fcam-spegni').addEventListener('click', spegni);
+    el.querySelector('.fcam-impara').addEventListener('click', () => {
+      impara(); conti = {};
+      const prima = base;
+      if (!prima) return; // ancora in caricamento
+      base = ''; stato('🎯 Ok, guardami con la faccia normale per un paio di secondi…');
+      setTimeout(() => { if (flusso && !base) base = prima; }, 2500);
+    });
     el.querySelector('.fcam-aiuto').addEventListener('click', (e) => {
       const l = el.querySelector('.fcam-trucchi');
       l.hidden = !l.hidden; e.currentTarget.setAttribute('aria-expanded', String(!l.hidden));
@@ -93,7 +109,8 @@ window.Fotocamera = (() => {
     const y = Math.min(Math.max(0, r.top), Math.max(0, innerHeight - 48));
     el.style.left = `${x}px`; el.style.top = `${y}px`;
   }
-  const stato = (t) => { const p = $('#fcam .fcam-stato'); if (p) p.textContent = t; };
+  const stato = (t) => { const p = $('#fcam .fcam-stato'); if (p && p.textContent !== t) p.textContent = t; };
+  const PRONTA = '✨ Pronta! Tocca ❔ per i trucchi';
   const mostra = (sel, si) => { const x = $(`#fcam ${sel}`); if (x && x.hidden === si) x.hidden = !si; };
 
   // ---------- accendi / spegni ----------
@@ -122,8 +139,13 @@ window.Fotocamera = (() => {
     v.srcObject = flusso;
     try { await v.play(); } catch { /* parte da sola */ }
     stato('⏳ Preparo il riconoscimento delle mani…');
-    caricaModelli().then((ok) => { if (flusso) stato(ok ? '✨ Pronta! Tocca ❔ per i trucchi' : '⚠️ Riconoscimento delle mani non disponibile: funziona solo il gatto soldato.'); });
-    ultimaFoto = 0; grigiPrima = null; fermoDa = performance.now();
+    base = '';
+    caricaModelli().then((ok) => {
+      if (!flusso) return;
+      base = ok ? (viso ? PRONTA : '⚠️ Riconoscimento del viso non disponibile: funzionano solo il dito alzato e il gatto soldato.') : '⚠️ Riconoscimento delle mani non disponibile: funziona solo il gatto soldato.';
+      stato(base); visoVistoA = performance.now();
+    });
+    ultimaFoto = 0; grigiPrima = null; fermoDa = visoVistoA = performance.now();
     cancelAnimationFrame(giro);
     giro = requestAnimationFrame(passo);
   }
@@ -136,7 +158,7 @@ window.Fotocamera = (() => {
     if (!el) return;
     el.querySelector('.fcam-video').srcObject = null;
     for (const s of TUTTI) mostra(s, false);
-    conti = {}; espressioni = puntiViso = null; rabbia = G.creaRabbia();
+    conti = {}; espressioni = puntiViso = null; base = ''; impara();
     el.hidden = true;
   }
 
@@ -151,8 +173,13 @@ window.Fotocamera = (() => {
             try { return await Classe.createFromOptions(base, { baseOptions: { modelAssetPath: modello, delegate }, runningMode: 'VIDEO', ...extra }); } catch (e) { if (delegate === 'CPU') throw e; }
           }
         };
-        mani = await crea(HandLandmarker, '/modelli/mani.task', { numHands: 2 });
-        try { viso = await crea(FaceLandmarker, '/modelli/viso.task', { numFaces: 1, outputFaceBlendshapes: true }); } catch { viso = null; } // senza viso niente gatto sub né triste
+        // soglie più basse di quelle normali (0,5): la faccia si aggancia anche con poca luce, un po' girata o con la
+        // lingua fuori (che a MediaPipe fa sembrare il viso "strano" e lo perdeva)
+        const facile = { minDetectionConfidence: 0.35, minPresenceConfidence: 0.35, minTrackingConfidence: 0.35 };
+        mani = await crea(HandLandmarker, '/modelli/mani.task', { numHands: 2, minHandDetectionConfidence: 0.4, minHandPresenceConfidence: 0.4, minTrackingConfidence: 0.4 });
+        try {
+          viso = await crea(FaceLandmarker, '/modelli/viso.task', { numFaces: 1, outputFaceBlendshapes: true, minFaceDetectionConfidence: facile.minDetectionConfidence, minFacePresenceConfidence: facile.minPresenceConfidence, minTrackingConfidence: facile.minTrackingConfidence });
+        } catch { viso = null; } // senza viso niente gatti delle espressioni
         return true;
       })().catch((e) => { console.warn('[fotocamera] riconoscimento non disponibile', e); caricamento = null; return false; });
     }
@@ -172,8 +199,11 @@ window.Fotocamera = (() => {
     if (ora - ultimaFoto > 200) {
       ultimaFoto = ora;
       const grigi = grigiDi(v);
-      if (G.movimento(grigiPrima, grigi) > 0.015) fermoDa = ora;
+      if (G.movimento(grigiPrima, grigi) > 0.02) fermoDa = ora; // un po' di tolleranza: con poca luce l'immagine "frigge"
       grigiPrima = grigi;
+      let somma = 0;
+      for (const g of grigi) somma += g;
+      luce = somma / grigi.length;
     }
 
     let trovate = [];
@@ -182,22 +212,31 @@ window.Fotocamera = (() => {
       try {
         const r = viso.detectForVideo(v, ora), k = (r.faceLandmarks || [])[0];
         if (k && k.length > 454) {
-          espressioni = {}; puntiViso = k;
+          espressioni = {}; puntiViso = k; visoVistoA = ora;
           for (const c of ((r.faceBlendshapes || [])[0] || {}).categories || []) espressioni[c.categoryName] = c.score;
         } else espressioni = puntiViso = null;
       } catch { /* niente */ }
     }
-    // un solo gatto alla volta, nell'ordine: dito alzato, lingua fuori, bocca aperta, arrabbiato, occhiolino, occhi
-    // socchiusi, faccia triste, fermo (arrabbiato prima degli occhi: quando ti arrabbi li stringi)
+    // un solo gatto alla volta, nell'ordine: dito alzato, lingua fuori, bocca aperta, occhiolino, arrabbiato, occhi
+    // socchiusi, faccia triste, fermo (l'occhiolino prima di arrabbiato: facendolo la guancia e il sopracciglio
+    // scendono; arrabbiato prima degli occhi: quando ti arrabbi li stringi). Tutti i riconoscitori girano a ogni
+    // controllo, così continuano a imparare la faccia normale anche quando vince un altro gesto.
+    const ling = !!puntiViso && lingua.aggiungi(...boccaDi(v, puntiViso), espressioni);
     const dito = conta('dito', trovate.some((m) => G.ditoAlzato(m)), 3);
-    const lingua = conta('lingua', !!puntiViso && G.linguaFuori(...pixelDi(v), puntiViso, espressioni), 3);
-    const aperta = conta('aperta', G.boccaAperta(espressioni), 3);
+    const lin = conta('lingua', ling, 3);
+    const aperta = conta('aperta', G.boccaAperta(espressioni, 0.45, puntiViso), 3);
+    const occ = conta('occhiolino', occhio.aggiungi(espressioni, puntiViso), 2); // 2: l'occhiolino dura poco
     const arrab = conta('arrabbiato', rabbia.aggiungi(espressioni), 4);
-    const occhio = conta('occhiolino', G.occhiolino(espressioni), 3);
-    const socchiusi = conta('socchiusi', G.occhiSocchiusi(espressioni), 6); // 6: una sbattuta d'occhi non basta
-    const tri = conta('triste', G.triste(espressioni), 4);
+    const socc = conta('socchiusi', socchiusi.aggiungi(espressioni), 6); // 6: una sbattuta d'occhi non basta
+    const tri = conta('triste', tristezza.aggiungi(espressioni), 4);
     const fermo = ora - fermoDa > FERMO_MS;
-    const gesto = dito ? 'dito' : lingua ? 'lingua' : aperta ? 'aperta' : arrab ? 'arrabbiato' : occhio ? 'occhiolino' : socchiusi ? 'socchiusi' : tri ? 'triste' : fermo ? 'fermo' : null;
+    const gesto = dito ? 'dito' : lin ? 'lingua' : aperta ? 'aperta' : occ ? 'occhiolino' : arrab ? 'arrabbiato' : socc ? 'socchiusi' : tri ? 'triste' : fermo ? 'fermo' : null;
+    // la riga in basso: il gesto visto, oppure cosa non va (faccia persa, poca luce), oppure il messaggio normale
+    if (base) {
+      stato(gesto ? NOMI[gesto]
+        : viso && ora - visoVistoA > 1500 ? (luce < 45 ? '💡 C\'è poca luce: non vedo la tua faccia' : '🙂 Non vedo la tua faccia: mettiti dritto davanti alla fotocamera')
+          : luce < 45 ? '💡 Poca luce: i gesti si riconoscono peggio' : base);
+    }
     if (gesto && gesto !== gestoPrima) volte[gesto] = (volte[gesto] || 0) + 1; // ogni volta che rifai il gesto, l'altro gatto
     gestoPrima = gesto;
     const scelto = gesto && `.fcam-${GATTI[gesto][(volte[gesto] - 1) % GATTI[gesto].length]}`;
@@ -211,13 +250,22 @@ window.Fotocamera = (() => {
     return c.su >= n;
   }
 
-  // l'immagine intera ma piccola (160×120), per il colore della lingua
-  function pixelDi(v) {
-    const c = pixelDi.c || (pixelDi.c = document.createElement('canvas'));
-    c.width = 160; c.height = 120;
+  // per il colore della lingua: solo la parte bassa del viso (dal naso a sotto il mento, da una guancia all'altra) presa
+  // a piena risoluzione e portata a 96×96, così la bocca ha sempre abbastanza pixel anche se sei lontano. Torna i
+  // pixel e i punti del viso spostati nel ritaglio (stessa misura da 0 a 1).
+  const R = 96;
+  function boccaDi(v, k) {
+    const c = boccaDi.c || (boccaDi.c = document.createElement('canvas'));
+    if (c.width !== R) { c.width = R; c.height = R; }
     const x = c.getContext('2d', { willReadFrequently: true });
-    x.drawImage(v, 0, 0, 160, 120);
-    return [x.getImageData(0, 0, 160, 120).data, 160, 120];
+    const vw = v.videoWidth || 640, vh = v.videoHeight || 480, alto = k[152].y - k[10].y;
+    const x0 = Math.max(0, Math.min(k[234].x, k[454].x)), x1 = Math.min(1, Math.max(k[234].x, k[454].x));
+    const y0 = Math.max(0, k[1].y), y1 = Math.min(1, k[152].y + alto * 0.08);
+    const sw = x1 - x0, sh = y1 - y0;
+    if (sw <= 0.01 || sh <= 0.01) return [null, 0, 0, null];
+    x.drawImage(v, x0 * vw, y0 * vh, sw * vw, sh * vh, 0, 0, R, R);
+    const kk = k.map((p) => ({ x: (p.x - x0) / sw, y: (p.y - y0) / sh }));
+    return [x.getImageData(0, 0, R, R).data, R, R, kk];
   }
 
   function grigiDi(v) {

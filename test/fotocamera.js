@@ -90,6 +90,56 @@ for (let i = 0; i < 100; i++) R.aggiungi({ browDownLeft: 0.75, browDownRight: 0.
 assert.ok(R.aggiungi({ browDownLeft: 0.75, browDownRight: 0.75 }), 'arrabbiato a lungo: resta arrabbiato');
 assert.ok(!R.aggiungi(null), 'senza viso: no');
 
+// dito alzato anche un po' storto (mano girata di lato)
+const storta = mano(0.5, 0.7, [1]); storta[6] = { x: 0.5, y: 0.56 }; storta[7] = { x: 0.53, y: 0.52 }; storta[8] = { x: 0.56, y: 0.49 };
+assert.ok(G.ditoAlzato(storta), 'dito alzato un po\' storto: sì');
+const sdraiata = mano(0.5, 0.7, [1]); sdraiata[6] = { x: 0.55, y: 0.6 }; sdraiata[7] = { x: 0.6, y: 0.6 }; sdraiata[8] = { x: 0.65, y: 0.6 };
+assert.ok(!G.ditoAlzato(sdraiata), 'dito che punta di lato: no');
+
+// occhiolino che impara: chi chiude l'occhio "a metà" per MediaPipe ma si vede dalla forma dell'occhio
+function occhi(apS, apD) { // apertura (altezza) dei due occhi, larghi 0,06
+  const k = Array.from({ length: 478 }, () => ({ x: 0.5, y: 0.5 }));
+  k[33] = { x: 0.35, y: 0.4 }; k[133] = { x: 0.41, y: 0.4 }; k[159] = { x: 0.38, y: 0.4 - apS / 2 }; k[145] = { x: 0.38, y: 0.4 + apS / 2 };
+  k[362] = { x: 0.59, y: 0.4 }; k[263] = { x: 0.65, y: 0.4 }; k[386] = { x: 0.62, y: 0.4 - apD / 2 }; k[374] = { x: 0.62, y: 0.4 + apD / 2 };
+  return k;
+}
+let O = G.creaOcchiolino();
+for (let i = 0; i < 30; i++) assert.ok(!O.aggiungi({ eyeBlinkLeft: 0.05, eyeBlinkRight: 0.05 }, occhi(0.018, 0.018)), 'occhi aperti: no');
+assert.ok(!G.occhiolino({ eyeBlinkLeft: 0.45, eyeBlinkRight: 0.2 }), 'il vecchio controllo non lo vedeva');
+assert.ok(O.aggiungi({ eyeBlinkLeft: 0.45, eyeBlinkRight: 0.2 }, occhi(0.004, 0.017)), 'occhiolino "a metà" con l\'occhio chiuso davvero: sì');
+assert.ok(!O.aggiungi({ eyeBlinkLeft: 0.9, eyeBlinkRight: 0.9 }, occhi(0.003, 0.003)), 'sbattuta (tutti e due chiusi): no');
+assert.ok(!O.aggiungi({ eyeBlinkLeft: 0.15, eyeBlinkRight: 0.1 }, occhi(0.014, 0.018)), 'testa un po\' girata: no');
+assert.ok(O.aggiungi({ eyeBlinkLeft: 0.9, eyeBlinkRight: 0.05 }), 'occhiolino netto anche senza punti');
+
+// socchiusi che impara: occhi sempre un po' "chiusi" per MediaPipe non bastano più
+let SC = G.creaSocchiusi();
+for (let i = 0; i < 100; i++) assert.ok(!SC.aggiungi({ eyeBlinkLeft: 0.38, eyeBlinkRight: 0.38 }), 'occhi a mandorla, calmi: no');
+assert.ok(SC.aggiungi({ eyeBlinkLeft: 0.7, eyeBlinkRight: 0.68 }), 'e se li stringi: sì');
+assert.ok(!G.occhiSocchiusi({ eyeBlinkLeft: 0.55, eyeBlinkRight: 0.6, eyeLookDownLeft: 0.7, eyeLookDownRight: 0.7 }), 'guardare in basso non è socchiudere');
+
+// triste: la sorpresa (sopracciglia tutte su) non è tristezza; e chi ha la bocca un po' giù da calmo impara il riposo
+assert.ok(!G.triste({ browInnerUp: 0.7, browOuterUpLeft: 0.7, browOuterUpRight: 0.7 }), 'sorpresa: no');
+let T = G.creaTristezza();
+for (let i = 0; i < 200; i++) assert.ok(!T.aggiungi({ mouthFrownLeft: 0.32, mouthFrownRight: 0.32 }), 'bocca all\'ingiù da calmo: dopo un po\' no');
+assert.ok(T.aggiungi({ mouthFrownLeft: 0.7, mouthFrownRight: 0.65 }), 'e se ti rattristi davvero: sì');
+
+// bocca aperta anche dalla forma delle labbra (se jawOpen è basso ma non zero)
+const labbra = Array.from({ length: 478 }, () => ({ x: 0.5, y: 0.5 }));
+labbra[61] = { x: 0.44, y: 0.6 }; labbra[291] = { x: 0.56, y: 0.6 }; labbra[13] = { x: 0.5, y: 0.57 }; labbra[14] = { x: 0.5, y: 0.64 };
+assert.ok(G.boccaAperta({ jawOpen: 0.3 }, 0.45, labbra), 'labbra lontane: bocca aperta');
+assert.ok(!G.boccaAperta({ jawOpen: 0.05 }, 0.45, labbra), 'ma serve un po\' di mascella giù');
+
+// lingua che impara: il rossetto (labbra rosse più lunghe) non la fa scattare, la lingua sì
+let L = G.creaLingua();
+for (let i = 0; i < 60; i++) assert.ok(!L.aggiungi(...viso(50, 56), {}), 'rossetto a bocca chiusa: no');
+assert.ok(L.aggiungi(...viso(50, 66), {}), 'con la lingua fuori: sì');
+L = G.creaLingua();
+assert.ok(L.aggiungi(...viso(50, 66), {}), 'anche se si parte già con la lingua fuori');
+
+// ENRICO PAPI: il video si chiude con la X in alto a destra
+const ese = fs.readFileSync(path.join(__dirname, '../public/js/esecuzione.js'), 'utf8');
+assert.ok(/ex-papi-chiudi/.test(ese) && /\.ex-papi-chiudi \{[^}]*top:[^}]*right:/.test(fs.readFileSync(path.join(__dirname, '../public/nuovi.css'), 'utf8')), 'X per chiudere Enrico Papi in alto a destra');
+
 // il sito: fotocamera permessa solo a sé stesso, wasm permesso, MediaPipe dalla dipendenza (niente CDN)
 const S = require('../sicurezza');
 assert.ok(/script-src 'self' 'wasm-unsafe-eval'(;|$)/.test(S.CSP), 'CSP: wasm sì, script esterni no');
