@@ -19,7 +19,7 @@ const RISCRITTORE = `Sei il NARRATORE di una partita di "Draghi e Segrete" (gioc
 - Se il master fa parlare qualcuno, scrivi la battuta come dialogo tra «virgolette», con le stesse informazioni.
 - Lunghezza simile all'originale, al massimo il doppio: 1-3 paragrafi brevi. Chiudi lasciando la scena aperta, senza domande ai giocatori se il master non le fa.
 - Solo testo semplice: niente titoli, elenchi, grassetti, emoji o note. Scrivi SOLO il racconto riscritto, senza commenti o introduzioni.
-- Se il testo del master contiene parolacce o cose volgari, rendile in modo adatto a ragazzi.`;
+- Se il testo del master contiene parolacce o cose volgari, rendile in modo adatto a ragazzi, TRANNE nella modalità pazza (te lo dice il messaggio): lì il tono comico e sboccato del master si tiene, come fa il master IA.`;
 const CONSIGLIERE = `Sei il CONSIGLIERE di un master UMANO che sta conducendo una partita di "Draghi e Segrete" (gioco di ruolo con le regole SRD 5.1 della 5ª edizione). Il master è un ragazzo che sta imparando: rispondi SEMPRE in italiano, in modo pratico, chiaro e breve (al massimo 10-12 righe, con elenchi puntati se servono). Non rispondere in JSON.
 - Il master decide tutto: tu proponi. Dai idee concrete e pronte da usare (frasi da leggere ai giocatori, nomi, CD precise, mostri del bestiario con il loro id, conseguenze).
 - Se ti chiede una regola, spiegala in parole semplici e dai il numero giusto (CD, danni, durata).
@@ -198,7 +198,7 @@ const metodi = {
   // il testo grossolano del master -> racconto curato (o, senza IA, solo sistemato: maiuscole, spazi, punto finale)
   riscrivi(testo) {
     if (!(this.chiave && this.fetch)) return Promise.resolve({ testo: sistemaTesto(testo), riserva: true });
-    const tono = this.pazza ? 'MODALITÀ PAZZA: racconto comico, esagerato e assurdo, che fa ridere.' : this.cp ? 'Ambientazione HORROR: tono teso, cupo e opprimente, frasi brevi.' : `Tono dell'ambientazione: ${this.ambientazione || 'fantasy classico'}.`;
+    const tono = this.pazza ? 'MODALITÀ PAZZA: racconto comico, esagerato e assurdo, che fa ridere. Parolacce e volgarità del master restano (anzi, falle rendere ancora di più).' : this.cp ? 'Ambientazione HORROR: tono teso, cupo e opprimente, frasi brevi.' : `Tono dell'ambientazione: ${this.ambientazione || 'fantasy classico'}.`;
     const msg = `${this.contesto()}\n\n${tono}${this.lunghezza === 'brevi' ? ' Il tavolo vuole racconti brevi: resta corto.' : ''}\n\n=== IL MASTER HA SCRITTO (da riscrivere) ===\n${testo}`;
     return MASTER.chiamaGemini({ chiave: this.chiave, sistema: RISCRITTORE, messaggi: [{ ruolo: 'giocatori', testo: msg }], fetch: this.fetch, json: false, temperatura: 0.8, maxToken: 2000 })
       .then((r) => {

@@ -26,9 +26,11 @@ const DM = require('./draghi/dm');
 const AMBIENTAZIONI = ['classica', 'oscura', 'pirati', 'citta', 'selvaggia'];
 const ATTESA_DICHIARAZIONI = 150000; // dopo la prima azione scritta, al massimo 2 minuti e mezzo per gli altri
 const MAX_RACCONTO = 400;
+const ROUND_PER_RACCONTO = 2; // in combattimento il master IA racconta ogni due round
 const ATTESA_REVIVE = 15 * 60000; // tutti morti: un quarto d'ora per scrivere !revive, poi la campagna finisce
 const STILE_DA_LUOGO = { villaggio: 'villaggio', citta: 'villaggio', porto: 'villaggio', taverna: 'taverna', castello: 'castello', torre: 'castello', tempio: 'cripta', rovine: 'dungeon', dungeon: 'dungeon', grotta: 'grotta', cripta: 'cripta', foresta: 'foresta', montagna: 'montagna', palude: 'palude', deserto: 'strada', accampamento: 'foresta', ponte: 'strada', miniera: 'grotta', fattoria: 'villaggio', lago: 'palude' };
 const ao = (pg, m = 'o', f = 'a') => (pg && pg.genere === 'f' ? f : m); // pronto/pronta, morto/morta
+const GRUPPO = ['tutti', 'gruppo', 'party', 'tutto il gruppo', 'il gruppo'];
 const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
 
 class Draghi {
@@ -103,10 +105,14 @@ class Draghi {
     const n = norm(nome);
     if (!n) return -1;
     let k = this.pg.findIndex((p) => p && norm(p.nome) === n);
-    if (k < 0) k = this.pg.findIndex((p) => p && (norm(p.nome).startsWith(n) || n.startsWith(norm(p.nome).split(' ')[0])));
+    // solo il nome (o l'inizio del nome completo): "Aldo" trova "Aldo Ferri", ma "Aldo il fabbro" (un personaggio non
+    // giocante) non deve trovare il personaggio Aldo
+    if (k < 0) k = this.pg.findIndex((p) => p && `${norm(p.nome)} `.startsWith(`${n} `));
     return k;
   }
-  chiDi(chi) { const n = norm(chi); if (['tutti', 'gruppo', 'party', 'tutto il gruppo'].includes(n) || !n) return this.pgVivi(); const k = this.postoDi(chi); return k >= 0 ? [k] : []; }
+  chiDi(chi) { const n = norm(chi); if (GRUPPO.includes(n) || !n) return this.pgVivi(); const k = this.postoDi(chi); return k >= 0 ? [k] : []; }
+  // per gli eventi che toccano un personaggio solo (morte, ispirazione, oggetti persi): serve il suo nome, se no niente
+  unoDi(chi) { const n = norm(chi); return n && !GRUPPO.includes(n) ? this.postoDi(chi) : -1; }
   umano(p) { return !this.bot[p]; }
 
   // ---------- chi deve agire (per il server) ----------
@@ -409,9 +415,14 @@ class Draghi {
         else if (t === 'cura') for (const k of chi) { const pg = this.pg[k]; const q = R.cura(pg, R.tira(e.cura || '1d8').totale); this.scrivi('tiro', `${pg.nome} recupera ${q} punti ferita.`, { posto: k }); }
         else if (t === 'condizione') for (const k of chi) { const pg = this.pg[k]; const c = norm(e.condizione); if (!B.CONDIZIONI[c]) continue; if (e.togli) pg.condizioni = pg.condizioni.filter((x) => x !== c); else if (!pg.condizioni.includes(c)) pg.condizioni.push(c); if (c === 'esausto' && !e.togli) pg.esaurimento = Math.min(6, pg.esaurimento + 1); }
         else if (t === 'oggetto') for (const k of chi.slice(0, 1)) this.daiOggetto(this.pg[k], e);
-        else if (t === 'perdiOggetto') for (const k of chi.slice(0, 1)) { const pg = this.pg[k]; const o = pg.oggetti.find((x) => norm(x.nome) === norm(e.nome)) || pg.oggetti.find((x) => norm(x.nome).includes(norm(e.nome))); if (o) { o.n -= Math.max(1, Number(e.n) || 1); if (o.n <= 0) pg.oggetti = pg.oggetti.filter((x) => x !== o); } }
-        else if (t === 'oro') { const q = Math.round(Number(e.quantita) || 0); const lista = chi.length > 1 ? chi : chi; if (lista.length > 1) { const parte = Math.floor(q / lista.length); for (const k of lista) this.pg[k].oro = Math.max(0, this.pg[k].oro + parte); this.scrivi('sistema', `${q >= 0 ? '+' : ''}${q} monete d'oro al gruppo (${parte} a testa).`); } else for (const k of lista) { this.pg[k].oro = Math.max(0, this.pg[k].oro + q); this.scrivi('sistema', `${this.pg[k].nome}: ${q >= 0 ? '+' : ''}${q} monete d'oro.`); } }
-        else if (t === 'px') this.daiPx(Math.max(0, Math.min(100000, Math.round(Number(e.quantita) || 0))), e.motivo);
+        else if (t === 'perdiOggetto') for (const k of [this.unoDi(e.chi)].filter((x) => x >= 0)) { const pg = this.pg[k]; const o = pg.oggetti.find((x) => norm(x.nome) === norm(e.nome)) || pg.oggetti.find((x) => norm(x.nome).includes(norm(e.nome))); if (o) { o.n -= Math.max(1, Number(e.n) || 1); if (o.n <= 0) pg.oggetti = pg.oggetti.filter((x) => x !== o); } }
+        else if (t === 'oro') {
+          // un nome che non è di nessuno: le monete vanno al gruppo (prima sparivano); il resto della divisione ai primi
+          const q = Math.max(-1e6, Math.min(this.tettoOro(), Math.round(Number(e.quantita) || 0)));
+          const lista = chi.length ? chi : this.pgVivi();
+          if (lista.length > 1) { const parte = Math.trunc(q / lista.length), resto = q - parte * lista.length; lista.forEach((k, j) => { this.pg[k].oro = Math.max(0, this.pg[k].oro + parte + (j < Math.abs(resto) ? Math.sign(resto) : 0)); }); this.scrivi('sistema', `${q >= 0 ? '+' : ''}${q} monete d'oro al gruppo (${resto ? `circa ${parte}` : parte} a testa).`); } else for (const k of lista) { this.pg[k].oro = Math.max(0, this.pg[k].oro + q); this.scrivi('sistema', `${this.pg[k].nome}: ${q >= 0 ? '+' : ''}${q} monete d'oro.`); }
+        }
+        else if (t === 'px') this.daiPx(Math.max(0, Math.min(this.tettoPx(), Math.round(Number(e.quantita) || 0))), e.motivo);
         else if (t === 'riposo') this.riposa(e.durata === 'lungo' ? 'lungo' : 'breve');
         else if (t === 'luogo') {
           const l = MAP.aggiungiLuogo(this.mondo, { nome: e.nome, tipo: e.luogoTipo || e.tipoLuogo || e.categoria, descrizione: e.descrizione, vicinoA: this.posizione }, Math.random);
@@ -419,12 +430,17 @@ class Draghi {
         }
         else if (t === 'png') { const nome = String(e.nome || '').slice(0, 40); if (!nome) continue; const x = this.png.find((q) => norm(q.nome) === norm(nome)); const d = { nome, descrizione: String(e.descrizione || (x && x.descrizione) || '').slice(0, 400), atteggiamento: ['amico', 'neutrale', 'ostile'].includes(e.atteggiamento) ? e.atteggiamento : (x ? x.atteggiamento : 'neutrale') }; if (x) Object.assign(x, d); else this.png.push(d); if (this.png.length > 60) this.png.shift(); }
         else if (t === 'missione') { const titolo = String(e.titolo || '').slice(0, 80); if (!titolo) continue; const x = this.missioni.find((q) => norm(q.titolo) === norm(titolo)); const st = ['nuova', 'aggiornata', 'completata', 'fallita'].includes(e.stato) ? e.stato : 'nuova'; if (x) { x.stato = st === 'nuova' ? 'aggiornata' : st; if (e.descrizione) x.descrizione = String(e.descrizione).slice(0, 400); } else this.missioni.push({ titolo, descrizione: String(e.descrizione || '').slice(0, 400), stato: st }); this.scrivi('sistema', `📜 Missione ${st === 'completata' ? 'completata' : st === 'fallita' ? 'fallita' : st === 'aggiornata' ? 'aggiornata' : 'nuova'}: ${titolo}`); }
-        else if (t === 'ispirazione') for (const k of chi.slice(0, 1)) { this.pg[k].ispirazione = true; this.scrivi('sistema', `✨ ${this.pg[k].nome} riceve l'ispirazione!`); }
-        else if (t === 'morte') for (const k of chi.slice(0, 1)) { this.pg[k].morto = true; this.pg[k].pf = 0; this.scrivi('sistema', `💀 ${this.pg[k].nome} è mort${ao(this.pg[k])}.`); }
+        else if (t === 'ispirazione') for (const k of [this.unoDi(e.chi)].filter((x) => x >= 0)) { this.pg[k].ispirazione = true; this.scrivi('sistema', `✨ ${this.pg[k].nome} riceve l'ispirazione!`); }
+        else if (t === 'morte') for (const k of [this.unoDi(e.chi)].filter((x) => x >= 0 && !this.pg[x].morto)) { this.pg[k].morto = true; this.pg[k].pf = 0; this.scrivi('sistema', `💀 ${this.pg[k].nome} è mort${ao(this.pg[k])}.`); }
       } catch (err) { /* un evento sbagliato non ferma gli altri */ }
     }
     for (const pg of this.pg) if (pg) R.ricalcola(pg);
   }
+  // i tetti ai regali del master (un giocatore può scrivere «trovo un milione di monete» e l'IA assecondarlo):
+  // l'esperienza di un evento fa salire al massimo di un livello, l'oro cresce col livello del gruppo
+  livelloMedio() { const v = this.pgVivi(); return Math.max(1, Math.round(v.reduce((s, i) => s + this.pg[i].livello, 0) / Math.max(1, v.length))); }
+  tettoPx() { const l = Math.min(19, this.livelloMedio()); return Math.max(100, R.PX_LIVELLO[l] - R.PX_LIVELLO[l - 1]); }
+  tettoOro() { const l = this.livelloMedio(); return Math.max(250, 250 * l * l); }
   daiOggetto(pg, e) {
     const nome = String(e.nome || '').slice(0, 60);
     if (!nome) return;
@@ -584,18 +600,19 @@ class Draghi {
     if (!cb) return;
     if (this.cp) this.rumoreInCombattimento();
     if (cb.attivo && !cb.attivo.pg && this.prossimaMossaMostro < Date.now() + 600) this.prossimaMossaMostro = Date.now() + 900;
-    // racconto del round appena finito (in sottofondo, il combattimento non aspetta)
-    if (cb.round > this.roundRaccontato && this.chiave && this.fetch && !this.attesaRacconto && !this.dmUmano) {
-      const r = this.roundRaccontato; this.roundRaccontato = cb.round;
-      const fatti = cb.eventi.filter((e) => e.round === r && e.testo && !['turno', 'round'].includes(e.tipo)).map((e) => e.testo).slice(-30);
+    // racconto dei round appena finiti, due alla volta (in sottofondo, il combattimento non aspetta): un racconto per
+    // ogni round faceva tante chiamate a Gemini e finiva presto il limite di richieste
+    if (cb.round >= this.roundRaccontato + ROUND_PER_RACCONTO && this.chiave && this.fetch && !this.attesaRacconto && !this.dmUmano) {
+      const r = this.roundRaccontato, fino = cb.round - 1; this.roundRaccontato = cb.round;
+      const fatti = cb.eventi.filter((e) => e.round >= r && e.round <= fino && e.testo && !['turno', 'round'].includes(e.tipo)).map((e) => e.testo).slice(-40);
       if (fatti.length) {
         this.attesaRacconto = true;
-        const msg = `Combattimento in corso (round ${r}). Ecco cosa è successo secondo le regole (già deciso, non cambiarlo):\n${fatti.join('\n')}\nRaccontalo in modo vivido e cinematografico, in 3-6 frasi, senza aggiungere esiti diversi. Rispondi in JSON con solo {"narrazione": "…"}.`;
+        const msg = `Combattimento in corso (${r === fino ? `round ${r}` : `round ${r}-${fino}`}). Ecco cosa è successo secondo le regole (già deciso, non cambiarlo):\n${fatti.join('\n')}\nRaccontalo in modo vivido e cinematografico, in 3-6 frasi, senza aggiungere esiti diversi. Rispondi in JSON con solo {"narrazione": "…"}.`;
         MASTER.chiamaGemini({ chiave: this.chiave, sistema: this.sistema(), messaggi: [{ ruolo: 'giocatori', testo: `${this.contesto()}\n\n=== ADESSO ===\n${msg}` }], fetch: this.fetch, maxToken: 1200 })
           .then((x) => { this.attesaRacconto = false; if (!x.errore) this.raccontoPronto = MASTER.leggiRisposta(x.testo); })
           .catch(() => { this.attesaRacconto = false; });
       }
-    } else if (cb.round > this.roundRaccontato) this.roundRaccontato = cb.round;
+    } else if (cb.round > this.roundRaccontato && (!this.chiave || !this.fetch || this.dmUmano)) this.roundRaccontato = cb.round;
     if (cb.finito) this.prossimaMossaMostro = Date.now() + 1500;
   }
   fineCombattimento() {

@@ -104,7 +104,8 @@ async function chiamaGemini({ chiave, sistema, messaggi, fetch: f, temperatura =
         signal: ctl ? ctl.signal : undefined,
       });
       if (res.status === 404) { log.warn(`[draghi] il modello ${modelli[i]} non c'è: provo il prossimo`); continue; }
-      if (res.status === 429) return { errore: 'Google dice che ci sono troppe richieste: riprovo tra poco', riprova: true };
+      // troppe richieste: il limite è per modello, quindi si prova il prossimo (di solito il "lite" ha ancora spazio)
+      if (res.status === 429) { log.warn(`[draghi] troppe richieste per ${modelli[i]}: provo il prossimo`); if (i < modelli.length - 1) continue; return { errore: 'Google dice che ci sono troppe richieste: riprovo tra poco', riprova: true }; }
       if (!res.ok) { log.warn(`[draghi] Gemini ha risposto ${res.status}`); if (i < modelli.length - 1) continue; return { errore: `il master non risponde (errore ${res.status})`, riprova: true }; }
       const dati = await res.json();
       const c = dati && Array.isArray(dati.candidates) ? dati.candidates[0] : null;
@@ -128,8 +129,21 @@ function leggiRisposta(testo) {
   if (a >= 0 && b > a) {
     try { const o = JSON.parse(t.slice(a, b + 1)); if (o && typeof o === 'object') return normalizza(o); } catch (e) { /* si prova sotto */ }
   }
+  // JSON rotto (di solito la risposta si è interrotta a metà): si salva il racconto, senza far vedere (e leggere alla
+  // voce narrante) le chiavi del JSON
+  if (/^\s*\{\s*"/.test(t)) return normalizza({ narrazione: narrazioneDa(t) || '…' });
   // non è JSON: tutto il testo è narrazione
   return normalizza({ narrazione: String(testo || '').replace(/[{}]/g, '').trim() || '…' });
+}
+// il valore di "narrazione" da un JSON interrotto: fino alle virgolette di chiusura, o fino a dove arriva (e allora
+// si taglia all'ultima frase finita)
+function narrazioneDa(t) {
+  const m = t.match(/"(?:narrazione|racconto|testo)"\s*:\s*"((?:[^"\\]|\\.)*)("?)/);
+  if (!m) return '';
+  let v = m[1].replace(/\\$/, '');
+  try { v = JSON.parse(`"${v}"`); } catch (e) { v = v.replace(/\\n/g, '\n').replace(/\\"/g, '"').replace(/\\(.)/g, '$1'); }
+  if (!m[2]) { const fine = Math.max(v.lastIndexOf('. '), v.lastIndexOf('! '), v.lastIndexOf('? '), v.lastIndexOf('\n'), v.lastIndexOf('»')); v = fine > 40 ? v.slice(0, fine + 1) : `${v}…`; }
+  return v.trim();
 }
 const arr = (x) => (Array.isArray(x) ? x : x ? [x] : []);
 function normalizza(o) {
@@ -173,7 +187,7 @@ function masterRiserva(stato) {
     if (ok) out.eventi.push({ tipo: 'oro', chi: 'gruppo', quantita: 10 + Math.floor(Math.random() * 40) });
     return out;
   }
-  if (stato.inizio) { out.narrazione = stato.pazza ? `L'avventura comincia a ${stato.luogo || 'un villaggio di confine'}, dove il sindaco è una capra con il cappello e qualcuno ha rubato tutte le mutande del paese. Chi le ritroverà avrà una ricompensa e, forse, un po' di dignità.` : `L'avventura comincia a ${stato.luogo || 'un piccolo villaggio di confine'}. Voci parlano di sparizioni nei boschi e di una ricompensa per chi indagherà.`; out.eventi.push({ tipo: 'missione', titolo: 'Le sparizioni', descrizione: 'Scoprire cosa succede nei boschi.', stato: 'nuova' }); return out; }
+  if (stato.inizio) { out.narrazione = stato.pazza ? `L'avventura comincia a ${stato.luogo || 'un villaggio di confine'}, dove il sindaco è una capra con il cappello e qualcuno ha rubato tutte le mutande del paese. Chi le ritroverà avrà una ricompensa e, forse, un po' di dignità.` : `L'avventura comincia a ${stato.luogo || 'un piccolo villaggio di confine'}. Voci parlano di sparizioni nei boschi e di una ricompensa per chi indagherà.`; out.eventi.push(stato.pazza ? { tipo: 'missione', titolo: 'Le mutande perdute', descrizione: 'Ritrovare le mutande rubate al paese (e un po\' di dignità).', stato: 'nuova' } : { tipo: 'missione', titolo: 'Le sparizioni', descrizione: 'Scoprire cosa succede nei boschi.', stato: 'nuova' }); return out; }
   out.narrazione = r.n;
   if (r.combatti && Math.random() < 0.6) { const L = stato.livello || 1; const extra = L >= 5 ? ['orco', 'ogre'] : []; out.combattimento = { nemici: [...r.combatti, ...extra].map((id) => ({ id })), scena: r.scena, luce: r.scena === 'cripta' ? 'buio' : 'giorno' }; out.atmosfera = 'battaglia'; }
   else if (r.prova) out.prove.push({ chi: 'tutti', tipo: r.prova[0], cd: r.prova[1], motivo: 'per capire cosa fare' });
