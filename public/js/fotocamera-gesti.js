@@ -68,18 +68,20 @@
   const triste = (e, soglia = 0.3) => tristezza(e) > soglia;
   // la faccia triste che impara chi guarda: c'è chi ha la bocca un po' all'ingiù anche da calmo
   function creaTristezza({ scarto = 0.18, minimo = 0.25 } = {}) {
-    let riposo = null;
+    let riposo = null, prova = '';
     return {
       aggiungi(e) {
         if (!e) return false;
         const t = tristezza(e);
         if (riposo == null) riposo = Math.min(t, minimo);
         const si = t > minimo && t - riposo > scarto;
+        prova = `${t.toFixed(2)} (serve ${Math.max(minimo, riposo + scarto).toFixed(2)})`;
         if (t < riposo) riposo += (t - riposo) * 0.1;
         else if (!si && t < riposo + scarto / 2) riposo += (t - riposo) * 0.02;
         return si;
       },
       get riposo() { return riposo; },
+      get prova() { return prova; },
     };
   }
   // bocca aperta: la mascella giù ("Huh?")
@@ -100,18 +102,20 @@
   // gli occhi socchiusi che imparano chi guarda: chi ha gli occhi a mandorla (o gli occhiali) li ha sempre "mezzi
   // chiusi" per MediaPipe; si impara quanto, e conta solo stringerli di più
   function creaSocchiusi() {
-    let riposo = null;
+    let riposo = null, prova = '';
     return {
       aggiungi(e) {
         if (!e) return false;
         const m = ((e.eyeBlinkLeft || 0) + (e.eyeBlinkRight || 0)) / 2;
         if (riposo == null) riposo = Math.min(m, 0.3);
         const si = occhiSocchiusi(e, riposo);
+        prova = `${m.toFixed(2)} (serve ${Math.max(0.3, riposo + 0.2).toFixed(2)}–0.85)`;
         if (m < riposo) riposo += (m - riposo) * 0.1;
         else if (!si && m < riposo + 0.15) riposo += (m - riposo) * 0.02;
         return si;
       },
       get riposo() { return riposo; },
+      get prova() { return prova; },
     };
   }
 
@@ -151,7 +155,7 @@
   // chiusa. Si tiene il valore di riposo (scende subito, sale piano e solo con la faccia normale) e scatta quando la
   // parte rossa è lunga almeno "scarto" più del solito. aggiungi(px, w, h, k, e) → true con la lingua fuori.
   function creaLingua({ scarto = 0.045, minimo = 0.08 } = {}) {
-    let riposo = null;
+    let riposo = null, prova = '';
     return {
       aggiungi(px, w, h, k, e) {
         if (e && (e.tongueOut || 0) > 0.15) return true;
@@ -159,11 +163,13 @@
         if (m == null) return false;
         if (riposo == null) riposo = Math.min(m, minimo); // se si parte con la lingua fuori, il riposo non resta alto
         const fuori = m > minimo && m - riposo > scarto;
+        prova = `${m.toFixed(3)} (serve ${Math.max(minimo, riposo + scarto).toFixed(3)})`;
         if (m < riposo) riposo += (m - riposo) * 0.2;
         else if (!fuori && m < riposo + scarto / 2) riposo += (m - riposo) * 0.02;
         return fuori;
       },
       get riposo() { return riposo; },
+      get prova() { return prova; },
     };
   }
 
@@ -180,11 +186,12 @@
   const apertura = (k, su, giu, a, b) => Math.hypot(k[su].x - k[giu].x, k[su].y - k[giu].y) / (Math.hypot(k[a].x - k[b].x, k[a].y - k[b].y) || 0.0001);
   const uno = (a, b) => Math.max(a, b) > 0.55 && Math.min(a, b) < 0.35 && Math.abs(a - b) > 0.3;
   function creaOcchiolino() {
-    let rs = null, rd = null; // apertura di riposo (occhi aperti) di sinistro e destro
+    let rs = null, rd = null, prova = ''; // apertura di riposo (occhi aperti) di sinistro e destro
     return {
       aggiungi(e, k) {
         if (!e) return false;
         const s = e.eyeBlinkLeft || 0, d = e.eyeBlinkRight || 0;
+        prova = `MediaPipe ${s.toFixed(2)} / ${d.toFixed(2)}`;
         if (occhiolino(e)) return true;
         if (!k || k.length < 387) return false;
         const as = apertura(k, 159, 145, 33, 133), ad = apertura(k, 386, 374, 362, 263);
@@ -194,9 +201,12 @@
         }
         if (rs == null || rd == null) return false;
         const chiuso = (a, r) => Math.min(1, Math.max(0, (1 - a / r) / 0.65));
-        return uno((s + chiuso(as, rs)) / 2, (d + chiuso(ad, rd)) / 2);
+        const cs = (s + chiuso(as, rs)) / 2, cd = (d + chiuso(ad, rd)) / 2;
+        prova += `, insieme ${cs.toFixed(2)} / ${cd.toFixed(2)} (serve uno >0.55 e l'altro <0.35)`;
+        return uno(cs, cd);
       },
       get riposo() { return rs == null ? null : [rs, rd]; },
+      get prova() { return prova; },
     };
   }
 
@@ -204,23 +214,47 @@
   // possono far sembrare le sopracciglia sempre un po' giù: si impara piano piano il valore di riposo di chi guarda e
   // conta solo quanto si aggrotta in più. Restituisce un oggetto con aggiungi(espressioni) → true se arrabbiato.
   function creaRabbia({ scarto = 0.22, minimo = 0.3, lento = 0.03 } = {}) {
-    let riposo = null;
+    let riposo = null, prova = '';
     return {
       aggiungi(e) {
         if (!e) return false;
         const v = (k) => e[k] || 0;
         const giu = (v('browDownLeft') + v('browDownRight')) / 2 + 0.5 * (v('noseSneerLeft') + v('noseSneerRight')) / 2;
         const sorriso = (v('mouthSmileLeft') + v('mouthSmileRight')) / 2;
-        if (riposo == null) riposo = giu;
+        // se all'inizio sei già accigliato il riposo non parte troppo alto (scende poi in fretta sulla faccia calma)
+        if (riposo == null) riposo = Math.min(giu, minimo);
         const arrabbiato = giu - riposo > scarto && giu > minimo && sorriso < 0.3;
-        if (!arrabbiato && giu < riposo + scarto / 2) riposo += (giu - riposo) * lento; // il riposo segue solo la faccia calma
+        prova = `${giu.toFixed(2)} (serve ${Math.max(minimo, riposo + scarto).toFixed(2)})`;
+        if (giu < riposo) riposo += (giu - riposo) * 0.1;
+        else if (!arrabbiato && giu < riposo + scarto / 2) riposo += (giu - riposo) * lento; // il riposo segue solo la faccia calma
         return arrabbiato;
       },
       get riposo() { return riposo; },
+      get prova() { return prova; },
     };
   }
 
-  const api = { ditoAlzato, crea67, movimento, creaRabbia, tristezza, triste, creaTristezza, boccaAperta, misuraLingua, linguaFuori, creaLingua, occhiSocchiusi, creaSocchiusi, occhiolino, creaOcchiolino };
+  // testa girata di lato: il naso (punto 1) rispetto ai lati del viso (234 e 454). Dritta ≈ 0,5; girata molto → gli
+  // occhi e la bocca si vedono storti e i gesti del viso scatterebbero da soli. Torna quanto è girata (0 = dritta).
+  function girata(k) {
+    if (!k || k.length < 455) return 0;
+    const larga = k[454].x - k[234].x;
+    if (Math.abs(larga) < 0.0001) return 1;
+    return Math.abs((k[1].x - k[234].x) / larga - 0.5);
+  }
+  const testaGirata = (k, soglia = 0.2) => girata(k) > soglia;
+  // con più facce davanti si segue la più grande (la più vicina), non una a caso. Torna il suo indice (-1 se nessuna).
+  function facciaPiuGrande(facce) {
+    let i = -1, max = 0;
+    (facce || []).forEach((k, j) => {
+      if (!k || k.length < 455) return;
+      const a = Math.abs(k[454].x - k[234].x) * Math.abs(k[152].y - k[10].y);
+      if (a > max) { max = a; i = j; }
+    });
+    return i;
+  }
+
+  const api = { ditoAlzato, crea67, movimento, creaRabbia, tristezza, triste, creaTristezza, boccaAperta, misuraLingua, linguaFuori, creaLingua, occhiSocchiusi, creaSocchiusi, occhiolino, creaOcchiolino, girata, testaGirata, facciaPiuGrande };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else radice.FotocameraGesti = api;
 })(typeof window !== 'undefined' ? window : globalThis);

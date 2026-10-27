@@ -136,6 +136,23 @@ assert.ok(L.aggiungi(...viso(50, 66), {}), 'con la lingua fuori: sì');
 L = G.creaLingua();
 assert.ok(L.aggiungi(...viso(50, 66), {}), 'anche se si parte già con la lingua fuori');
 
+// testa girata: i gesti del viso non contano
+const dritto = Array.from({ length: 478 }, () => ({ x: 0.5, y: 0.5 }));
+dritto[234] = { x: 0.4, y: 0.5 }; dritto[454] = { x: 0.6, y: 0.5 }; dritto[1] = { x: 0.5, y: 0.5 }; dritto[10] = { x: 0.5, y: 0.35 }; dritto[152] = { x: 0.5, y: 0.65 };
+assert.ok(!G.testaGirata(dritto), 'testa dritta: no');
+assert.ok(G.testaGirata(dritto.map((p, i) => (i === 1 ? { x: 0.57, y: 0.5 } : p))), 'naso quasi sul lato: testa girata');
+// più facce: si segue la più grande (la più vicina)
+const piccola = dritto.map((p) => ({ x: 0.5 + (p.x - 0.5) / 3, y: 0.5 + (p.y - 0.5) / 3 }));
+assert.strictEqual(G.facciaPiuGrande([piccola, dritto]), 1, 'la faccia più vicina');
+assert.strictEqual(G.facciaPiuGrande([]), -1, 'nessuna faccia');
+// arrabbiato: se si parte già accigliati, poi con la faccia calma non resta "sordo"
+R = G.creaRabbia();
+for (let i = 0; i < 5; i++) R.aggiungi(cattivo);
+for (let i = 0; i < 30; i++) R.aggiungi(calmo);
+assert.ok(R.aggiungi(cattivo), 'partito accigliato: poi l\'arrabbiato scatta lo stesso');
+// i numeri per !foto prova
+assert.ok(/serve/.test(R.prova) && /serve/.test(L.prova) && /serve/.test(SC.prova) && /serve/.test(T.prova) && /MediaPipe/.test(O.prova), 'ogni gesto dice il suo valore e la soglia');
+
 // ENRICO PAPI: il video si chiude con la X in alto a destra
 const ese = fs.readFileSync(path.join(__dirname, '../public/js/esecuzione.js'), 'utf8');
 assert.ok(/ex-papi-chiudi/.test(ese) && /\.ex-papi-chiudi \{[^}]*top:[^}]*right:/.test(fs.readFileSync(path.join(__dirname, '../public/nuovi.css'), 'utf8')), 'X per chiudere Enrico Papi in alto a destra');
@@ -157,7 +174,14 @@ for (const nome of gatti) assert.ok(fs.existsSync(path.join(pub, `fotocamera/gat
 const app = fs.readFileSync(path.join(pub, 'js/app.js'), 'utf8');
 assert.strictEqual((app.match(/Fotocamera\.comando\(t\)/g) || []).length, 3, '!foto in tutte e tre le chat');
 assert.ok(fs.readFileSync(path.join(__dirname, '../server.js'), 'utf8').includes("'!foto':"), '!foto in !comandi');
-assert.ok(/function comando\(testo\)[\s\S]*\^!foto\$/.test(js), '!foto solo come messaggio intero');
+assert.ok(/function comando\(testo\)[\s\S]*\^!foto\( prova\)\?\$/.test(js), '!foto (o !foto prova) solo come messaggio intero');
+// la fotocamera non si apre due volte (doppio clic o !foto mentre il browser chiede il permesso: una resterebbe accesa)
+assert.ok(/if \(flusso \|\| accensione\) return;/.test(js), 'una sola accensione alla volta');
+assert.ok(/addEventListener\('ended'/.test(js), 'si accorge se la fotocamera si stacca');
+assert.ok(/Promise\.allSettled/.test(js) && /rifai/.test(js), 'mani e viso caricati insieme, ognuno per conto suo, e ripartono col processore');
+// Enrico Papi: chiudendolo tutti, il gioco riparte
+const srv = fs.readFileSync(path.join(__dirname, '../server.js'), 'utf8');
+assert.ok(/socket\.on\('papiChiuso'/.test(srv) && /emit\('papiChiuso'\)/.test(app), 'Enrico Papi: chiuso da tutti, il gioco riparte');
 assert.ok(!/https?:\/\//.test(js), 'la fotocamera non scarica niente da fuori');
 assert.ok(!/frame-src/.test(S.CSP), 'CSP: niente riquadri da altri siti');
 assert.ok(!/socket|fetch\([^)]*method: 'POST'/.test(js), 'la fotocamera non manda niente al server');

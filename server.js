@@ -371,7 +371,7 @@ const AIUTO_COMANDI = {
   '!restart': 'propone di ricominciare la partita da capo (se qualcosa è andato storto): decide la maggioranza del tavolo',
   '!fantasia': 'seguito da una domanda (per esempio !fantasia chi ha inventato il computer?): risponde fantasIA, la mini IA del sito. Una domanda ogni 20 secondi, al massimo 100 al giorno per tutto il sito',
   '!revive': 'in Draghi e Segrete riporta in vita i personaggi morti, con tutti i punti ferita e le stesse cose che avevano',
-  '!foto': 'accende (o spegne) la Fotocamera magica solo per te: ti vedi in una finestrella da spostare dove vuoi e i gatti reagiscono ai tuoi gesti',
+  '!foto': 'accende (o spegne) la Fotocamera magica solo per te: ti vedi in una finestrella da spostare dove vuoi e i gatti reagiscono ai tuoi gesti (!foto prova mostra i numeri dei gesti)',
   '!comandi': 'mostra questo elenco',
   // il 67 non si elenca: è un easter egg che si scopre giocando
 };
@@ -445,6 +445,7 @@ function videoPapi(s, posto) {
   }
   s.esecuzioneFino = ora + PAPI_MS;
   s.esecuzioneTipo = 'papi';
+  s.papiChiusi = new Set(); // chi ha già chiuso il video con la ✕: quando l'hanno chiuso tutti, il gioco riparte
   messaggioSistema(s, `🚗 ${g.nome} ha chiamato Enrico Papi`);
   io.to(s.codice).emit('papi', { nome: g.nome, durata: PAPI_MS });
   aggiorna(s);
@@ -1182,6 +1183,17 @@ io.on('connection', (socket) => {
   });
 
   // Boss Key: il giocatore è sulla pagina delle dispense (o è tornato)
+  // ENRICO PAPI: la ✕ chiude il video per chi la preme; quando l'hanno chiuso tutte le persone che lo stanno vedendo
+  // (non i computer, non chi è sulle dispense o scollegato) il gioco riparte subito, senza aspettare la fine
+  socket.on('papiChiuso', () => {
+    const s = stanza;
+    const i = mioPosto();
+    if (!s || i === -1 || s.esecuzioneTipo !== 'papi' || !inEsecuzione(s) || !s.papiChiusi) return;
+    s.papiChiusi.add(i);
+    const guardano = s.posti.map((g, j) => (g && !g.bot && presente(g) && !g.nascosto ? j : -1)).filter((j) => j >= 0);
+    if (guardano.every((j) => s.papiChiusi.has(j))) { s.esecuzioneFino = Date.now(); s.papiChiusi = null; aggiorna(s); }
+  });
+
   socket.on('boss', (attivo) => {
     const s = stanza;
     const i = mioPosto();
