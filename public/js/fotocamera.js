@@ -1,6 +1,6 @@
 // FOTOCAMERA MAGICA: dalla home accendi la fotocamera (solo se la attivi tu, il browser chiede il permesso) e ti vedi.
 // Il sito reagisce a cosa fai: ogni gesto mette un gatto davanti a te (dito alzato, lingua fuori, bocca aperta, faccia
-// arrabbiata, occhiolino, occhi socchiusi, faccia triste, fermo per qualche secondo), con un "miao" se l'audio è acceso.
+// arrabbiata, occhiolino, occhi socchiusi, faccia triste); se non fai niente vedi solo te stesso. Con un "miao" se l'audio è acceso.
 // Le immagini restano nel browser: mani e viso li riconosce MediaPipe qui dentro (file serviti dal sito, niente
 // CDN), niente viene inviato al server né salvato (📸 scarica la foto solo sul tuo dispositivo). Si accende dalla home
 // o con !foto in chat (!foto prova mostra i numeri dei gesti); è una finestrella che si sposta trascinandola, così si
@@ -8,13 +8,11 @@
 window.Fotocamera = (() => {
   const G = window.FotocameraGesti;
   const $ = (s) => document.querySelector(s);
-  const FERMO_MS = 3000; // quanto stare fermi per il gatto soldato
-  const PRESENTE_MS = 2000; // il gatto soldato solo se da poco si è vista una faccia o una mano (non con la stanza vuota)
   const ERRORI_MAX = 5; // errori di fila di MediaPipe prima di ripartire senza scheda grafica (o arrendersi)
   let flusso = null, accensione = false, giro = 0, caricamento = null;
   // i due riconoscitori: { lavoro, delegate ('GPU'|'CPU'), errori, rifai() } oppure null se non disponibili
   const ric = { mani: null, viso: null };
-  let ultimoGiro = 0, ultimaFoto = 0, grigiPrima = null, fermoDa = 0, turno = 0, intervallo = 66, tempoMedio = 0, misure = 0;
+  let ultimoGiro = 0, ultimaFoto = 0, turno = 0, intervallo = 66, tempoMedio = 0, misure = 0;
   let conti = {}, volte = {}, gestoPrima = null, espressioni = null, puntiViso = null, trovate = [];
   let avvisoFino = 0, visoVistoA = 0, maniVisteA = 0, visoMaiVisto = true, provaCPU = 0, accesaA = 0, luce = 128, base = '', prova = false, provaA = 0;
   const NESSUNA = { dito: false, lingua: false, aperta: false, occhiolino: false, arrabbiato: false, socchiusi: false, triste: false };
@@ -24,9 +22,9 @@ window.Fotocamera = (() => {
   const impara = () => { rabbia = G.creaRabbia(); lingua = G.creaLingua(); occhio = G.creaOcchiolino(); socchiusi = G.creaSocchiusi(); tristezza = G.creaTristezza(); };
   impara();
   // cosa scrivere quando un gesto è riconosciuto (così si capisce cosa ha visto)
-  const NOMI = { dito: '☝️ Dito alzato', lingua: '😛 Lingua fuori', aperta: '😮 Bocca aperta', arrabbiato: '😠 Arrabbiato', occhiolino: '😉 Occhiolino', socchiusi: '😑 Occhi socchiusi', triste: '😢 Triste', fermo: '🧍 Fermo' };
+  const NOMI = { dito: '☝️ Dito alzato', lingua: '😛 Lingua fuori', aperta: '😮 Bocca aperta', arrabbiato: '😠 Arrabbiato', occhiolino: '😉 Occhiolino', socchiusi: '😑 Occhi socchiusi', triste: '😢 Triste' };
   // i gatti per ogni gesto (foto in public/fotocamera/gatto-<nome>.jpg); se sono due si alternano, uno per volta
-  const GATTI = { dito: ['dito'], lingua: ['lingua', 'lingua2'], aperta: ['huh'], arrabbiato: ['arrabbiato'], occhiolino: ['occhiolino'], socchiusi: ['giudice'], triste: ['triste', 'offeso'], fermo: ['soldato'] };
+  const GATTI = { dito: ['dito'], lingua: ['lingua', 'lingua2'], aperta: ['huh'], arrabbiato: ['arrabbiato'], occhiolino: ['occhiolino'], socchiusi: ['giudice'], triste: ['triste', 'offeso'] };
   const TUTTI = Object.values(GATTI).flat().map((f) => `.fcam-${f}`);
 
   // ---------- finestra ----------
@@ -62,7 +60,6 @@ window.Fotocamera = (() => {
           <li>😉 <b>Occhiolino</b>: il gattino che fa l'occhiolino</li>
           <li>😑 <b>Occhi socchiusi</b>: il gatto che ti giudica</li>
           <li>😢 <b>Faccia triste</b>: il gatto bagnato o quello offeso</li>
-          <li>🧍 <b>Fermo</b> per qualche secondo: il gatto soldato</li>
           <li>🎯 Il sito impara la tua faccia normale nei primi secondi: se un gesto scatta da solo o non scatta, guarda la fotocamera tranquillo e premi 🎯</li>
           <li>📸 Foto ricordo: 3 secondi per fare il gesto, poi la scarica (tu e il gatto)</li>
           <li>💡 Va meglio con la faccia ben illuminata, dritta davanti alla fotocamera e non troppo lontana</li>
@@ -169,15 +166,15 @@ window.Fotocamera = (() => {
       if (flusso !== f) return;
       base = messaggioBase(); stato(base); visoVistoA = maniVisteA = accesaA = performance.now(); // gli 8 secondi contano da qui
     });
-    ultimaFoto = 0; misure = 0; tempoMedio = 0; grigiPrima = null; fermoDa = visoVistoA = maniVisteA = accesaA = performance.now(); visoMaiVisto = true;
+    ultimaFoto = 0; misure = 0; tempoMedio = 0; visoVistoA = maniVisteA = accesaA = performance.now(); visoMaiVisto = true;
     cancelAnimationFrame(giro);
     giro = requestAnimationFrame(passo);
   }
   function messaggioBase() {
     if (ric.mani && ric.viso) return PRONTA;
     if (ric.viso) return '⚠️ Riconoscimento delle mani non disponibile: il dito alzato non funziona.';
-    if (ric.mani) return '⚠️ Riconoscimento del viso non disponibile: funzionano solo il dito alzato e il gatto soldato.';
-    return '⚠️ Riconoscimento non disponibile su questo dispositivo: funziona solo il gatto soldato.';
+    if (ric.mani) return '⚠️ Riconoscimento del viso non disponibile: funziona solo il dito alzato.';
+    return '⚠️ Riconoscimento non disponibile su questo dispositivo: i gatti non possono arrivare.';
   }
 
   // ferma la fotocamera e i gatti; se resta la finestra (fotocamera persa) si può riaccendere col pulsante
@@ -262,12 +259,10 @@ window.Fotocamera = (() => {
     if (!v || v.readyState < 2 || ora - ultimoGiro < intervallo) return;
     ultimoGiro = ora;
 
-    // fermo o in movimento (5 volte al secondo, immagine piccolissima in grigio), e quanta luce c'è
+    // quanta luce c'è (5 volte al secondo, immagine piccolissima in grigio)
     if (ora - ultimaFoto > 200) {
       ultimaFoto = ora;
       const grigi = grigiDi(v);
-      if (G.movimento(grigiPrima, grigi) > 0.02) fermoDa = ora; // un po' di tolleranza: con poca luce l'immagine "frigge"
-      grigiPrima = grigi;
       let somma = 0;
       for (const g of grigi) somma += g;
       luce = somma / grigi.length;
@@ -324,7 +319,7 @@ window.Fotocamera = (() => {
       uscite.triste = dritta && tristezza.aggiungi(espressioni);
     }
     // un solo gatto alla volta, nell'ordine: dito alzato, lingua fuori, bocca aperta, occhiolino, arrabbiato, occhi
-    // socchiusi, faccia triste, fermo (l'occhiolino prima di arrabbiato: facendolo la guancia e il sopracciglio
+    // socchiusi, faccia triste (l'occhiolino prima di arrabbiato: facendolo la guancia e il sopracciglio
     // scendono; arrabbiato prima degli occhi: quando ti arrabbi li stringi)
     const dito = conta('dito', uscite.dito, 3);
     const lin = conta('lingua', uscite.lingua, 3);
@@ -333,11 +328,8 @@ window.Fotocamera = (() => {
     const arrab = conta('arrabbiato', uscite.arrabbiato, 4);
     const socc = conta('socchiusi', uscite.socchiusi, 6); // 6: una sbattuta d'occhi non basta
     const tri = conta('triste', uscite.triste, 4);
-    // fermo: se c'è il riconoscimento, solo con qualcuno davanti (niente gatto soldato con la stanza vuota o la
-    // fotocamera coperta)
-    const qualcuno = !(ric.mani || ric.viso) || ora - Math.max(ric.viso ? visoVistoA : 0, ric.mani ? maniVisteA : 0) < PRESENTE_MS;
-    const fermo = ora - fermoDa > FERMO_MS && qualcuno && luce > 15;
-    const gesto = dito ? 'dito' : lin ? 'lingua' : aperta ? 'aperta' : occ ? 'occhiolino' : arrab ? 'arrabbiato' : socc ? 'socchiusi' : tri ? 'triste' : fermo ? 'fermo' : null;
+    // nessun gesto: nessun gatto, vedi solo te stesso
+    const gesto = dito ? 'dito' : lin ? 'lingua' : aperta ? 'aperta' : occ ? 'occhiolino' : arrab ? 'arrabbiato' : socc ? 'socchiusi' : tri ? 'triste' : null;
     // la riga in basso: il gesto visto, oppure cosa non va (faccia persa, testa girata, poca luce), oppure il messaggio normale
     $('#fcam .fcam-schermo').classList.toggle('fcam-con-gatto', !!gesto);
     if (base && !scatta.conto && ora > avvisoFino) {
@@ -376,12 +368,11 @@ window.Fotocamera = (() => {
       `😠 arrabbiato ${rabbia.prova || '–'}${si('arrabbiato')}`,
       `😑 socchiusi ${socchiusi.prova || '–'}${si('socchiusi')}`,
       `😢 triste ${tristezza.prova || '–'}${si('triste')}`,
-      `🧍 fermo da ${((ora - fermoDa) / 1000).toFixed(1)} s (serve 3)`,
     ].join('\n');
   }
 
   // un piccolo "miao" quando arriva un gatto (ognuno un po' diverso); segue l'audio del sito (🔇 = muto)
-  const TONI = { dito: 780, lingua: 950, aperta: 620, arrabbiato: 420, occhiolino: 1100, socchiusi: 520, triste: 480, fermo: 700 };
+  const TONI = { dito: 780, lingua: 950, aperta: 620, arrabbiato: 420, occhiolino: 1100, socchiusi: 520, triste: 480 };
   let audio = null;
   function muto() {
     const b = document.getElementById('suono');

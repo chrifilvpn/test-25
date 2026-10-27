@@ -39,7 +39,7 @@ assert.strictEqual(prova67((t) => [mano(0.3, 0.6 + onda(t))]), -1, 'una mano sol
 assert.strictEqual(prova67((t) => [mano(0.3, 0.6 + onda(t) / 6), mano(0.7, 0.6 - onda(t) / 6)]), -1, 'tremolio piccolo: niente 67');
 assert.strictEqual(prova67(() => [mano(0.3, 0.6), mano(0.7, 0.6)]), -1, 'mani ferme: niente 67');
 
-// fermo: immagini uguali → 0, tutte cambiate → 1
+// movimento (usato per il 67): immagini uguali → 0, tutte cambiate → 1
 const a = new Uint8Array(768).fill(100), b = new Uint8Array(768).fill(200);
 assert.strictEqual(G.movimento(a, a), 0);
 assert.strictEqual(G.movimento(a, b), 1);
@@ -204,6 +204,8 @@ assert.ok(/function comando\(testo\)[\s\S]*\^!foto\( prova\)\?\$/.test(js), '!fo
 assert.ok(/if \(flusso \|\| accensione\) return;/.test(js), 'una sola accensione alla volta');
 assert.ok(/addEventListener\('ended'/.test(js), 'si accorge se la fotocamera si stacca');
 assert.ok(/Promise\.allSettled/.test(js) && /rifai/.test(js), 'mani e viso caricati insieme, ognuno per conto suo, e ripartono col processore');
+// niente gatto soldato: se non fai niente vedi solo te stesso
+assert.ok(!/soldato|fermo/.test(js.match(/const GATTI = \{([^}]*)\}/)[1]), 'niente gatto da fermo');
 const srv = fs.readFileSync(path.join(__dirname, '../server.js'), 'utf8');
 // i file pesanti di MediaPipe: compressi e tenuti dal browser; il download parte già con la richiesta del permesso
 assert.ok(/function serviPesante\(/.test(srv) && /Content-Encoding': 'gzip'/.test(srv) && /max-age=604800/.test(srv), 'MediaPipe compresso e in cache');
@@ -217,4 +219,4 @@ assert.ok(!/https?:\/\//.test(js), 'la fotocamera non scarica niente da fuori');
 assert.ok(!/frame-src/.test(S.CSP), 'CSP: niente riquadri da altri siti');
 assert.ok(!/socket|fetch\([^)]*method: 'POST'/.test(js), 'la fotocamera non manda niente al server');
 
-console.log('✓ Fotocamera magica: dito alzato, 67 (pronto), fermo, lingua, bocca aperta, arrabbiato (anche con gli occhiali), occhiolino, occhi socchiusi, triste; permessi e file');
+console.log('✓ Fotocamera magica: dito alzato, 67 (pronto), lingua, bocca aperta, arrabbiato (anche con gli occhiali), occhiolino, occhi socchiusi, triste; permessi e file');
