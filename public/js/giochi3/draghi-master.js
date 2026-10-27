@@ -10,7 +10,7 @@
   const T = () => window.DraghiTavolo, CB = () => window.DraghiCampo, IN = () => window.DraghiIncubo;
   const CARATT = { for: 'Forza', des: 'Destrezza', cos: 'Costituzione', int: 'Intelligenza', sag: 'Saggezza', car: 'Carisma' };
   const ATMOSFERE = { '': 'Atmosfera: come prima', calma: '🌙 Calma', tensione: '⚠️ Tensione', mistero: '🔮 Mistero', orrore: '💀 Orrore', festa: '🎉 Festa', viaggio: '🧭 In viaggio', battaglia: '⚔️ Battaglia' };
-  const TIPI_RICHIESTA = { inizio: '📖 La campagna comincia', azioni: '✍️ Cosa fanno i giocatori', esiti: '🎲 I risultati dei tiri', combattimentoFinito: '🏁 Il combattimento è finito' };
+  const TIPI_RICHIESTA = { inizio: '📖 La campagna comincia', azioni: '✍️ Cosa fanno i giocatori', esiti: '🎲 I risultati dei tiri', combattimentoFinito: '🏁 Il combattimento è finito', ripresa: '📂 La campagna riprende' };
   const EVENTI = {
     danno: ['💥', 'Danno', 'dadi, es. 2d6', ''], cura: ['💚', 'Cura', 'dadi, es. 2d4+2', ''], oro: ['🪙', 'Monete d\'oro', 'quante, es. 25', ''], px: ['⭐', 'Esperienza (a testa)', 'quanti PX, es. 100', 'perché'],
     oggetto: ['🎒', 'Oggetto', 'quanti (1)', 'nome dell\'oggetto'], condizione: ['🤢', 'Condizione', 'avvelenato, spaventato, prono…', ''], ispirazione: ['✨', 'Ispirazione', '', ''],
