@@ -8,12 +8,16 @@
 // completare insieme tante TASK (minigiochi ai terminali e ai generatori) e poi scappare sul Torrens. Chi sta fermo è
 // invisibile agli xenomorfi (se non gli sono attaccati), gli xenomorfi sentono i rumori come nuvolette sulla mappa e
 // uccidono con un colpo davanti a sé; il lanciafiamme li stordisce per pochi secondi.
+// Nella classica ci sono anche (opzioni del tavolo) i WORKING JOE e i FACEHUGGER (isolation/creature.js) e gli
+// OBIETTIVI: il generatore dell'Ingegneria vuole il fusibile dei laboratori Lorenz, quello delle Comunicazioni la
+// tessera della Sicurezza (basta che uno di voi li prenda).
 // Il server muove tutto 20 volte al secondo; il browser disegna in 3D (three.js) e muove subito il proprio personaggio
 // (Arena: movimento previsto). Unità: il decimetro (vedi mappa.js).
 const { Arena } = require('../giochi/arena');
 const T_ = require('../giochi/trucco');
 const M = require('./isolation/mappa');
 const AI = require('./isolation/alieno');
+const CR = require('./isolation/creature');
 
 const { T } = M;
 const R_UMANO = 4;
@@ -31,6 +35,9 @@ const GEN_TEMPO = 10; // secondi per riaccendere un generatore
 const FIATO = 4.5; // secondi di fiato trattenuto
 const FIAMMA = { portata: 65, cono: 0.55, durata: 0.7 };
 const BIT = { corre: 1, accucciato: 2, rilevatore: 4, respiro: 8 };
+// gli obiettivi della classica: quale generatore vuole cosa (k tessera, z fusibile)
+const SERVE = { 1: 'z', 2: 'k' };
+const NOMI_CHIAVI = { k: 'la tessera d\'accesso della Sicurezza', z: 'il fusibile dei laboratori Lorenz' };
 const caso = (a, b) => a + Math.random() * (b - a);
 const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const angolo = (a) => { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; };
@@ -62,7 +69,12 @@ class Isolation extends Arena {
       this.durata = ([20, 30, 15].includes(Number(op.durata)) ? Number(op.durata) : 20) * 60;
       this.nAlieni = 1;
       if (op.mostro === 'giocatore' && this.n >= 2) { const p = posto(op.chi); this.mostri.push(p !== null ? p : Math.floor(Math.random() * this.n)); }
+      // gli altri pericoli e gli obiettivi (senza opzioni, come nelle prove, non ci sono)
+      this.nJoe = { pochi: 2, tanti: 4 }[op.androidi] || 0;
+      this.conFacehugger = op.facehugger === 'si';
+      this.obiettivi = op.obiettivi === 'si';
     }
+    if (this.survival) { this.nJoe = 0; this.conFacehugger = false; this.obiettivi = false; }
     this.mostro = this.mostri.length ? this.mostri[0] : null;
     this.etichettaPunti = 'punti';
     this.avvia();
@@ -77,7 +89,7 @@ class Isolation extends Arena {
       this.umani.push({
         k, x: p.x, y: p.y, yaw: 0, pitch: 0, vx: 0, vy: 0, vivo: true, fuggito: false, nascosto: null, sotto: false,
         accucciato: false, corre: false, rilevatore: false, trattiene: false, torcia: true, batteria: 100, carburante: 1, razzi: 1,
-        fiato: FIATO, fiamma: 0, gen: null, bip: 0, passi: 0, mente: { fino: 0 }, morto: null, task: null, botola: null, fermo: 0,
+        fiato: FIATO, fiamma: 0, gen: null, bip: 0, passi: 0, mente: { fino: 0 }, morto: null, task: null, botola: null, fermo: 0, presa: null,
       });
     }
     // gli xenomorfi partono da grate diverse (il primo sopra la mensa)
@@ -106,6 +118,10 @@ class Isolation extends Arena {
       for (let i = 0; i < n; i++) { this.raccolti.push(!scelti.includes(i)); this.ricarica.push(0); }
     }
     this.razzi = []; // { x, y, t }
+    this.joe = CR.nuoviJoe(this.nJoe || 0);
+    this.uova = this.conFacehugger ? CR.nuoveUova() : [];
+    this.facehugger = [];
+    this.chiavi = { k: false, z: false };
     this.rumori = []; // i rumori di questo tick
     this.eventi = [];
     this.cmd = Array.from({ length: this.n }, () => ({ yaw: 0, pitch: 0, k: 0, c: [0, 0, 0, 0], visti: [0, 0, 0, 0] }));
@@ -166,6 +182,7 @@ class Isolation extends Arena {
       for (const t of A.imparato.splice(0)) this.annuncia(null, IMPARATO[t], IMPARATO[t]);
     }
     this.ricarica.forEach((t, i) => { if (t > 0 && (this.ricarica[i] -= dt) <= 0) { this.ricarica[i] = 0; this.raccolti[i] = false; } });
+    CR.passo(this, dt);
     for (const S of this.stazioni) if (S.pausa > 0 && (S.pausa -= dt) <= 0) { Object.assign(S, this.nuovaTask()); this.ev(['stazione', this.stazioni.indexOf(S)]); }
     // fine: tutti fuori o morti, o il tempo è finito
     const inGioco = this.umaniInGioco();
@@ -180,6 +197,7 @@ class Isolation extends Arena {
   porteAperte(dt) {
     const chi = this.umaniInGioco().filter((u) => !this.nascostoDel(u));
     for (const A of this.alieni) if (!A.inCondotto) chi.push(A);
+    for (const J of this.joe || []) chi.push(J);
     M.PORTE.forEach((p, i) => {
       const s = this.porte[i], c = M.centro([p.x, p.y]);
       if (s.bloccata && this.sbloccato) s.bloccata = false;
@@ -198,6 +216,8 @@ class Isolation extends Arena {
     if (u.botola) return;
     if (torcia) this.torcia(u);
     if (inter) this.interagisci(u);
+    // preso da un Working Joe: niente passi, ma si può bruciarlo
+    if (u.presa) { if (usa) this.fiamma(u); this.muoviUmano(u, 0, 0, dt); return; }
     // il minigioco finito nel browser (vale solo alla stazione giusta, col seme giusto e non troppo in fretta)
     if (c.tf) {
       const [si, seme] = c.tf; c.tf = null;
@@ -213,7 +233,7 @@ class Isolation extends Arena {
     else { const f = -i.y, s = i.x; dx = Math.cos(u.yaw) * f - Math.sin(u.yaw) * s; dy = Math.sin(u.yaw) * f + Math.cos(u.yaw) * s; }
     this.muoviUmano(u, dx, dy, dt);
   }
-  velocita(u) { const v = u.accucciato ? VEL.accucciato : u.rilevatore ? VEL.rilevatore : u.corre ? VEL.corre : VEL.cammina; return u.gen !== null || u.task ? 0 : v; }
+  velocita(u) { if (u.presa) return 0; const v = u.accucciato ? VEL.accucciato : u.rilevatore ? VEL.rilevatore : u.corre ? VEL.corre : VEL.cammina; return u.gen !== null || u.task ? 0 : v; }
   muoviUmano(u, dx, dy, dt) {
     const l = Math.hypot(dx, dy), v = this.velocita(u);
     const prima = { x: u.x, y: u.y };
@@ -244,6 +264,11 @@ class Isolation extends Arena {
     if (u.torcia) { u.batteria = Math.max(0, u.batteria - dt * 0.9); if (!u.batteria) { u.torcia = false; this.ev(['torciaSpenta', u.k]); } }
     if (u.rilevatore) { u.bip -= dt; if (u.bip <= 0) { u.bip = 1; this.rumore(u.x, u.y, RUMORE.rilevatore, 'bip', u.k); } }
     if (u.fiamma > 0) u.fiamma -= dt;
+    // la stretta del Working Joe: si muore se non ci si divincola in tempo
+    if (u.presa) {
+      u.presa.t += dt;
+      if (u.presa.t >= CR.JOE.stretta) { const J = this.joe.find((x) => x.id === u.presa.j); u.presa = null; this.morte(u, false, J || u, 'joe'); if (J) { J.stato = 'giro'; J.preda = null; J.percorso = null; } return; }
+    }
     // nel passaggio di servizio: si striscia fino alla botola gemella
     if (u.botola) {
       u.botola.t += dt; u.fermo = 0;
@@ -279,6 +304,7 @@ class Isolation extends Arena {
   // E: armadietto (entra o esce), generatore, task, botola (nascondi: solo per nascondersi, i compagni del computer in fuga)
   interagisci(u, nascondi = false) {
     if (u.botola) return;
+    if (u.presa) { if (++u.presa.colpi >= CR.JOE.colpi) this.liberato(u, false); else this.ev(['divincola', u.k, u.presa.colpi]); return; }
     if (u.nascosto) { this.esceArmadietto(u); return; }
     if (u.task) { this.lasciaTask(u); return; }
     const vicino = (lista, r) => {
@@ -293,6 +319,8 @@ class Isolation extends Arena {
       if (S && S.pausa <= 0 && S.chi === null && !this.sbloccato) { S.chi = u.k; u.task = { s: si, t: 0 }; u.corre = false; this.ev(['taskInizia', si, u.k]); return; }
     } else {
       const g = vicino(M.OGGETTI.G, 30);
+      // nella classica con gli obiettivi certi generatori vogliono prima la tessera o il fusibile
+      if (g !== null && !this.generatori[g].acceso && this.manca(g)) { this.ev(['serve', u.k, this.manca(g)]); return; }
       // un generatore alla volta: se lo sta già riaccendendo un altro, si aspetta
       if (g !== null && !this.generatori[g].acceso && (this.generatori[g].chi === null || this.generatori[g].chi === u.k)) { u.gen = g; this.generatori[g].chi = u.k; this.ev(['genInizia', g]); return; }
     }
@@ -314,6 +342,24 @@ class Isolation extends Arena {
       this.ev(['armadietto', u.k, 1]); this.rumore(u.x, u.y, RUMORE.armadietto, 'armadietto', u.k);
       for (const A of this.alieni) if (!A.inCondotto && dist(A, u) < 160 && M.vede(A, u.nascosto.prima, this.aperte) && Math.abs(angolo(Math.atan2(u.y - A.y, u.x - A.x) - A.yaw)) < 1.3) AI.vistoNascondersi(this, A, t);
     }
+  }
+  // cosa manca a un generatore per ripartire (null se niente)
+  manca(i) { const c = this.obiettivi && SERVE[i]; return c && !this.chiavi[c] ? c : null; }
+  // il Working Joe afferra qualcuno per il collo
+  presa(u, J) {
+    if (u.task) this.lasciaTask(u);
+    this.lasciaGen(u);
+    u.presa = { j: J.id, t: 0, colpi: 0 }; u.corre = false; u.rilevatore = false;
+    this.annuncia(u.k, 'è stato afferrato da un Working Joe! 🤖', 'un Working Joe ti ha preso per il collo: premi E più volte per liberarti! 🤖', true);
+    this.ev(['presa', u.k, J.id]);
+  }
+  // libero dalla stretta (divincolandosi o col fuoco di qualcuno): il Working Joe resta stordito un attimo
+  liberato(u, fuoco) {
+    const J = this.joe.find((x) => x.id === (u.presa && u.presa.j));
+    u.presa = null;
+    if (J) { J.stato = 'giro'; J.preda = null; J.percorso = null; J.stordito = Math.max(J.stordito, fuoco ? CR.JOE.stordito : 2.5); }
+    this.ev(['libero', u.k]);
+    this.annuncia(u.k, 'si è liberato dal Working Joe', 'ti sei liberato! Scappa 🏃', false);
   }
   lasciaGen(u) { if (u.gen !== null && this.generatori[u.gen].chi === u.k) this.generatori[u.gen].chi = null; u.gen = null; }
   lasciaTask(u) { const S = this.stazioni[u.task.s]; if (S && S.chi === u.k) S.chi = null; u.task = null; }
@@ -349,6 +395,7 @@ class Isolation extends Arena {
     if (u.carburante <= 0 || u.fiamma > 0) { if (u.carburante <= 0) this.ev(['vuoto', u.k]); return; }
     u.carburante--; u.fiamma = FIAMMA.durata;
     this.ev(['fiamma', u.k]); this.rumore(u.x, u.y, RUMORE.fiamma, 'fiamma', u.k);
+    if (CR.brucia(this, u)) this.punti[u.k] += 1;
     for (const A of this.alieni) {
       if (A.inCondotto) continue;
       const d = dist(A, u), a = Math.abs(angolo(Math.atan2(A.y - u.y, A.x - u.x) - u.yaw));
@@ -371,6 +418,11 @@ class Isolation extends Arena {
     this.rumore(p.x, p.y, RUMORE.razzo, 'razzo');
   }
   raccogli(u) {
+    if (this.obiettivi) for (const c of ['k', 'z']) if (!this.chiavi[c] && dist(u, M.centro(M.OGGETTI[c][0])) < 16) {
+      this.chiavi[c] = true; this.punti[u.k] += 2;
+      this.annuncia(u.k, `ha trovato ${NOMI_CHIAVI[c]} 🔑`, `hai trovato ${NOMI_CHIAVI[c]} 🔑`, true);
+      this.ev(['chiave', u.k, c]);
+    }
     const tipi = [['b', 0], ['f', M.OGGETTI.b.length], ['r', M.OGGETTI.b.length + M.OGGETTI.f.length]];
     for (const [tipo, base] of tipi) M.OGGETTI[tipo].forEach((t, i) => {
       if (this.raccolti[base + i] || dist(u, M.centro(t)) > 13) return;
@@ -408,14 +460,16 @@ class Isolation extends Arena {
     this.annuncia(u.k, 'è salito sul Torrens! 🚀', 'sei salito sul Torrens: sei salvo! 🚀', true);
     this.ev(['fugge', u.k]);
   }
-  morte(u, armadietto, A = this.alieno) {
+  morte(u, armadietto, A = this.alieno, causa = 'xeno') {
     if (u.task) this.lasciaTask(u);
     this.lasciaGen(u);
+    u.presa = null;
     u.vivo = false; u.morto = { x: A.x, y: A.y, armadietto: !!armadietto }; u.botola = null;
     if (u.nascosto) { const t = u.nascosto; u.nascosto = null; const [fx, fy] = M.verso[`${t.x},${t.y}`]; const c = M.centro([t.x + fx, t.y + fy]); u.x = c.x; u.y = c.y; }
     if (A.giocatore !== undefined && A.giocatore !== null) this.punti[A.giocatore] += 3;
-    this.annuncia(u.k, 'è stato preso dallo xenomorfo 💀', 'lo xenomorfo ti ha preso 💀', true);
-    this.ev(['morte', u.k, armadietto ? 1 : 0]);
+    const frasi = { xeno: ['è stato preso dallo xenomorfo 💀', 'lo xenomorfo ti ha preso 💀'], joe: ['è stato strangolato da un Working Joe 🤖', 'un Working Joe ti ha strangolato 🤖'], facehugger: ['è stato preso da un facehugger 🦀', 'un facehugger ti è saltato in faccia 🦀'] }[causa] || [];
+    this.annuncia(u.k, frasi[0], frasi[1], true);
+    this.ev(['morte', u.k, armadietto ? 1 : 0, causa === 'joe' ? 1 : causa === 'facehugger' ? 2 : 0]);
   }
 
   // ---------- lo xenomorfo comandato da una persona ----------
@@ -507,6 +561,19 @@ class Isolation extends Arena {
       if ((A.inCondotto || dist(A, u) > 120) && m.nascostoDa > 4) { this.esceArmadietto(u); m.nascostoDa = 0; m.percorso = null; }
       return;
     }
+    // preso da un Working Joe: si divincola (E più volte) o lo brucia
+    if (u.presa) { m.divincola = (m.divincola || 0) - dt; if (u.carburante > 0 && Math.random() < 0.5) { const J = this.joe.find((x) => x.id === u.presa.j); if (J) u.yaw = Math.atan2(J.y - u.y, J.x - u.x); this.fiamma(u); } else if (m.divincola <= 0) { m.divincola = 0.3; this.interagisci(u); } return; }
+    // un Working Joe che lo segue da vicino: si allontana camminando (o lo brucia se è addosso)
+    const joe = this.joe.find((J) => J.stordito <= 0 && J.stato === 'insegue' && J.preda === u.k && dist(J, u) < 70);
+    if (joe && !(A.stato === 'caccia' && A.preda === u.k)) {
+      if (dist(joe, u) < 16 && u.carburante > 0) { u.yaw = Math.atan2(joe.y - u.y, joe.x - u.x); this.fiamma(u); }
+      const via = { x: u.x + (u.x - joe.x), y: u.y + (u.y - joe.y) };
+      m.t = 9; // ricalcola subito il percorso
+      u.corre = false; u.accucciato = false; u.rilevatore = false;
+      if (u.task) this.lasciaTask(u);
+      this.lasciaGen(u);
+      return this.vaiVerso(u, via, dt);
+    }
     const inseguito = A.stato === 'caccia' && A.preda === u.k;
     const pericolo = !A.inCondotto && (inseguito ? dist(A, u) < 160 : dist(A, u) < 70 && M.vede(A, u, this.aperte));
     if (pericolo && u.task) this.lasciaTask(u);
@@ -554,7 +621,10 @@ class Isolation extends Arena {
       u.accucciato = !A.inCondotto && dist(A, u) < 110;
     } else {
       // classica: ognuno il suo generatore (quelli già presi da un altro solo se non ne restano); survival: l'uscita
-      const spenti = this.survival ? [] : this.generatori.map((g, i) => ({ g, i })).filter((o) => !o.g.acceso && (o.g.chi === null || o.g.chi === u.k));
+      const tutti = this.survival ? [] : this.generatori.map((g, i) => ({ g, i })).filter((o) => !o.g.acceso && (o.g.chi === null || o.g.chi === u.k));
+      // prima quelli che si possono già riaccendere; se restano solo quelli che vogliono un oggetto, si va a prenderlo
+      const spenti = tutti.filter((o) => !this.manca(o.i));
+      const manca = !spenti.length && tutti.length ? this.manca(tutti[0].i) : null;
       const liberi = spenti.filter((o) => !this.umani.some((v) => v !== u && v.vivo && !v.fuggito && this.bot[v.k] && v.mente.gen === o.i));
       const scelta = liberi.length ? liberi : spenti;
       if (scelta.length) {
@@ -564,12 +634,17 @@ class Isolation extends Arena {
         if (dist(c, u) < 26) { u.yaw = Math.atan2(c.y - u.y, c.x - u.x); this.interagisci(u); return; }
         const [fx, fy] = M.verso[`${M.OGGETTI.G[o.i][0]},${M.OGGETTI.G[o.i][1]}`];
         meta = M.centro([M.OGGETTI.G[o.i][0] + fx, M.OGGETTI.G[o.i][1] + fy]);
-      } else { m.gen = null; meta = M.centro(M.OGGETTI.E[0]); }
+      } else if (manca) { m.gen = null; meta = M.centro(M.OGGETTI[manca][0]); }
+      else { m.gen = null; meta = M.centro(M.OGGETTI.E[0]); }
       // vicino alla creatura (sentita) si va accucciati
       u.accucciato = !A.inCondotto && dist(A, u) < 110;
     }
     u.torcia = u.batteria > 20 && M.luce(u, this.accesi) < 0.3;
-    // il percorso (ricalcolato ogni tanto)
+    this.vaiVerso(u, meta, dt);
+  }
+  // il compagno del computer cammina verso la meta lungo la strada più breve (ricalcolata ogni tanto)
+  vaiVerso(u, meta, dt) {
+    const m = u.mente;
     m.t = (m.t || 0) + dt;
     if (!m.percorso || !m.meta || dist(m.meta, meta) > 20 || m.t > 1.5) { m.t = 0; m.meta = meta; m.percorso = M.strada(M.quadretto(u), M.quadretto(meta), this.sbloccato) || null; }
     let dir = { x: 0, y: 0 };
@@ -621,6 +696,8 @@ class Isolation extends Arena {
       g: this.survival ? M.OGGETTI.G.map((_, i) => { const S = this.stazioni[STAZIONI.length - M.OGGETTI.G.length + i]; return S.pausa > 0 ? 0 : 50; }) : this.generatori.map((g) => (g.acceso ? 100 : Math.round(g.carica * 99))),
       o: this.raccolti.map((x) => (x ? 1 : 0)).join(''),
     };
+    if (this.uova.length) ora.uo = this.uova.map((U) => U.stato).join('');
+    if (this.obiettivi) ora.ob = [this.chiavi.k ? 1 : 0, this.chiavi.z ? 1 : 0];
     if (this.survival) ora.ts = [this.fatte, this.obiettivo, this.stazioni.map((S) => (S.pausa > 0 ? 0 : S.chi !== null ? 2 : 1)).join('')];
     return ora;
   }
@@ -635,11 +712,11 @@ class Isolation extends Arena {
   // lo stato completo (chi entra o si ricollega) ha sempre tutto
   vista(p) { const v = super.vista(p); if (v.stato && v.stato.s) Object.assign(v.stato.s, this.lentiOra()); return v; }
   // il segno della partita: il browser rimette a posto le sue cose quando ne comincia un'altra
-  vistaExtra(p) { if (!this.idPartita) this.idPartita = Math.floor(Math.random() * 1e9); return { idPartita: this.idPartita, mostro: this.mostro, mostri: this.mostri, survival: this.survival, obiettivo: this.obiettivo || 0, durata: this.durata, difficolta: this.difficolta, versione: 2 }; }
+  vistaExtra(p) { if (!this.idPartita) this.idPartita = Math.floor(Math.random() * 1e9); return { idPartita: this.idPartita, obiettivi: !!this.obiettivi, mostro: this.mostro, mostri: this.mostri, survival: this.survival, obiettivo: this.obiettivo || 0, durata: this.durata, difficolta: this.difficolta, versione: 2 }; }
   statoTick(posto) {
     const r = (v) => Math.round(v * 10) / 10, mioA = this.alieni.find((A) => A.giocatore === posto) || null;
     const eventi = this.eventi; this.eventi = [];
-    const bit = (u) => (u.vivo ? 1 : 0) | (u.nascosto ? 2 : 0) | (u.accucciato ? 4 : 0) | (u.corre ? 8 : 0) | (u.rilevatore ? 16 : 0) | (u.torcia ? 32 : 0) | (u.fuggito ? 64 : 0) | (u.fiamma > 0 ? 128 : 0) | (u.sotto ? 256 : 0) | (u.trattiene ? 512 : 0) | (u.annusato ? 1024 : 0) | (u.botola ? 2048 : 0) | (u.task ? 4096 : 0);
+    const bit = (u) => (u.vivo ? 1 : 0) | (u.nascosto ? 2 : 0) | (u.accucciato ? 4 : 0) | (u.corre ? 8 : 0) | (u.rilevatore ? 16 : 0) | (u.torcia ? 32 : 0) | (u.fuggito ? 64 : 0) | (u.fiamma > 0 ? 128 : 0) | (u.sotto ? 256 : 0) | (u.trattiene ? 512 : 0) | (u.annusato ? 1024 : 0) | (u.botola ? 2048 : 0) | (u.task ? 4096 : 0) | (u.presa ? 8192 : 0);
     const io = this.umano(posto);
     // allo xenomorfo non arrivano proprio chi è nascosto e (survival) chi sta fermo lontano da lui (invisibili)
     let umani = this.umani;
@@ -648,6 +725,8 @@ class Isolation extends Arena {
       u: umani.map((u) => [u.k, r(u.x), r(u.y), Math.round(u.yaw * 100) / 100, Math.round(u.pitch * 100) / 100, bit(u)]),
       al: this.alieni.map((A) => [r(A.x), r(A.y), Math.round(A.yaw * 100) / 100, A.anim, A.inCondotto ? 1 : 0, Math.round((A.vel || 0)), A.stato, A.giocatore === undefined || A.giocatore === null ? -1 : A.giocatore]),
       fl: this.razzi.map((f) => [Math.round(f.x), Math.round(f.y), Math.round(f.t)]),
+      j: this.joe.map((J) => [r(J.x), r(J.y), Math.round(J.yaw * 100) / 100, J.stordito > 0 ? 'brucia' : J.anim, Math.round(J.vel || 0)]),
+      fh: this.facehugger.map((F) => [r(F.x), r(F.y), Math.round(F.yaw * 100) / 100, F.stato, Math.round(F.vel || 0)]),
       e: eventi, sb: this.sbloccato ? 1 : 0,
       tr: Math.max(0, Math.ceil(this.durata - this.tempoRound)),
     };
@@ -701,6 +780,9 @@ module.exports = {
       { id: 'tempoS', nome: 'Tempo', valori: [10, 5, 15, 20], etichette: ['10 minuti', '5 minuti', '15 minuti', '20 minuti'], predefinito: 10, se: { modalita: ['survival'] } },
       { id: 'difficolta', nome: 'Difficoltà', valori: ['normale', 'facile', 'difficile'], etichette: ['Normale', 'Facile', 'Difficile (incubo)'], predefinito: 'normale' },
       { id: 'durata', nome: 'Tempo', valori: [20, 30, 15], etichette: ['20 minuti', '30 minuti', '15 minuti'], predefinito: 20, se: { modalita: ['classica'] } },
+      { id: 'obiettivi', nome: 'Tessera e fusibile', valori: ['si', 'no'], etichette: ['🔑 Sì: due generatori li vogliono', 'No: si riaccendono e basta'], predefinito: 'si', se: { modalita: ['classica'] } },
+      { id: 'androidi', nome: 'Working Joe', valori: ['pochi', 'tanti', 'no'], etichette: ['🤖 Due', '🤖 Quattro', 'Nessuno'], predefinito: 'pochi', se: { modalita: ['classica'] } },
+      { id: 'facehugger', nome: 'Facehugger', valori: ['si', 'no'], etichette: ['🥚 Sì, nelle uova', 'No'], predefinito: 'si', se: { modalita: ['classica'] } },
     ],
     regole: [
       'Siete sulla stazione Sevastopol, in prima persona. Dovete riaccendere i TRE GENERATORI (San Cristobal Medicina, Ingegneria, Torre Solomons Comunicazioni) restando vicini per qualche secondo (E), poi raggiungere l\'attracco del Torrens, in fondo al corridoio principale, e salire a bordo. Basta che uno di voi si salvi per vincere tutti; se lo xenomorfo vi prende tutti (o finisce il tempo) vince lui.',
@@ -709,6 +791,7 @@ module.exports = {
       'Nascondersi: E davanti a un armadietto per entrarci (E per uscire), oppure accucciati sotto scrivanie e letti. Se lo xenomorfo annusa l\'armadietto, trattieni il respiro (spazio) ma non troppo a lungo. Il lanciafiamme lo fa scappare nei condotti; i razzi lo attirano lontano (fanno rumore finché bruciano). Batterie, carburante e razzi si raccolgono passandoci sopra: cambiano posto a ogni partita, ce ne sono di più se siete in tanti e ricompaiono dopo un po\'.',
       'Lo xenomorfo ha due intelligenze, come nel gioco vero: la direttrice decide quando mandarlo verso di voi (non sa mai esattamente dove siete) e quando concedervi una tregua; la mente impara le vostre abitudini: più usate lo stesso trucco (armadietti, fuoco, razzi, correre) meno funziona.',
       'Lo xenomorfo può farlo anche un giocatore (opzione del tavolo): vede al buio, sente i rumori (puntini sullo schermo), corre col fiato, attacca col clic, apre gli armadietti con E e con E su una grata entra nei condotti (si vede la pianta e si scende da un\'altra grata con E).',
+      'Nella classica (opzioni del tavolo) ci sono anche gli altri pericoli della Sevastopol. I WORKING JOE, gli androidi della Seegson: lenti e gentili a parole, se ti vedono ti seguono e ti prendono per il collo; premi E più volte per divincolarti (o un compagno lo brucia), il fuoco li blocca per qualche secondo. Camminando li distanzi, accucciato no. I FACEHUGGER escono dalle uova nel Nido e in Manutenzione quando ci passi vicino (accucciato ci passi accanto), corrono e ti saltano in faccia; il fuoco li brucia. Con gli OBIETTIVI il generatore dell\'Ingegneria vuole il fusibile dei laboratori Lorenz e quello delle Comunicazioni la tessera d\'accesso della Sicurezza (i nuovi settori in basso): basta che uno di voi li prenda.',
       'MODALITÀ SURVIVAL: uno, due o tre xenomorfi (persone del tavolo o il computer) contro gli altri. I sopravvissuti completano insieme 20 o più TASK: E davanti a un terminale o a un generatore apre un minigioco (fili da collegare, codice, sequenza, taratura; più o meno difficile). Ogni task finita fa rumore. Finite tutte parte la FUGA: il Torrens è attraccato, correte all\'attracco. Gli xenomorfi vincono se non scappa nessuno prima della fine del tempo.',
       'Nella survival chi sta FERMO è invisibile agli xenomorfi (girare la visuale non conta), a meno che non gli stia attaccato. Gli xenomorfi sentono i rumori come nuvolette di gas rosso sulla mappa, uccidono con un colpo (clic, solo davanti a sé, senza ricarica) e il lanciafiamme li stordisce per qualche secondo. Ci si nasconde negli armadietti, nelle casse grandi e nei passaggi di servizio (E sulla botola a terra: si striscia fino alla botola gemella). I morti guardano gli altri.',
       'Il gioco è in tempo reale e si ferma per tutti quando qualcuno apre le dispense. I posti vuoti sono compagni del computer che vanno ai generatori e si nascondono quando arriva lo xenomorfo.',

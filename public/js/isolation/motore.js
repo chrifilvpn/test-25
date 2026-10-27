@@ -2,18 +2,21 @@
 // server), con le luci "cotte" nei vertici (lampade calde nelle stanze, rosse d'emergenza nei corridoi, che cambiano
 // quando si riaccende un generatore), la torcia vera con le ombre, la nebbia, le porte blindate che scorrono, gli
 // armadietti, le scrivanie, i terminali a tubo catodico, le casse, i generatori, le grate dei condotti, gli oggetti da
-// raccogliere, l'attracco del Torrens, gli altri sopravvissuti e lo xenomorfo. Il resto (comandi, schermo, suoni) è in
+// raccogliere, l'attracco del Torrens, gli altri sopravvissuti, lo xenomorfo e (classica) Working Joe, facehugger,
+// uova, tessera e fusibile (public/js/isolation/creature.js). Il resto (comandi, schermo, suoni) è in
 // public/js/giochi3/isolation.js. Unità: il mondo del server è in decimetri, qui si lavora in metri.
 import * as THREE from '/js/three.module.min.js';
 import * as TX from '/js/isolation/texture.js';
 import { carica as caricaXeno } from '/js/isolation/xenomorfo.js';
+import * as CR3 from '/js/isolation/creature.js';
 
 const D = 0.1; // decimetri → metri
 const COLORI_GIOCATORI = [0xb4532a, 0x2f6f9f, 0x4f7d3a, 0xa8892c, 0x7a4f9a, 0xa04a6a, 0x2c8a8a, 0x8a5a2c];
-const STILE_MURO = { atrio: 'beige', uffici: 'beige', alloggi: 'beige', attracco: 'comunicazioni', medico: 'medico', ingegneria: 'industriale', manutenzione: 'industriale', comunicazioni: 'comunicazioni' };
-const STILE_PAV = { atrio: 'lamiera', uffici: 'moquette', alloggi: 'moquette', attracco: 'lamiera', medico: 'piastrelle', ingegneria: 'griglia', manutenzione: 'griglia', comunicazioni: 'lamiera' };
+const STILE_MURO = { sicurezza: 'beige', laboratorio: 'medico', nido: 'industriale', atrio: 'beige', uffici: 'beige', alloggi: 'beige', attracco: 'comunicazioni', medico: 'medico', ingegneria: 'industriale', manutenzione: 'industriale', comunicazioni: 'comunicazioni' };
+const STILE_PAV = { sicurezza: 'lamiera', laboratorio: 'piastrelle', nido: 'griglia', atrio: 'lamiera', uffici: 'moquette', alloggi: 'moquette', attracco: 'lamiera', medico: 'piastrelle', ingegneria: 'griglia', manutenzione: 'griglia', comunicazioni: 'lamiera' };
 const LAMPADE = {
   atrio: [[1, 0.84, 0.62], 1.25], uffici: [[1, 0.87, 0.68], 1.05], alloggi: [[1, 0.78, 0.55], 0.9], attracco: [[0.82, 0.9, 1], 1.2],
+  sicurezza: [[1, 0.9, 0.75], 1.0], laboratorio: [[0.85, 0.95, 1], 1.0], nido: [[0.45, 0.9, 0.55], 0.22],
   medico: [[0.8, 0.96, 0.9], 0.95], ingegneria: [[1, 0.6, 0.26], 0.9], manutenzione: [[1, 0.55, 0.3], 0.4], comunicazioni: [[0.74, 0.9, 1], 1.0],
 };
 
@@ -370,6 +373,11 @@ export async function crea({ M }) {
     caricaAltro = caricaXeno(envMap).then((x) => { scena.add(x.oggetto); xenos.push(x); }).catch(() => {}).finally(() => { caricaAltro = null; });
   }
   const luceXeno = new THREE.PointLight(0x9fb4ff, 0, 4, 2); scena.add(luceXeno); // un filo di riflesso quando è vicino
+  // gli altri pericoli della classica: i Working Joe e i facehugger (si creano quando servono), le uova, gli obiettivi
+  const joes = [], fhs = [];
+  const uova = M.OGGETTI.U.map((t) => { const u = CR3.uovo(); const [cx, cz] = centro(t); u.oggetto.position.set(cx, 0, cz); u.oggetto.visible = false; scena.add(u.oggetto); return u; });
+  const chiavi = {};
+  for (const c of ['k', 'z']) { const o = CR3.chiave(c); const [cx, cz] = centro(M.OGGETTI[c][0]); o.oggetto.position.set(cx, 0, cz); o.oggetto.visible = false; scena.add(o.oggetto); chiavi[c] = o; }
   // le botole dei passaggi di servizio, a terra
   const matBotola = new THREE.MeshStandardMaterial({ color: 0x3a3a36, roughness: 0.6, metalness: 0.7 });
   for (const t of M.OGGETTI.P) {
@@ -449,7 +457,15 @@ export async function crea({ M }) {
       if (X.oggetto.visible && d < dVicino) { dVicino = d; vicinoX = X; }
     });
     if (vicinoX) { const p = vicinoX.oggetto.position; luceXeno.position.set(p.x, 2.4, p.z); luceXeno.intensity = dVicino < 6 ? 1.2 : 0; } else luceXeno.intensity = 0;
-    if (C.modo === 'morte' && vicinoX) {
+    // ---------- Working Joe, facehugger, uova, tessera e fusibile ----------
+    const J = V.joe || [], F = V.fh || [];
+    while (joes.length < J.length) { const o = CR3.joe(); scena.add(o.oggetto); joes.push(o); }
+    joes.forEach((o, i) => { const q = J[i]; o.oggetto.visible = !!q; if (!q) return; o.oggetto.position.set(q.x * D, 0, q.y * D); o.oggetto.rotation.y = Math.PI / 2 - q.yaw; o.aggiorna(dt, q.anim, (q.vel || 0) * D); });
+    while (fhs.length < F.length) { const o = CR3.facehugger(); scena.add(o.oggetto); fhs.push(o); }
+    fhs.forEach((o, i) => { const q = F[i]; o.oggetto.visible = !!q; if (!q) return; o.oggetto.position.x = q.x * D; o.oggetto.position.z = q.y * D; o.oggetto.rotation.y = Math.PI / 2 - q.yaw; o.aggiorna(dt, q.stato, (q.vel || 0) * D); });
+    uova.forEach((u, i) => { u.oggetto.visible = !!V.uova; if (V.uova) u.aggiorna(dt, Number(V.uova[i]) || 0); });
+    for (const [i, c] of [[0, 'k'], [1, 'z']]) { chiavi[c].oggetto.visible = !!V.ob; if (V.ob) chiavi[c].aggiorna(dt, !!V.ob[i]); }
+    if (C.modo === 'morte' && vicinoX && !C.causa) {
       // la telecamera guarda la bocca dello xenomorfo
       vicinoX.bocca(v3); camera.lookAt(v3.x, v3.y, v3.z); camera.rotateX(C.pitch || 0); camera.rotateZ(C.rollio || 0); // il tremolio e la caduta
     }

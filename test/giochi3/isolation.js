@@ -343,3 +343,93 @@ console.log('✓ Alien: Isolation 3D');
   for (const s of M.OGGETTI.S) for (const t of M.OGGETTI.G) { const p = M.strada(s, M.quadretto(davantiA(t)), false); assert.ok(p && p.length > 1); }
   console.log('✓ Alien: Isolation 3D, bug sistemati: razzo acceso, compagni ai generatori, tasti dopo la ricarica, stordito, uscita presto, generatore a uno, nascosti, scorte, task, dati leggeri');
 }
+
+// ================= WORKING JOE, FACEHUGGER, NUOVI SETTORI, TESSERA E FUSIBILE =================
+{
+  const CR = require('../../giochi3/isolation/creature');
+  const tutto = { obiettivi: 'si', androidi: 'pochi', facehugger: 'si' };
+  // la mappa: i nuovi settori, la tessera, il fusibile, le uova e le partenze dei Joe si raggiungono dall'inizio
+  for (const id of ['sicurezza', 'lorenz', 'nido']) assert.ok(M.STANZE.some((s) => s.id === id), `settore ${id}`);
+  for (const c of ['k', 'z', 'J', 'U']) for (const t of M.OGGETTI[c]) {
+    assert.strictEqual(M.cella(...t), '.', `${c} ${t} sul pavimento`);
+    assert.ok(M.strada(M.OGGETTI.S[0], t, false), `${c} ${t} raggiungibile`);
+  }
+  assert.strictEqual(M.stanzaDi(M.centro(M.OGGETTI.k[0])).id, 'sicurezza');
+  assert.strictEqual(M.stanzaDi(M.centro(M.OGGETTI.z[0])).id, 'lorenz');
+  // senza opzioni (e nella survival) niente Joe, uova, obiettivi
+  {
+    const g = G.crea({ n: 1, opzioni: {}, bot: [null] }); parti(g);
+    assert.ok(!g.joe.length && !g.uova.length && !g.obiettivi);
+    const s = G.crea({ n: 1, opzioni: { modalita: 'survival', ...tutto }, bot: [null] }); parti(s);
+    assert.ok(!s.joe.length && !s.uova.length && !s.obiettivi, 'la survival non li ha');
+    const t = G.crea({ n: 1, opzioni: { ...tutto, androidi: 'tanti' }, bot: [null] }); parti(t);
+    assert.ok(t.joe.length === 4 && t.uova.length === M.OGGETTI.U.length && t.obiettivi);
+  }
+  // gli obiettivi: il generatore vuole il suo oggetto, si raccoglie, poi parte
+  {
+    const g = G.crea({ n: 1, opzioni: { obiettivi: 'si' }, bot: [null] }); parti(g); lontano(g);
+    const u = g.umani[0], ev = []; const e0 = g.ev.bind(g); g.ev = (e) => { ev.push(e); return e0(e); };
+    const alGen = () => { Object.assign(u, davantiA(M.OGGETTI.G[1])); const c = M.centro(M.OGGETTI.G[1]); u.yaw = Math.atan2(c.y - u.y, c.x - u.x); };
+    alGen(); g.interagisci(u);
+    assert.ok(ev.some((e) => e[0] === 'serve' && e[2] === 'z') && !u.gen, 'Ingegneria vuole il fusibile');
+    Object.assign(u, M.centro(M.OGGETTI.z[0])); g.raccogli(u);
+    assert.ok(g.chiavi.z && g.lentiOra().ob[1] === 1, 'fusibile preso');
+    alGen(); g.interagisci(u);
+    assert.ok(!g.manca(1) && g.generatori[1].chi === 0, 'ora parte');
+    assert.ok(g.manca(2) === 'k', 'le Comunicazioni vogliono ancora la tessera');
+  }
+  // il Working Joe: ti vede, ti prende per il collo, E per divincolarsi; se no ti strangola
+  {
+    const g = G.crea({ n: 1, opzioni: { androidi: 'pochi' }, bot: [null] }); parti(g); lontano(g);
+    const u = g.umani[0], J = g.joe[0]; g.joe.length = 1;
+    Object.assign(u, M.centro(M.OGGETTI.S[0])); Object.assign(J, { x: u.x + 6, y: u.y, yaw: Math.PI, stato: 'giro', stordito: 0 });
+    passa(g, 0.1);
+    assert.ok(u.presa && J.stato === 'stringe', 'preso');
+    assert.ok(g.statoTick(0).u[0][5] & 8192, 'il bit della presa');
+    assert.strictEqual(g.velocita(u), 0, 'non si cammina');
+    for (let k = 0; k < CR.JOE.colpi; k++) g.interagisci(u);
+    assert.ok(!u.presa && J.stordito > 0 && u.vivo, 'divincolato');
+    // la seconda volta non si divincola: muore
+    J.stordito = 0; passa(g, 0.1); passa(g, 0.1);
+    assert.ok(u.presa, 'ripreso'); passa(g, CR.JOE.stretta + 0.5);
+    assert.ok(!u.vivo && !u.presa, 'strangolato');
+  }
+  // il fuoco: un compagno libera chi è preso, il Joe resta stordito
+  {
+    const g = G.crea({ n: 2, opzioni: { androidi: 'pochi' }, bot: [null, null] }); parti(g); lontano(g);
+    const [a, b] = g.umani, J = g.joe[0]; g.joe.length = 1;
+    Object.assign(a, M.centro(M.OGGETTI.S[0])); Object.assign(J, { x: a.x + 6, y: a.y, yaw: Math.PI });
+    g.presa(a, J); J.stato = 'stringe'; J.preda = a.k;
+    Object.assign(b, { x: a.x + 30, y: a.y, yaw: Math.PI, carburante: 100, fiamma: 0 }); g.fiamma(b);
+    assert.ok(!a.presa && J.stordito > 0 && J.stato === 'giro', 'liberato col fuoco');
+  }
+  // le uova: chi passa vicino le sveglia (accucciato si passa); il facehugger salta in faccia; il fuoco lo brucia
+  {
+    const g = G.crea({ n: 1, opzioni: { facehugger: 'si' }, bot: [null] }); parti(g); lontano(g);
+    const u = g.umani[0], U = g.uova[0];
+    Object.assign(u, { x: U.x + 30, y: U.y, accucciato: true }); for (let k = 0; k < 4; k++) CR.passo(g, 0.05); // senza passa: i tasti lo rialzerebbero
+    if (M.vede(U, u, g.aperte)) assert.strictEqual(U.stato, 0, 'accucciato non si sveglia');
+    Object.assign(u, { x: U.x + 12, y: U.y, accucciato: false }); passa(g, 0.1);
+    assert.strictEqual(U.stato, 1, 'si apre'); passa(g, CR.FH.apre + 0.1);
+    assert.ok(U.stato === 2 && g.facehugger.length === 1, 'esce il facehugger');
+    const F = g.facehugger[0]; Object.assign(u, { yaw: Math.atan2(F.y - u.y, F.x - u.x), carburante: 100, fiamma: 0 }); g.fiamma(u);
+    assert.ok(!g.facehugger.length || g.facehugger[0].stato === 'morto', 'bruciato');
+    passa(g, 0.1); assert.ok(!g.facehugger.includes(F), 'tolto');
+    // un altro: ti salta in faccia
+    g.uova[1].stato = 1; g.uova[1].t = 0; Object.assign(u, { x: g.uova[1].x + 10, y: g.uova[1].y }); passa(g, CR.FH.apre + 1.5);
+    assert.ok(!u.vivo, 'preso dal facehugger');
+  }
+  // tante partite tra computer con tutto acceso: finiscono, e gli obiettivi si prendono
+  let presi = 0;
+  for (const n of [1, 3]) for (let k = 0; k < 2; k++) {
+    const g = G.crea({ n, opzioni: { ...tutto, androidi: k ? 'tanti' : 'pochi' }, bot: Array.from({ length: n }, () => 'medio') });
+    let ora = Date.now(), t = 0;
+    while (!g.finita && t < 31 * 60 * 20) { ora += 50; t++; g.tick(ora); g.statoTick(0); }
+    assert.ok(g.finita && ['umani', 'alieno'].includes(g.vittoria), `partita ${n} con Joe e facehugger finita`);
+    presi += g.chiavi.k + g.chiavi.z;
+  }
+  assert.ok(presi > 0, 'i compagni del computer vanno a prendere tessera e fusibile');
+  const opz = Object.fromEntries(G.meta.opzioni.map((o) => [o.id, o]));
+  for (const id of ['obiettivi', 'androidi', 'facehugger']) assert.deepStrictEqual(opz[id].se, { modalita: ['classica'] });
+  console.log('✓ Alien: Isolation 3D, Working Joe, facehugger, nuovi settori, tessera e fusibile');
+}

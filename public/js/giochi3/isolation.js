@@ -35,17 +35,19 @@
   const salvaImp = () => { try { localStorage.setItem('isolation-impostazioni', JSON.stringify(imp)); } catch (_) { /* niente */ } };
   window.__isolationImp = imp; // per le prove automatiche
   // porte, generatori, scorte e task arrivano solo quando cambiano: qui gli ultimi valori
+  const SERVE = { 1: 'z', 2: 'k' }, NOMI_CHIAVI = { k: 'la tessera della Sicurezza', z: 'il fusibile dei laboratori Lorenz' };
+  let presaColpi = 0, morteCausa = 0;
   const lenti = {};
   function completa(st) {
     if (!st) return st;
-    for (const k of ['p', 'g', 'o', 'ts']) { if (st[k] !== undefined) lenti[k] = st[k]; else if (lenti[k] !== undefined) st[k] = lenti[k]; }
+    for (const k of ['p', 'g', 'o', 'ts', 'uo', 'ob']) { if (st[k] !== undefined) lenti[k] = st[k]; else if (lenti[k] !== undefined) st[k] = lenti[k]; }
     return st;
   }
   // una partita nuova: si rimette tutto a posto (sguardo, chi guardi da morto, minigioco, aiuto)
   function nuovaPartita(ctx) {
     const id = ctx && ctx.partita && ctx.partita.extra ? ctx.partita.extra.idPartita : null;
     if (id === partitaVista) return;
-    partitaVista = id; yawPronto = false; spettaIdx = 0; morteT = null; mg = null; predMio = null; aiuto = false;
+    partitaVista = id; morteCausa = 0; presaColpi = 0; yawPronto = false; spettaIdx = 0; morteT = null; mg = null; predMio = null; aiuto = false;
     for (const k of Object.keys(lenti)) delete lenti[k];
   }
   const attiva = () => ctxA && ctxA.partita && ctxA.partita.gioco === 'isolation' && !ctxA.partita.finita && ctxA.stato && !ctxA.stato.spettatore;
@@ -176,7 +178,12 @@
       const salto = Math.hypot(A[0] - B[0], A[1] - B[1]) > 80;
       return { i, x: salto ? A[0] : B[0] + (A[0] - B[0]) * u, y: salto ? A[1] : B[1] + (A[1] - B[1]) * u, yaw: salto ? A[2] : lerpA(B[2], A[2], u), anim: A[3], inCondotto: !!A[4], vel: A[5], stato: A[6], posto: A[7] };
     });
-    return { umani, alieni, alieno: alieni[0] };
+    // i Working Joe e i facehugger: come lo xenomorfo (posizione a metà tra i due aggiornamenti)
+    const mezzo = (lista, prima, salto) => (lista || []).map((q, i) => {
+      const a = prima && prima[i] ? prima[i] : q, lontano = Math.hypot(q[0] - a[0], q[1] - a[1]) > salto;
+      return { x: lontano ? q[0] : a[0] + (q[0] - a[0]) * u, y: lontano ? q[1] : a[1] + (q[1] - a[1]) * u, yaw: lontano ? q[2] : lerpA(a[2], q[2], u), anim: q[3], stato: q[3], vel: q[4] };
+    });
+    return { umani, alieni, alieno: alieni[0], joe: mezzo(s.j, pr && pr.j, 40), fh: mezzo(s.fh, pr && pr.fh, 60) };
   }
 
   // ---------- la previsione del movimento (stessi muri e velocità del server) ----------
@@ -187,7 +194,7 @@
       const s = completa(ultimo.s); if (!s || !s.u || !s.p) return null;
       if (sonoMostro(ctx)) { const a = mioA(s, ctx); if (!a || a[4] || a[6] === 'uccide' || (s.me && s.me[2])) return null; return { x: a[0], y: a[1] }; }
       const u = mioUmano(s, ctx);
-      if (!u || !(u[5] & 1) || (u[5] & 2) || (u[5] & 64) || (u[5] & 2048) || (u[5] & 4096) || (s.me && s.me[4] >= 0)) return null;
+      if (!u || !(u[5] & 1) || (u[5] & 2) || (u[5] & 64) || (u[5] & 2048) || (u[5] & 4096) || (u[5] & 8192) || (s.me && s.me[4] >= 0)) return null;
       return { x: u[1], y: u[2] };
     },
     muovi(pred, inp, dt, ctx, ultimo) {
@@ -261,6 +268,8 @@
       morte: (v) => { SUONI.urlo(v * 1.4, 0); soffio(v, 0, { f: 300, q: 1, dur: 0.6, att: 0.01, tipo: 'lowpass' }); tono(v * 0.5, 0, 90, 0.6, { tipo: 'square', f2: 30 }); },
       vuoto: (v) => tono(v * 0.15, 0, 200, 0.12, { tipo: 'square' }),
       click: (v) => tono(v * 0.15, 0, 2400, 0.03, { tipo: 'square' }),
+      joe: (v, p) => { for (let i = 0; i < 4; i++) setTimeout(() => ac && tono(v * 0.12, p, 150 + Math.random() * 60, 0.12, { tipo: 'square', f2: 120 }), i * 130); },
+      fh: (v, p) => { soffio(v * 0.5, p, { f: 4500, q: 6, dur: 0.25, att: 0.01, f2: 2500 }); tono(v * 0.15, p, 1800, 0.2, { tipo: 'sawtooth', f2: 2600 }); },
     };
     function suona(nome, vol = 1, pan = 0, extra) { if (!ac || muto() || vol < 0.01) return; try { SUONI[nome](vol, pan, extra); } catch (_) { /* niente */ } }
     // il ronzio continuo della stazione (motori, aria nei condotti)
@@ -352,7 +361,7 @@
       // il balzo ti butta giù (0-0.3 s), poi ti tiene fermo, il morso della seconda mascella arriva a 0.87 s
       const tm = (ora - morteT) / 1000, urto = Math.max(0, 1 - tm / 0.35), morso = tm > 0.85 && tm < 1.25 ? 1 - (tm - 0.85) / 0.4 : 0;
       const sc = urto * 0.08 + morso * 0.12 + (tm < 0.85 ? 0.006 : 0), ri = () => (Math.random() - 0.5) * sc;
-      cam = { x: mu.x, y: mu.y, h: Math.max(0.4, 1.6 - Math.min(1, tm / 0.3) * 0.85 - Math.max(0, tm - 1.2) * 0.3) + ri(), yaw: io.yaw + ri(), pitch: ri(), torcia: true, batteria: 100, modo: 'morte', rollio: Math.min(0.35, tm * 0.6) + ri() + (tm > 1.2 ? Math.min(0.5, (tm - 1.2) * 0.4) : 0) };
+      cam = { causa: morteCausa, x: mu.x, y: mu.y, h: Math.max(0.4, 1.6 - Math.min(1, tm / 0.3) * 0.85 - Math.max(0, tm - 1.2) * 0.3) + ri(), yaw: io.yaw + ri(), pitch: ri(), torcia: true, batteria: 100, modo: 'morte', rollio: Math.min(0.35, tm * 0.6) + ri() + (tm > 1.2 ? Math.min(0.5, (tm - 1.2) * 0.4) : 0) };
     } else {
       // si guarda un altro sopravvissuto o la mappa dall'alto (clic o Tab per cambiare)
       const vivi = I.umani.filter((x) => (x.f & 1) && !(x.f & 64) && x.k !== mio);
@@ -378,7 +387,8 @@
       if (passiT <= 0) { passiT = 1; audio.suona('passo', volDi(AV.x, AV.y, 220) * (AV.vel > 40 ? 1 : 0.6), panDi(AV.x, AV.y)); if (dA < 60) scossa = Math.max(scossa, 0.3); }
     }
     // la tensione (musica e battito): vicinanza dello xenomorfo visibile
-    const tensione = mostro || !AV ? 0 : AV.inCondotto ? Math.max(0, 1 - dA / 120) * 0.4 : Math.max(0, 1 - dA / 200) * (AV.stato === 'caccia' ? 1.3 : 0.8);
+    const altriPericoli = mostro ? 0 : Math.max(0, ...I.joe.filter((J) => J.anim !== 'brucia').map((J) => Math.max(0, 1 - Math.hypot(J.x - cam.x, J.y - cam.y) / 90) * 0.7), ...I.fh.map((F) => Math.max(0, 1 - Math.hypot(F.x - cam.x, F.y - cam.y) / 120)));
+    const tensione = Math.max(altriPericoli, mostro || !AV ? 0 : AV.inCondotto ? Math.max(0, 1 - dA / 120) * 0.4 : Math.max(0, 1 - dA / 200) * (AV.stato === 'caccia' ? 1.3 : 0.8));
     audio.ambiente(attiva() && ctx.partita.stato.fase === 'gioco', tensione);
     if (!mostro && tensione > 0.45 && mu && (mu.f & 1)) { battitoT -= dt * (0.8 + tensione * 1.4); if (battitoT <= 0) { battitoT = 1; audio.suona('battito', Math.min(1, tensione)); } }
     // ---------- la scena 3D ----------
@@ -386,7 +396,7 @@
     const qualita = (touch() ? 0.7 : Math.min(1, 1.3 / (window.devicePixelRatio || 1))) * (imp.qualita === 'bassa' ? 0.6 : 1);
     if (!cam.fov && cam.modo !== 'morte') cam.fov = imp.fov;
     const w = Math.max(320, Math.round(g.canvas.width * qualita)), h = Math.max(180, Math.round(g.canvas.height * qualita));
-    const V = { w, h, dt, cam, umani, alieni: I.alieni, porte: st.p, gen: st.g, raccolti: st.o, razzi: st.fl, sbloccato: !!st.sb, nascondiXeno: IA ? IA.i : -1, ombre: imp.qualita === 'alta' };
+    const V = { w, h, dt, cam, umani, alieni: I.alieni, porte: st.p, gen: st.g, raccolti: st.o, razzi: st.fl, sbloccato: !!st.sb, nascondiXeno: IA ? IA.i : -1, ombre: imp.qualita === 'alta', joe: I.joe, fh: I.fh, uova: st.uo, ob: st.ob };
     if (modo === 'condotto') disegnaCondotti(g, W, H, st, I, ctx);
     else if (modo === 'mappa') disegnaMappa(g, W, H, st, I, ctx);
     else {
@@ -438,7 +448,7 @@
   function disegnaAiuto(g, W, H, mostro, surv) {
     const righe = mostro
       ? ['WASD · muoverti', 'mouse · guardare', 'Maiusc · scatto (consuma il fiato)', 'clic · attacca davanti a te', 'E · entra o scendi dalle grate dei condotti', 'E · apri armadietti e casse', surv ? 'chi sta fermo non lo vedi: colpisci dove senti i rumori' : 'i rumori sono segni sullo schermo e nuvolette sulla minimappa']
-      : ['WASD · muoverti', 'mouse · guardare', 'Maiusc · correre (fa rumore)', 'C · accucciarti (passi sotto scrivanie e letti)', 'Q o tasto destro · rilevatore di movimento', 'F · torcia', 'E · usa: armadietti, casse, botole, ' + (surv ? 'task' : 'generatori'), 'clic · lanciafiamme', 'G · lancia un razzo (attira lo xenomorfo)', 'spazio · trattieni il respiro (nascosto)', 'Tab · da morto cambi chi guardi o la mappa'];
+      : ['WASD · muoverti', 'mouse · guardare', 'Maiusc · correre (fa rumore)', 'C · accucciarti (passi sotto scrivanie e letti)', 'Q o tasto destro · rilevatore di movimento', 'F · torcia', 'E · usa: armadietti, casse, botole, ' + (surv ? 'task' : 'generatori'), 'clic · lanciafiamme', 'G · lancia un razzo (attira lo xenomorfo)', 'spazio · trattieni il respiro (nascosto)', 'Tab · da morto cambi chi guardi o la mappa', 'preso da un Working Joe: E più volte per liberarti'];
     const w = 560, h = 70 + righe.length * 26, x = W / 2 - w / 2, y = H / 2 - h / 2;
     g.save(); g.fillStyle = 'rgba(6,12,8,.9)'; g.strokeStyle = '#6fae6a'; g.lineWidth = 2; g.beginPath(); g.roundRect(x, y, w, h, 14); g.fill(); g.stroke();
     testo(g, 'COMANDI · H per chiudere', W / 2, y + 36, { size: 18, al: 'center', col: '#b8f0b0' });
@@ -465,6 +475,15 @@
       const rg = g.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, H * 0.9); rg.addColorStop(0, 'rgba(120,0,0,0)'); rg.addColorStop(1, `rgba(120,0,0,${Math.min(0.55, k)})`);
       g.fillStyle = rg; g.fillRect(0, 0, W, H);
     }
+    // preso per il collo da un Working Joe: la vista si stringe, premi E
+    if (mu && (mu.f & 8192)) {
+      const k = 0.55 + 0.25 * Math.sin(ora / 90);
+      const rg = g.createRadialGradient(W / 2, H / 2, H * 0.12, W / 2, H / 2, H * 0.7); rg.addColorStop(0, 'rgba(0,0,0,0)'); rg.addColorStop(1, `rgba(20,0,0,${k + 0.3})`);
+      g.fillStyle = rg; g.fillRect(0, 0, W, H);
+      testo(g, 'UN WORKING JOE TI STRINGE IL COLLO', W / 2, H * 0.24, { size: 28, al: 'center', col: '#ff8060', peso: 700 });
+      testo(g, 'premi E più volte per divincolarti · clic per bruciarlo', W / 2, H * 0.24 + 32, { size: 18, al: 'center', col: '#ffe0d0' });
+      g.fillStyle = 'rgba(0,0,0,.6)'; g.fillRect(W / 2 - 150, H * 0.24 + 54, 300, 16); g.fillStyle = '#f0c040'; g.fillRect(W / 2 - 148, H * 0.24 + 56, 296 * Math.min(1, presaColpi / 6), 12);
+    } else presaColpi = 0;
     // nel passaggio di servizio: buio, si striscia
     if (mu && (mu.f & 2048)) {
       g.fillStyle = 'rgba(2,2,3,.97)'; g.fillRect(0, 0, W, H);
@@ -487,12 +506,18 @@
       const acc = st.g.filter((x) => x >= 100).length;
       testo(g, st.sb ? '▶ RAGGIUNGI IL TORRENS (ATTRACCO, IN FONDO A EST)' : `▶ RIACCENDI I GENERATORI  ${acc}/3`, 28, 40, { size: 18 });
       const nomi = ['Medicina', 'Ingegneria', 'Comunicazioni'];
-      if (!st.sb) st.g.forEach((x, i) => testo(g, `${x >= 100 ? '■' : '□'} ${nomi[i]}${x > 0 && x < 100 ? ` ${x}%` : ''}`, 40, 66 + i * 22, { size: 15, col: x >= 100 ? '#8fe08f' : '#a8b8a8' }));
+      const manca = (i) => (st.ob && SERVE[i] && !st.ob[SERVE[i] === 'k' ? 0 : 1] ? SERVE[i] : null);
+      if (!st.sb) st.g.forEach((x, i) => testo(g, `${x >= 100 ? '■' : '□'} ${nomi[i]}${x > 0 && x < 100 ? ` ${x}%` : ''}${x < 100 && manca(i) ? ` · serve ${manca(i) === 'k' ? 'la tessera' : 'il fusibile'}` : ''}`, 40, 66 + i * 22, { size: 15, col: x >= 100 ? '#8fe08f' : manca(i) ? '#d0b080' : '#a8b8a8' }));
       // la freccia verso il generatore spento più vicino
       if (!st.sb && mu && (mu.f & 1) && !(mu.f & 2) && !(st.me && st.me[4] >= 0)) {
         let best = null, bd = Infinity, bi = 0;
-        M.OGGETTI.G.forEach((t, i) => { if (st.g[i] >= 100) return; const c = M.centro(t), d = Math.hypot(c.x - cam.x, c.y - cam.y); if (d < bd) { bd = d; best = c; bi = i; } });
+        M.OGGETTI.G.forEach((t, i) => { if (st.g[i] >= 100 || manca(i)) return; const c = M.centro(t), d = Math.hypot(c.x - cam.x, c.y - cam.y); if (d < bd) { bd = d; best = c; bi = i; } });
         if (best) freccia(g, 46, 144, best, cam, `generatore (${nomi[bi]}) a ${(bd / 10).toFixed(0)} m`);
+        else {
+          // restano solo generatori che vogliono un oggetto: la freccia va all'oggetto
+          const c = M.OGGETTI.G.map((_, i) => (st.g[i] < 100 ? manca(i) : null)).find(Boolean);
+          if (c) { const o = M.centro(M.OGGETTI[c][0]), d = Math.hypot(o.x - cam.x, o.y - cam.y); freccia(g, 46, 144, o, cam, `${NOMI_CHIAVI[c]} a ${(d / 10).toFixed(0)} m`); }
+        }
       }
     }
     // la fuga: la freccia verso l'attracco
@@ -515,7 +540,7 @@
         if (tm > 1.3) { g.fillStyle = `rgba(0,0,0,${Math.min(1, (tm - 1.3) * 0.7)})`; g.fillRect(0, 0, W, H); }
         if (tm < 1.3) return; // prima il morso, poi la scritta
       }
-      testo(g, morto ? 'SEI MORTO' : 'SEI SALVO: SEI SUL TORRENS', W / 2, H / 2 - 60, { size: 40, al: 'center', col: morto ? '#ff6a5a' : '#9fffa0', peso: 700 });
+      testo(g, morto ? ['SEI MORTO', 'STRANGOLATO DA UN WORKING JOE', 'PRESO DA UN FACEHUGGER'][morteCausa] || 'SEI MORTO' : 'SEI SALVO: SEI SUL TORRENS', W / 2, H / 2 - 60, { size: 40, al: 'center', col: morto ? '#ff6a5a' : '#9fffa0', peso: 700 });
       testo(g, vistaDi ? `Stai guardando ${ctx.nome(vistaDi.k)} · clic o Tab per cambiare` : 'Mappa della stazione · clic o Tab per cambiare', W / 2, H - 40, { size: 16, al: 'center' });
       return;
     }
@@ -566,7 +591,10 @@
       if (si !== null && !st.sb) return st.ts[2][si] === '1' ? 'E · fai la task' : st.ts[2][si] === '2' ? 'qualcuno sta già facendo questa task' : 'terminale in riavvio: torna più tardi';
     } else {
       const gi = vicino(M.OGGETTI.G, 30);
-      if (gi !== null && st.g[gi] < 100) return st.me && st.me[4] === gi ? null : 'E · riaccendi il generatore';
+      if (gi !== null && st.g[gi] < 100) {
+        const c = st.ob && SERVE[gi] && !st.ob[SERVE[gi] === 'k' ? 0 : 1] ? SERVE[gi] : null;
+        return c ? `serve ${NOMI_CHIAVI[c]}` : st.me && st.me[4] === gi ? null : 'E · riaccendi il generatore';
+      }
     }
     if (M.OGGETTI.P.some((t) => { const c = M.centro(t); return Math.hypot(c.x - cam.x, c.y - cam.y) < 14; })) return 'E · entra nel passaggio di servizio';
     const ni = vicino(M.NASCONDIGLI, 26);
@@ -594,6 +622,7 @@
     // chi si muove (anche nei condotti)
     const cose = [];
     for (const A of I.alieni) if (A.vel > 3) cose.push(A);
+    for (const e of I.joe.concat(I.fh)) if (e.vel > 3) cose.push(e);
     for (const u of I.umani) if (u.k !== ctx.mio && (u.f & 1) && !(u.f & 64) && u.vel > 3) cose.push(u);
     let vicino = Infinity;
     for (const e of cose) {
@@ -728,7 +757,11 @@
     for (const t of M.OGGETTI.E) { const c = M.centro(t); g.fillStyle = st.sb ? 'rgba(120,255,140,.35)' : 'rgba(255,80,60,.25)'; g.fillRect(ox + (c.x - M.T / 2) * k, oy + (c.y - M.T / 2) * k, M.T * k, M.T * k); }
     for (const u of I.umani) if ((u.f & 1) && !(u.f & 64)) { punto(u.x, u.y, 5, u.f & 2 ? '#6a9a6a' : '#9fffa0'); testo(g, ctxA.nome(u.k), ox + u.x * k, oy + u.y * k - 9, { size: 11, al: 'center', col: '#cfe8cf' }); }
     for (const A of I.alieni) punto(A.x, A.y, 6, A.inCondotto ? '#803030' : '#ff4a3a');
-    testo(g, 'LA STAZIONE · verdi i sopravvissuti, rossi gli xenomorfi', W / 2, 64, { size: 16, al: 'center', col: '#c0d0f0' });
+    for (const J of I.joe) punto(J.x, J.y, 5, '#ff9a30');
+    for (const F of I.fh) punto(F.x, F.y, 3, '#f0e0a0');
+    if (st.uo) M.OGGETTI.U.forEach((t, i) => { if (st.uo[i] !== '2') { const c = M.centro(t); punto(c.x, c.y, 3, '#8a7a50'); } });
+    if (st.ob) [['k', 0, '#4aa0ff'], ['z', 1, '#60ff80']].forEach(([c, i, col]) => { if (!st.ob[i]) { const o = M.centro(M.OGGETTI[c][0]); punto(o.x, o.y, 5, col); } });
+    testo(g, 'LA STAZIONE · verdi i sopravvissuti, rossi gli xenomorfi, arancioni i Working Joe', W / 2, 64, { size: 16, al: 'center', col: '#c0d0f0' });
   }
 
   // ---------- i minigiochi delle task (survival) ----------
@@ -869,11 +902,21 @@
       else if (tipo === 'gen') { const c = M.centro(M.OGGETTI.G[e[1]]); audio.suona('gen', Math.max(0.3, volDi(c.x, c.y, 500)), panDi(c.x, c.y)); }
       else if (tipo === 'genInizia') { const c = M.centro(M.OGGETTI.G[e[1]]); audio.suona('gen', volDi(c.x, c.y, 300) * 0.6, panDi(c.x, c.y)); }
       else if (tipo === 'sbloccato') audio.suona('allarme', 1);
-      else if (tipo === 'morte') { if (e[1] === ctx.mio) { audio.suona('morte', 1); scossa = 1; } else { const u = st.u.find((x) => x[0] === e[1]); if (u) audio.suona('urlo', volDi(u[1], u[2], 600) * 0.8, panDi(u[1], u[2])); sottotitolo(`${ctx.nome(e[1])} è stato preso`); } }
+      else if (tipo === 'morte') { if (e[1] === ctx.mio) { morteCausa = e[3] || 0; audio.suona('morte', 1); scossa = 1; } else { const u = st.u.find((x) => x[0] === e[1]); if (u) audio.suona('urlo', volDi(u[1], u[2], 600) * 0.8, panDi(u[1], u[2])); sottotitolo(`${ctx.nome(e[1])} è stato preso`); } }
       else if (tipo === 'fugge' && e[1] !== ctx.mio) sottotitolo(`${ctx.nome(e[1])} è salito sul Torrens`);
       else if (tipo === 'fiuto' && mostro && (e[1] === undefined || e[1] === ctx.mio)) sottotitolo('Senti un odore… (segno rosso)');
       else if (tipo === 'colpo') audio.suona('sibilo', volDi(e[1], e[2], 200), panDi(e[1], e[2]));
       else if (tipo === 'task') { const c = M.centro(STAZ[e[1]]); audio.suona('gen', Math.max(0.15, volDi(c.x, c.y, 400)) * 0.6, panDi(c.x, c.y)); if (e[2] === ctx.mio) sottotitolo(`Task completata (${e[3]})`); else if (!mostro) sottotitolo(`${ctx.nome(e[2])} ha completato una task (${e[3]})`); }
+      else if (tipo === 'joe') { const v = volDi(e[3], e[4], 220); if (v > 0.05) { sottotitolo(`Working Joe: «${e[2]}»`); audio.suona('joe', v, panDi(e[3], e[4])); } }
+      else if (tipo === 'presa') { if (e[1] === ctx.mio) { presaColpi = 0; scossa = 0.8; audio.suona('morte', 0.5); } else sottotitolo(`${ctx.nome(e[1])} è preso da un Working Joe!`); }
+      else if (tipo === 'divincola' && e[1] === ctx.mio) { presaColpi = e[2]; audio.suona('click', 1); scossa = Math.max(scossa, 0.3); }
+      else if (tipo === 'libero' && e[1] === ctx.mio) { presaColpi = 0; sottotitolo('Ti sei liberato: scappa!'); }
+      else if (tipo === 'joeBrucia') audio.suona('vuoto', 1);
+      else if (tipo === 'serve' && e[1] === ctx.mio) { audio.suona('vuoto', 1); sottotitolo(`Il generatore non parte: serve ${NOMI_CHIAVI[e[2]]}`); }
+      else if (tipo === 'chiave') { audio.suona('preso', 1); sottotitolo(e[1] === ctx.mio ? `Hai trovato ${NOMI_CHIAVI[e[2]]}` : `${ctx.nome(e[1])} ha trovato ${NOMI_CHIAVI[e[2]]}`); }
+      else if (tipo === 'uovo') { const c = M.centro(M.OGGETTI.U[e[1]]); audio.suona('sibilo', volDi(c.x, c.y, 200), panDi(c.x, c.y)); }
+      else if (tipo === 'fhNasce' || tipo === 'fhSalta') audio.suona('fh', volDi(e[1], e[2], 250), panDi(e[1], e[2]));
+      else if (tipo === 'fhBrucia') audio.suona('fh', volDi(e[1], e[2], 250) * 0.7, panDi(e[1], e[2]));
       else if (tipo === 'botola') { const u = st.u.find((x) => x[0] === e[1]); if (u) audio.suona('armadietto', volDi(u[1], u[2], 160), panDi(u[1], u[2])); }
     }
     // a fine partita o in pausa si libera il mouse
