@@ -400,6 +400,7 @@ export async function crea({ M }) {
   let accesiPrima = null, tempo = 0;
   const v3 = new THREE.Vector3();
   // ---------- un fotogramma ----------
+  const misura = [0, 0];
   function disegna(V) {
     const dt = Math.min(0.1, V.dt || 0.016); tempo += dt;
     // la luce cotta cambia solo quando si riaccende un generatore
@@ -507,7 +508,10 @@ export async function crea({ M }) {
     // lo xenomorfo giocatore vede al buio (una luce fredda ovunque) e la nebbia è più rada
     ambiente.intensity = C.modo === 'alieno' ? 1.4 : 0;
     scena.fog.density = C.modo === 'alieno' ? 0.045 : 0.085;
-    renderer.setSize(V.w, V.h, false);
+    // la misura della tela solo quando cambia (riassegnarla ogni volta costa a ogni fotogramma)
+    if (V.w !== misura[0] || V.h !== misura[1]) { misura[0] = V.w; misura[1] = V.h; renderer.setSize(V.w, V.h, false); }
+    // le ombre della torcia (si spengono dalle impostazioni sui computer lenti)
+    if (torcia.castShadow !== (V.ombre !== false)) torcia.castShadow = V.ombre !== false;
     renderer.render(scena, camera);
     return renderer.domElement;
   }
