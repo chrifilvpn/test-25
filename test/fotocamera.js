@@ -179,8 +179,14 @@ assert.ok(/function comando\(testo\)[\s\S]*\^!foto\( prova\)\?\$/.test(js), '!fo
 assert.ok(/if \(flusso \|\| accensione\) return;/.test(js), 'una sola accensione alla volta');
 assert.ok(/addEventListener\('ended'/.test(js), 'si accorge se la fotocamera si stacca');
 assert.ok(/Promise\.allSettled/.test(js) && /rifai/.test(js), 'mani e viso caricati insieme, ognuno per conto suo, e ripartono col processore');
-// Enrico Papi: chiudendolo tutti, il gioco riparte
 const srv = fs.readFileSync(path.join(__dirname, '../server.js'), 'utf8');
+// i file pesanti di MediaPipe: compressi e tenuti dal browser; il download parte già con la richiesta del permesso
+assert.ok(/function serviPesante\(/.test(srv) && /Content-Encoding': 'gzip'/.test(srv) && /max-age=604800/.test(srv), 'MediaPipe compresso e in cache');
+assert.ok(srv.indexOf("app.get('/modelli/:file'") < srv.indexOf("app.use(express.static(path.join(__dirname, 'public')))"), 'i modelli passano prima dei file statici');
+assert.ok(/accensione = true;\s*caricaModelli\(\);/.test(js), 'il download parte insieme alla richiesta del permesso');
+// le foto dei gatti si vedono intere (con lo sfondo sfocato), non tagliate
+assert.ok(/fcam-sfondo/.test(js) && /\.fcam-gatto \{ object-fit: contain; \}/.test(fs.readFileSync(path.join(__dirname, '../public/nuovi.css'), 'utf8')), 'gatti interi');
+// Enrico Papi: chiudendolo tutti, il gioco riparte
 assert.ok(/socket\.on\('papiChiuso'/.test(srv) && /emit\('papiChiuso'\)/.test(app), 'Enrico Papi: chiuso da tutti, il gioco riparte');
 assert.ok(!/https?:\/\//.test(js), 'la fotocamera non scarica niente da fuori');
 assert.ok(!/frame-src/.test(S.CSP), 'CSP: niente riquadri da altri siti');

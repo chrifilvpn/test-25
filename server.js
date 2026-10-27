@@ -56,6 +56,34 @@ console.log(fantasia.attiva ? '[fantasIA] accesa (100 domande al giorno per tutt
 // trucco segreto: la parola sta solo su Render (TRUCCO_PAROLA), mai nel codice; senza, il trucco è spento
 console.log(TRUCCO.attivo() ? '[trucco] acceso' : '[trucco] spento: su Render manca TRUCCO_PAROLA');
 if (process.env.GUARDIA !== 'attiva') console.log('[guardia] modalità prova: i ban vengono solo scritti nel log (GUARDIA=attiva per applicarli)');
+// fotocamera magica: programma e modelli di MediaPipe (~21 MB) compressi una volta sola (in memoria) e tenuti dal
+// browser per una settimana: la prima volta si scaricano ~12 MB, dalla seconda la fotocamera si accende quasi subito
+const MEDIAPIPE = path.join(__dirname, 'node_modules', '@mediapipe', 'tasks-vision');
+const compressi = new Map();
+function serviPesante(file, tipo) {
+  return (q, r, next) => {
+    fs.stat(file, (e, st) => {
+      if (e) return next();
+      const etag = `"${st.size.toString(36)}-${Math.round(st.mtimeMs).toString(36)}"`;
+      r.set({ 'Cache-Control': 'public, max-age=604800', ETag: etag, Vary: 'Accept-Encoding' }).type(tipo);
+      if (q.headers['if-none-match'] === etag) return r.status(304).end();
+      if (!/\bgzip\b/.test(q.headers['accept-encoding'] || '')) return r.sendFile(file, { etag: false, lastModified: false, cacheControl: false });
+      let z = compressi.get(file);
+      if (!z || z.etag !== etag) {
+        z = { etag, dati: new Promise((ok, ko) => fs.readFile(file, (e2, b) => (e2 ? ko(e2) : require('zlib').gzip(b, { level: 6 }, (e3, g) => (e3 ? ko(e3) : ok(g)))))) };
+        compressi.set(file, z);
+      }
+      z.dati.then((g) => r.set({ 'Content-Encoding': 'gzip', 'Content-Length': g.length }).end(g)).catch(() => { compressi.delete(file); next(); });
+    });
+  };
+}
+app.get('/modelli/:file', (q, r, next) => (/^(mani|viso)\.task$/.test(q.params.file) ? serviPesante(path.join(__dirname, 'public', 'modelli', q.params.file), 'application/octet-stream')(q, r, next) : next()));
+app.get('/js/mediapipe/vision_bundle.mjs', serviPesante(path.join(MEDIAPIPE, 'vision_bundle.mjs'), 'application/javascript'));
+app.get('/js/mediapipe/wasm/:file', (q, r, next) => {
+  const f = q.params.file;
+  if (!/^vision_wasm_(nosimd_)?internal\.(js|wasm)$/.test(f)) return next();
+  serviPesante(path.join(MEDIAPIPE, 'wasm', f), f.endsWith('.wasm') ? 'application/wasm' : 'application/javascript')(q, r, next);
+});
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/js/scala-regole.js', (_q, r) => r.sendFile(path.join(__dirname, 'giochi', 'scala-regole.js')));
 app.get('/js/navale-regole.js', (_q, r) => r.sendFile(path.join(__dirname, 'giochi', 'navale-regole.js')));
@@ -66,13 +94,7 @@ app.get('/js/tigerball-livelli.js', (_q, r) => r.sendFile(path.join(__dirname, '
 app.get('/js/isolation-mappa.js', (_q, r) => r.sendFile(path.join(__dirname, 'giochi3', 'isolation', 'mappa.js')));
 app.get('/js/three.module.min.js', (_q, r) => r.type('application/javascript').sendFile(path.join(__dirname, 'node_modules', 'three', 'build', 'three.module.min.js')));
 // fotocamera magica: MediaPipe (mani e viso) dalla dipendenza npm, niente CDN; i modelli stanno in public/modelli
-const MEDIAPIPE = path.join(__dirname, 'node_modules', '@mediapipe', 'tasks-vision');
-app.get('/js/mediapipe/vision_bundle.mjs', (_q, r) => r.type('application/javascript').sendFile(path.join(MEDIAPIPE, 'vision_bundle.mjs')));
-app.get('/js/mediapipe/wasm/:file', (q, r, next) => {
-  const f = q.params.file;
-  if (!/^vision_wasm_(nosimd_)?internal\.(js|wasm)$/.test(f)) return next();
-  r.type(f.endsWith('.wasm') ? 'application/wasm' : 'application/javascript').sendFile(path.join(MEDIAPIPE, 'wasm', f));
-});
+// (serviti compressi più sopra, prima dei file statici)
 // giochi nuovi: tutti i file di public/js/giochi2 e giochi3 (e i loro stili) in un colpo solo, così aggiungere un
 // gioco non richiede di toccare index.html
 function unisciCartella(cartella, est) {

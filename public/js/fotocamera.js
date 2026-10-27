@@ -14,9 +14,9 @@ window.Fotocamera = (() => {
   let flusso = null, accensione = false, giro = 0, caricamento = null;
   // i due riconoscitori: { lavoro, delegate ('GPU'|'CPU'), errori, rifai() } oppure null se non disponibili
   const ric = { mani: null, viso: null };
-  let ultimoGiro = 0, ultimaFoto = 0, grigiPrima = null, fermoDa = 0, turno = 0, intervallo = 66, tempoMedio = 0;
+  let ultimoGiro = 0, ultimaFoto = 0, grigiPrima = null, fermoDa = 0, turno = 0, intervallo = 66, tempoMedio = 0, misure = 0;
   let conti = {}, volte = {}, gestoPrima = null, espressioni = null, puntiViso = null, trovate = [];
-  let avvisoFino = 0, visoVistoA = 0, maniVisteA = 0, visoMaiVisto = true, accesaA = 0, luce = 128, base = '', prova = false, provaA = 0;
+  let avvisoFino = 0, visoVistoA = 0, maniVisteA = 0, visoMaiVisto = true, provaCPU = 0, accesaA = 0, luce = 128, base = '', prova = false, provaA = 0;
   const NESSUNA = { dito: false, lingua: false, aperta: false, occhiolino: false, arrabbiato: false, socchiusi: false, triste: false };
   let uscite = { ...NESSUNA }; // l'ultimo risultato di ogni gesto (con mani e viso a turno resta quello di prima)
   // le espressioni che imparano la faccia normale di chi guarda (si riparte da capo con 🎯 o spegnendo)
@@ -48,7 +48,7 @@ window.Fotocamera = (() => {
           <button type="button" class="bottone mini-bt fcam-spegni" title="Spegni la fotocamera" aria-label="Spegni la fotocamera">⏹<span class="fcam-etichetta"> Spegni</span></button></div>
         <div class="fcam-schermo">
           <video class="fcam-video" playsinline muted></video>
-          ${Object.values(GATTI).flat().map((f) => `<img class="fcam-filtro fcam-${f}" src="/fotocamera/gatto-${f}.jpg" alt="" hidden>`).join('')}
+          ${Object.values(GATTI).flat().map((f) => `<div class="fcam-filtro fcam-${f}" hidden><img class="fcam-sfondo" src="/fotocamera/gatto-${f}.jpg" alt=""><img class="fcam-gatto" src="/fotocamera/gatto-${f}.jpg" alt=""></div>`).join('')}
           <p class="fcam-conto" hidden></p>
           <button type="button" class="bottone fcam-riaccendi" hidden>▶ Riaccendi</button>
           <p class="fcam-stato" role="status"></p>
@@ -145,6 +145,7 @@ window.Fotocamera = (() => {
     }
     stato('📷 Il browser ti chiede il permesso per la fotocamera…');
     accensione = true;
+    caricaModelli(); // il download (la prima volta ~12 MB) parte subito, mentre leggi la richiesta del browser
     let f;
     try {
       f = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false });
@@ -166,9 +167,9 @@ window.Fotocamera = (() => {
     base = '';
     caricaModelli().then(() => {
       if (flusso !== f) return;
-      base = messaggioBase(); stato(base); visoVistoA = maniVisteA = performance.now();
+      base = messaggioBase(); stato(base); visoVistoA = maniVisteA = accesaA = performance.now(); // gli 8 secondi contano da qui
     });
-    ultimaFoto = 0; grigiPrima = null; fermoDa = visoVistoA = maniVisteA = accesaA = performance.now(); visoMaiVisto = true;
+    ultimaFoto = 0; misure = 0; tempoMedio = 0; grigiPrima = null; fermoDa = visoVistoA = maniVisteA = accesaA = performance.now(); visoMaiVisto = true;
     cancelAnimationFrame(giro);
     giro = requestAnimationFrame(passo);
   }
@@ -216,7 +217,7 @@ window.Fotocamera = (() => {
           for (const delegate of delegati) {
             try {
               const lavoro = await Classe.createFromOptions(fileset, { baseOptions: { modelAssetPath: modello, delegate }, runningMode: 'VIDEO', ...extra });
-              return { lavoro, delegate, errori: 0, rifai: () => crea(Classe, modello, extra, ['CPU']) };
+              return { lavoro, delegate, errori: 0, rifai: (d = ['CPU']) => crea(Classe, modello, extra, d) };
             } catch (e) { if (delegate === delegati[delegati.length - 1]) throw e; }
           }
         };
@@ -242,13 +243,14 @@ window.Fotocamera = (() => {
     if (!r || ++r.errori < ERRORI_MAX) return;
     sostituisci(nome, r);
   }
-  function sostituisci(nome, r) {
+  // delegati: con cosa ripartire (di solito il processore); senza errori (prova) si torna indietro se va male
+  function sostituisci(nome, r, delegati = ['CPU']) {
     ric[nome] = null;
     try { r.lavoro.close(); } catch { /* niente */ }
-    const fine = () => { if (flusso) { base = messaggioBase(); stato(base); } };
-    if (r.delegate === 'CPU') { console.warn(`[fotocamera] ${nome}: troppi errori, spento`); fine(); return; }
-    console.warn(`[fotocamera] ${nome}: troppi errori con la scheda grafica, riparto col processore`);
-    r.rifai().then((n) => { ric[nome] = n; }).catch(() => {}).finally(fine);
+    const fine = () => { if (flusso && base) { base = messaggioBase(); stato(base); } };
+    if (delegati[0] === r.delegate) { console.warn(`[fotocamera] ${nome}: troppi errori, spento`); fine(); return; }
+    console.warn(`[fotocamera] ${nome}: riparto con ${delegati[0] === 'CPU' ? 'il processore' : 'la scheda grafica'}`);
+    r.rifai(delegati).then((n) => { ric[nome] = n; }).catch(() => {}).finally(fine);
   }
 
   // ---------- il giro: ~15 controlli al secondo (meno se il dispositivo è lento) ----------
@@ -291,11 +293,18 @@ window.Fotocamera = (() => {
         } else espressioni = puntiViso = null;
       } catch { espressioni = puntiViso = null; sbagliato('viso'); }
       // con la scheda grafica alcuni telefoni non danno errori ma non trovano mai niente: se in 8 secondi con la
-      // luce buona non si è mai vista una faccia, si prova una volta col processore
-      if (ric.viso && ric.viso.delegate === 'GPU' && visoMaiVisto && luce > 60 && ora - accesaA > 8000) { visoMaiVisto = false; sostituisci('viso', ric.viso); }
+      // luce buona non si è mai vista una faccia, si prova col processore. Se neanche col processore se ne vede una
+      // in altri 8 secondi (semplicemente non c'era nessuno davanti), si torna alla scheda grafica, che è più veloce.
+      if (ric.viso && visoMaiVisto && luce > 60 && ora - accesaA > 8000) {
+        if (ric.viso.delegate === 'GPU' && !provaCPU) { provaCPU = 1; accesaA = ora; sostituisci('viso', ric.viso); }
+        else if (ric.viso.delegate === 'CPU' && provaCPU === 1) { provaCPU = 2; sostituisci('viso', ric.viso, ['GPU', 'CPU']); }
+      }
+      if (!visoMaiVisto && provaCPU === 1) provaCPU = 2; // col processore la faccia si vede: si resta così
     }
     const ms = performance.now() - t0;
-    tempoMedio = tempoMedio ? tempoMedio * 0.9 + ms * 0.1 : ms;
+    // i primi controlli sono lentissimi (la scheda grafica si prepara, anche 1-3 secondi): non contano, se no per un
+    // po' sembrerebbe un dispositivo lento e i gatti arriverebbero in ritardo proprio ai primi gesti
+    if (++misure > 3) tempoMedio = tempoMedio ? tempoMedio * 0.9 + ms * 0.1 : ms;
     intervallo = tempoMedio > 70 ? 120 : 66; // molto lento: meno controlli al secondo
 
     // i riconoscitori si aggiornano solo quando c'è un risultato nuovo (a turno, l'altro resta com'era). Con la
@@ -328,6 +337,7 @@ window.Fotocamera = (() => {
     const fermo = ora - fermoDa > FERMO_MS && qualcuno && luce > 15;
     const gesto = dito ? 'dito' : lin ? 'lingua' : aperta ? 'aperta' : occ ? 'occhiolino' : arrab ? 'arrabbiato' : socc ? 'socchiusi' : tri ? 'triste' : fermo ? 'fermo' : null;
     // la riga in basso: il gesto visto, oppure cosa non va (faccia persa, testa girata, poca luce), oppure il messaggio normale
+    $('#fcam .fcam-schermo').classList.toggle('fcam-con-gatto', !!gesto);
     if (base && !scatta.conto && ora > avvisoFino) {
       stato(gesto ? NOMI[gesto]
         : ric.viso && ora - visoVistoA > 1500 ? (luce < 45 ? '💡 C\'è poca luce: non vedo la tua faccia' : '🙂 Non vedo la tua faccia: mettiti dritto davanti alla fotocamera')
@@ -341,10 +351,10 @@ window.Fotocamera = (() => {
     if (prova && ora - provaA > 250) { provaA = ora; numeri(ora); }
   }
 
-  // un gesto vale dopo n controlli di fila e smette dopo qualche controllo senza (niente sfarfallio)
+  // un gesto vale dopo n controlli di fila e smette dopo 3 controlli senza (~0,2 s: niente sfarfallio, ma scattante)
   function conta(k, si, n) {
     const c = conti[k] || (conti[k] = { su: 0, giu: 0 });
-    if (si) { c.su++; c.giu = 0; } else if (++c.giu > 4) c.su = 0;
+    if (si) { c.su++; c.giu = 0; } else if (++c.giu > 2) c.su = 0;
     return c.su >= n;
   }
 
@@ -409,15 +419,20 @@ window.Fotocamera = (() => {
     const v = $('#fcam .fcam-video');
     if (!flusso || !v || v.readyState < 2) return;
     const w = v.videoWidth || 640, h = v.videoHeight || 480;
-    const gatto = [...document.querySelectorAll('#fcam .fcam-filtro')].find((i) => !i.hidden && i.complete && i.naturalWidth);
+    const gatto = [...document.querySelectorAll('#fcam .fcam-filtro')].filter((d) => !d.hidden).map((d) => d.querySelector('.fcam-gatto')).find((i) => i && i.complete && i.naturalWidth);
     const tela = document.createElement('canvas');
     tela.width = gatto ? w * 2 : w; tela.height = h;
     const x = tela.getContext('2d');
     x.save(); x.translate(w, 0); x.scale(-1, 1); x.drawImage(v, 0, 0, w, h); x.restore();
-    if (gatto) { // il gatto riempie il suo riquadro come nella finestra (taglia i bordi, non si schiaccia)
-      const s = Math.max(w / gatto.naturalWidth, h / gatto.naturalHeight), gw = gatto.naturalWidth * s, gh = gatto.naturalHeight * s;
+    if (gatto) { // come nella finestra: il gatto intero (non si taglia) e dietro lo stesso gatto sfocato
+      const nw = gatto.naturalWidth, nh = gatto.naturalHeight;
+      const cop = Math.max(w / nw, h / nh), sta = Math.min(w / nw, h / nh);
       x.save(); x.beginPath(); x.rect(w, 0, w, h); x.clip();
-      x.drawImage(gatto, w + (w - gw) / 2, (h - gh) / 2, gw, gh); x.restore();
+      x.filter = 'blur(18px) brightness(.6)'; // dove il filtro non c'è (vecchi Safari) resta solo più scuro
+      x.drawImage(gatto, w + (w - nw * cop) / 2, (h - nh * cop) / 2, nw * cop, nh * cop);
+      x.filter = 'none';
+      if (x.filter !== 'none') { x.fillStyle = 'rgba(0,0,0,.4)'; x.fillRect(w, 0, w, h); }
+      x.drawImage(gatto, w + (w - nw * sta) / 2, (h - nh * sta) / 2, nw * sta, nh * sta); x.restore();
     }
     tela.toBlob((b) => {
       if (!b) return;
