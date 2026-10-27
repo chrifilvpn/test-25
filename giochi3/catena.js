@@ -7,6 +7,7 @@ const D = require('../giochi2/paroliere-dati');
 
 const VELOCE = !!process.env.TEST_VELOCE;
 const TEMPI = [20, 12, 30];
+const POCHE = 8; // dopo una vita persa: con meno parole comuni libere di così si cambia parola
 // le parole che il computer conosce e da cui si parte: indice per inizio (1 o 2 lettere), con la fascia di frequenza
 let INDICE = null;
 function indice() {
@@ -97,9 +98,21 @@ class Catena {
     else this.annuncia(p, `${come === 'passa' ? 'passa' : 'non trova la parola in tempo'}: perde una vita`, `${come === 'passa' ? 'passi' : 'tempo scaduto'}: perdi una vita`);
     const vivi = this.vivi();
     if ((this.n > 1 && vivi.length <= 1) || !vivi.length) return this.chiudi();
-    // la catena riparte dalla stessa parola con chi viene dopo
+    // la catena riparte dalla stessa parola con chi viene dopo; ma se le sue lettere finali lasciano poche parole
+    // comuni ancora libere (il computer difficile le sceglie apposta) si riparte da una parola nuova, se no si perdevano
+    // vite uno dopo l'altro sulla stessa sillaba
+    if (continuazioni(this.attacco(), this.nLettere, this.usate) < POCHE) this.nuovaPartenza();
     this.passaA(this.n === 1 ? p : this.prossimo(p));
     return null;
+  }
+  nuovaPartenza() {
+    const libere = partenze(this.nLettere).filter((w) => !this.usate.has(w));
+    if (!libere.length) return;
+    const w = libere[Math.floor(Math.random() * libere.length)];
+    this.catena.push({ w, chi: null });
+    this.usate.add(w);
+    // si aggiunge all'annuncio della vita persa (uno solo per volta)
+    if (this.evento) { this.evento.testo += ` · si riparte da ${w.toUpperCase()}`; if (this.evento.testoIo) this.evento.testoIo += ` · si riparte da ${w.toUpperCase()}`; }
   }
   // il trucco segreto (!win): al suo turno gli sussurra la parola del computer difficile (valida e difficile da continuare)
   suggerimentoWin(posto) {

@@ -27,6 +27,13 @@ const D = require('../../giochi2/paroliere-dati');
   g.fineTurno = Date.now() - 1;
   assert.ok(g.controllaTempo());
   assert.strictEqual(g.vite[0], 2); assert.strictEqual(g.turno, 1); assert.strictEqual(g.ultima(), 'nero');
+  // finali con poche parole comuni libere (qui "-zz"): dopo la vita persa si riparte da una parola nuova
+  {
+    const h = M.crea({ n: 2, primo: 0, opzioni: {} });
+    h.catena.push({ w: 'jazz', chi: 1 }); h.usate.add('jazz');
+    h.fineTurno = Date.now() - 1; h.controllaTempo();
+    assert.notStrictEqual(h.ultima(), 'jazz'); assert.ok(D.esiste(h.ultima()) && /riparte/.test(h.evento.testo));
+  }
   g.azione(1, { tipo: 'passo' }); g.azione(0, { tipo: 'passo' }); g.azione(1, { tipo: 'passo' }); g.azione(0, { tipo: 'passo' });
   assert.ok(g.vite[0] === 0 && g.finita && g.risultato.vincitori[0] === 1, 'chi finisce le vite perde');
   // con l'ultima lettera
