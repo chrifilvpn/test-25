@@ -134,7 +134,21 @@ function nomeBot(s) {
 const creaBot = (s, livello) => ({ id: `bot-${Math.random().toString(36).slice(2)}`, nome: nomeBot(s), bot: livello, connesso: true, fiche: FICHE_INIZIALI });
 // giochi senza computer (meta.soloPersone): chi manca salta il turno invece di essere sostituito
 const senzaBot = (s) => !!GIOCHI[s.gioco].meta.soloPersone;
-const umani = (s) => s.posti.filter((g) => g && (!g.bot || g.inSala));
+const umani = (s) => s.posti.filter((g) => g && !g.locale && (!g.bot || g.inSala));
+
+// PASSA IL TELEFONO (giochi con meta.passaTelefono, opzione telefono = 'si'): chi apre il tavolo gioca con gli amici
+// sullo stesso dispositivo. I posti vuoti diventano "posti locali" (locale = id di chi ha aperto il tavolo): il suo
+// browser riceve anche le viste di quei posti e manda le mosse con { per: posto }. Sono presenti quando lo è lui.
+const telefonoAttivo = (s) => !!(GIOCHI[s.gioco] && GIOCHI[s.gioco].meta.passaTelefono && s.opzioni && s.opzioni.telefono === 'si');
+function sincronizzaLocali(s) {
+  for (const x of s.posti) {
+    if (!x || !x.locale) continue;
+    const h = s.posti.find((y) => y && !y.locale && y.id === x.locale);
+    x.connesso = !!(h && h.connesso); x.nascosto = !!(h && h.nascosto); x.nascostoDal = h ? h.nascostoDal : 0; x.uscito = !h || !!h.uscito;
+  }
+}
+// tornati in sala (o cambiato gioco) i posti locali si liberano: alla prossima partita si riscrivono i nomi
+function togliLocali(s) { s.posti.forEach((x, i) => { if (x && x.locale) s.posti[i] = null; }); }
 // Giochi di collaborazione (meta.pausaBoss): se qualcuno è sulla pagina delle dispense, la partita si ferma per tutti
 // (non chi si è scollegato o è uscito dal tavolo mentre era sulle dispense: altrimenti si restava fermi per sempre).
 // Una partita può decidere da sé (es. Block Blast: in pausa da soli e in collaborazione, non nella sfida).
@@ -159,6 +173,8 @@ function messaggioSistema(s, testo) {
 }
 
 function invia(s) {
+  if (!s.partita && s.posti.some((x) => x && x.locale)) togliLocali(s);
+  sincronizzaLocali(s);
   if (s.votoFine && s.votoFine.partita !== s.partita) { clearTimeout(s.timerVoto); s.votoFine = null; }
   inviaSussurri(s);
   s.posti.forEach((g, posto) => {
@@ -179,10 +195,23 @@ function invia(s) {
       sfida: s.sfida && s.sfida.gioco === s.gioco ? { data: s.sfida.data, prova: !!s.sfida.prova } : null,
       torneo: tornei.vistaTorneo(s), serata: tornei.vistaSerata(s),
       partita: s.partita ? vistaLeggera(s, g.socketId, s.partita.vista(posto)) : null,
+      // passa il telefono: le viste dei posti locali di questo browser e chi di loro deve agire
+      locali: s.partita && !g.locale ? vistePerLocali(s, g.id) : null,
       chat: s.chat.filter((m) => !m.spett && (!m.per || m.per.includes(posto))).slice(-40), // m.per: messaggio visibile solo ad alcuni (es. i fantasmi di Chi è l'Alieno)
     });
   });
   inviaSpettatori(s);
+}
+
+function vistePerLocali(s, id) {
+  const miei = s.posti.map((x, i) => (x && x.locale === id ? i : -1)).filter((i) => i >= 0);
+  if (!miei.length) return null;
+  const g = s.partita;
+  const viste = {};
+  for (const i of miei) viste[i] = g.vista(i);
+  let attesi = [];
+  try { attesi = !g.finita && g.turno == null && g.attesi && !g.inAttesa ? g.attesi() : []; } catch (e) { attesi = []; }
+  return { posti: miei, viste, attesi };
 }
 
 // VISTE LEGGERE: un gioco con alleggerisci(vista, memo) può togliere dalla vista quello che quel browser ha già
@@ -311,6 +340,7 @@ function gestisciTick(s) {
 }
 
 function pianifica(s) {
+  sincronizzaLocali(s);
   clearTimeout(s.timer);
   clearTimeout(s.timerTempo);
   const g = s.partita;
@@ -1064,10 +1094,19 @@ io.on('connection', (socket) => {
     if (e) { errore(e); aggiorna(s); }
   });
 
-  socket.on('inizia', () => {
+  socket.on('inizia', (dati) => {
     const s = stanza;
     if (!s || s.partita || !sonoHost()) return;
     tornei.annulla(s);
+    // passa il telefono: i posti vuoti li prendono gli amici seduti accanto a chi ha aperto il tavolo
+    if (telefonoAttivo(s)) {
+      const nomi = (dati && Array.isArray(dati.nomi)) ? dati.nomi : [];
+      s.posti.forEach((g, i) => {
+        if (g) return;
+        const scelto = pulisciNome(nomi[i] || '') || `Giocatore ${i + 1}`;
+        s.posti[i] = { id: `${mioId}#${i}`, locale: mioId, nome: nomeLibero(s, scelto, i), socketId: null, connesso: true, bot: null, fiche: FICHE_INIZIALI };
+      });
+    }
     // giochi dove i posti vuoti diventano compagni del computer (Draghi e Segrete): li prende il computer da solo
     if (GIOCHI[s.gioco].meta.postiLiberiAlComputer && !senzaBot(s)) s.posti.forEach((g, i) => { if (!g) s.posti[i] = creaBot(s, 'medio'); });
     if (s.posti.some((g) => !g)) return errore('Riempi tutti i posti, anche con il computer');
@@ -1079,8 +1118,15 @@ io.on('connection', (socket) => {
   // ---- partita ----
   socket.on('azione', async (azione) => {
     const s = stanza;
-    const i = mioPosto();
+    let i = mioPosto();
+    const ioStesso = i;
     if (!s || !s.partita || i === -1) return;
+    // passa il telefono: la mossa di un amico sullo stesso dispositivo
+    if (azione && Number.isInteger(azione.per) && azione.per !== i) {
+      const x = s.posti[azione.per];
+      if (!x || !x.locale || x.locale !== mioId) return errore('Quel posto non è su questo dispositivo');
+      i = azione.per;
+    }
     if (inEsecuzione(s)) return errore('Esecuzione pubblica in corso: aspetta un attimo 🌋');
     // giochi di parole: prima di accettare la mossa fantasIA controlla che la parola esista davvero
     // (se l'IA è spenta o non risponde, la parola si accetta; vedi fantasia.js)
@@ -1092,7 +1138,7 @@ io.on('connection', (socket) => {
       socket.data.controlloParola = true;
       let esiste = null;
       try { esiste = await fantasia.parolaEsiste(daControllare); } finally { socket.data.controlloParola = false; }
-      if (stanza !== s || s.partita !== g || mioPosto() !== i || g.finita) return;
+      if (stanza !== s || s.partita !== g || mioPosto() !== ioStesso || g.finita) return;
       if (esiste === false) return errore(`🧚 «${daControllare}» non sembra una parola italiana: provane un'altra`);
       if (inEsecuzione(s)) return errore('Esecuzione pubblica in corso: aspetta un attimo 🌋');
     }
@@ -1133,6 +1179,8 @@ io.on('connection', (socket) => {
     if (!mod.meta.giocatori.includes(s.posti.length)) return errore(`${mod.meta.nome} si gioca in ${mod.meta.giocatori.join(', ')}`);
     ripristinaInSala(s);
     s.posti.forEach((g, i) => { if (g && ((g.bot && g.sostituto) || g.uscito)) s.posti[i] = null; });
+    // con gli amici sullo stesso dispositivo si continua solo se anche il nuovo gioco si passa il telefono
+    if (!(mod.meta.passaTelefono && opzioni && opzioni.telefono === 'si')) togliLocali(s);
     if (mod.meta.soloPersone && s.posti.some((g) => g && g.bot)) {
       s.partita = null; s.gioco = gioco; s.opzioni = pulisciOpzioni(gioco, opzioni);
       messaggioSistema(s, `${mod.meta.nome} si gioca solo con altre persone: togli i computer dal tavolo`);

@@ -391,9 +391,11 @@ module.exports = {
     nome: 'Wavelength',
     tipo: 'tabellone',
     giocatori: [2, 3, 4, 5, 6, 7, 8, 9, 10],
+    passaTelefono: true, // si può giocare tutti da un solo dispositivo (server.js: posti locali)
     descrizione: 'Lo Psichico vede il bersaglio su uno spettro (Freddo ↔ Caldo) e dà un indizio: la squadra gira la manopola dove pensa che sia. A squadre o tutti insieme.',
     alias: ['wavelength', 'sintonia', 'lunghezza d\'onda', 'onda', 'psichico', 'spettro', 'manopola'],
     opzioni: [
+      { id: 'telefono', nome: 'Dispositivi', valori: ['no', 'si'], etichette: ['Ognuno col suo dispositivo', 'Un solo dispositivo: ci si passa il telefono'], predefinito: 'no' },
       { id: 'modo', nome: 'Modalità', valori: ['squadre', 'cooperativa'], etichette: ['A squadre (da 4 giocatori)', 'Cooperativa (tutti insieme)'], predefinito: 'squadre' },
       { id: 'obiettivo', nome: 'A squadre si vince a', valori: [10, 6], etichette: ['10 punti', '6 punti (partita corta)'], predefinito: 10 },
       { id: 'carte', nome: 'In cooperativa', valori: [7, 10], etichette: ['7 carte', '10 carte'], predefinito: 7 },
@@ -408,6 +410,7 @@ module.exports = {
       'A squadre si gioca a turno e lo Psichico cambia a ogni turno della squadra. Vince chi arriva per primo a 10 punti (o 6 nella partita corta); se si arriva insieme a pari punti si continua finché qualcuno passa avanti. Rimonta: chi fa centro pieno ed è ancora indietro gioca subito un altro turno.',
       'Cooperativa (anche in 2 o 3): tutti nella stessa squadra, lo Psichico gira tra tutti e si giocano 7 o 10 carte. Ogni centro pieno regala una carta in più (al massimo 3). Alla fine il giudizio dipende dalla media dei punti: da «Fuori frequenza» a «Telepatia pura».',
       'Il computer sa fare lo Psichico e sa girare la manopola: conosce più di 600 esempi su 50 spettri. Se gli dai un indizio che non conosce tira a indovinare (meglio giocare con amici!). Il facile capisce e spiega in modo più approssimativo, il difficile è molto preciso. Se in squadra ci sono persone, i computer non toccano la manopola: lasciano un segno con il loro consiglio.',
+      'Con l\'opzione «Un solo dispositivo» si gioca tutti dallo stesso telefono o computer: chi apre il tavolo scrive i nomi degli amici nei posti liberi e, quando tocca a un altro, compare il sipario «Passa il telefono a…»: solo quando chi deve giocare tocca «Sono io» si vede il suo schermo (la parola, il bersaglio o la mappa).',
     ],
   },
   crea: (o) => new Wavelength(o),
