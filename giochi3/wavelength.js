@@ -256,6 +256,12 @@ class Wavelength {
     };
   }
 
+  // la chat: lo Psichico conosce il bersaglio, quindi finché non si scopre non può suggerire (il messaggio resta suo)
+  leggiChat(p, testo) {
+    if (this.finita || this.inAttesa || p !== this.psichico || this.fase === 'rivela') return {};
+    return { soloPer: [p], privato: '🤐 Sei lo Psichico: finché il bersaglio non si scopre gli altri non leggono i tuoi messaggi' };
+  }
+  puoReagire(p) { return !(this.leggiChat(p, '').soloPer); } // lo Psichico non manda emoji finché non si scopre
   // il trucco segreto (!win): allo Psichico l'indizio del computer difficile, a chi gira la manopola dov'è il centro,
   // agli avversari da che parte scommettere
   suggerimentoWin(posto) {
@@ -351,7 +357,15 @@ function bot(g, p, livello) {
   const chiave = `${g.storia.length}:${g.fase}`;
   g._stime = g._stime || {};
   let s = g._stime[p];
-  if (!s || s.chiave !== chiave) s = g._stime[p] = { chiave, v: stima(g, livello) };
+  if (!s || s.chiave !== chiave) {
+    let v = stima(g, livello);
+    // una squadra di soli computer (Psichico compreso) si capisce "a memoria" (stessi esempi): contro persone
+    // sbaglia un po' di più, così una squadra di persone se la gioca alla pari
+    const sq = g.fase === 'manopola' ? g.sq : g.avversari;
+    const soliComputer = (k) => g.membri[k].every((i) => g.bot[i]);
+    if (!g.coop && g.fase === 'manopola' && soliComputer(sq) && !soliComputer(1 - sq)) v = limita(v + rumore(9));
+    s = g._stime[p] = { chiave, v };
+  }
   const squadra = g.fase === 'manopola' ? g.indovini() : g.coop ? [] : g.membri[g.avversari];
   const persone = squadra.filter((i) => !g.bot[i] && i !== p);
   if (g.fase === 'manopola') {
@@ -373,6 +387,7 @@ function bot(g, p, livello) {
 module.exports = {
   meta: {
     id: 'wavelength',
+    squadreSala: { nomi: ['🟣 Viola', '🟢 Verdi'], min: 4, se: { modo: ['squadre'] } },
     nome: 'Wavelength',
     tipo: 'tabellone',
     giocatori: [2, 3, 4, 5, 6, 7, 8, 9, 10],
@@ -386,7 +401,7 @@ module.exports = {
     regole: [
       'Sulla manopola c\'è uno spettro tra due concetti opposti, per esempio Freddo ↔ Caldo, e un bersaglio nascosto. Solo lo Psichico vede dov\'è il bersaglio.',
       'Lo Psichico sceglie uno dei due spettri che gli capitano e dà un indizio: un esempio che secondo lui sta in quel punto. Se il bersaglio è quasi tutto a destra su Freddo ↔ Caldo potrebbe dire «caffè appena fatto»; se è al centro, «primavera».',
-      'Regole dell\'indizio: un solo concetto, niente numeri o percentuali («costa 250.000 euro» non vale, «una Ferrari» sì), non uno dei due estremi, e dopo averlo dato lo Psichico resta in silenzio: niente suggerimenti in chat!',
+      'Regole dell\'indizio: un solo concetto, niente numeri o percentuali («costa 250.000 euro» non vale, «una Ferrari» sì), non uno dei due estremi, e lo Psichico resta in silenzio: finché il bersaglio non si scopre i suoi messaggi in chat non li legge nessuno.',
       'La squadra discute in chat e gira la manopola (trascinala, o usa − e +). La manopola è una sola per tutta la squadra: la blocca il primo che preme «Blocca». Non conta quanto sia caldo un caffè in assoluto, ma quanto lo è per lo Psichico.',
       'Si scopre il bersaglio: centro pieno 4 punti, vicino 3, nella zona 2, fuori 0.',
       'A squadre (da 4 giocatori; le squadre si formano alternando i posti, 1º Viola, 2º Verdi…): dopo che la manopola è bloccata, gli avversari scommettono se il centro del bersaglio è a sinistra o a destra della manopola. Se indovinano prendono 1 punto, tranne quando la squadra ha fatto centro pieno.',

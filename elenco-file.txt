@@ -581,6 +581,7 @@ test/giochi3/navale.js
 test/giochi3/nurikabe.js
 test/giochi3/picross.js
 test/giochi3/piramide.js
+test/giochi3/revisione-party.js
 test/giochi3/sfere.js
 test/giochi3/stickwar.js
 test/giochi3/wavelength.js
