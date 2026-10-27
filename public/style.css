@@ -118,6 +118,7 @@ input::placeholder { color: rgba(243, 236, 217, .4); }
 .gioco-tessera[data-cat="parole"] { --cat: #b58ae8; }
 .gioco-tessera[data-cat="azione"] { --cat: #5cd08a; }
 .gioco-tessera[data-cat="squid"] { --cat: #ff5f9e; }
+.gioco-tessera[data-cat="rompicapo"] { --cat: #e8a05c; }
 .gioco-tessera:hover { border-color: rgba(247, 240, 222, .4); transform: translateY(-2px); box-shadow: 0 10px 22px -14px rgba(0, 0, 0, .9); }
 .gioco-tessera:hover::before, .gioco-tessera[aria-pressed="true"]::before { width: 5px; opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .gioco-tessera:hover { transform: none; } }

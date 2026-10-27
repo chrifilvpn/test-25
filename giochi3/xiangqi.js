@@ -254,6 +254,7 @@ function bot(g, p, livello) {
 module.exports = {
   meta: {
     id: 'xiangqi',
+    pensaLento: true, // il computer difficile pensa a lungo: lo fa in un thread a parte (giochi/pensatore.js)
     nome: 'Scacchi cinesi',
     tipo: 'tabellone',
     giocatori: [2],

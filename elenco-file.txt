@@ -69,6 +69,7 @@ giochi/paintball.js
 giochi/palloncini.js
 giochi/pallone.js
 giochi/parole-impostore.js
+giochi/pensatore.js
 giochi/peppa.js
 giochi/piattaforme.js
 giochi/pioggia.js
@@ -578,6 +579,7 @@ test/giochi3/hex.js
 test/giochi3/hockey.js
 test/giochi3/isolation.js
 test/giochi3/luci.js
+test/giochi3/migliorie-azione.js
 test/giochi3/navale.js
 test/giochi3/nurikabe.js
 test/giochi3/picross.js
