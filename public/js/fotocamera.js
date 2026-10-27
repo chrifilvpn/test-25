@@ -314,7 +314,7 @@ window.Fotocamera = (() => {
       const aperte = !!puntiViso && (G.labbra(puntiViso, v.videoWidth || 640, v.videoHeight || 480) > 0.07 || ((espressioni && espressioni.jawOpen) || 0) > 0.08);
       uscite.lingua = dritta && lingua.aggiungi(...boccaDi(v, puntiViso), espressioni, aperte);
       uscite.occhiolino = dritta && occhio.aggiungi(espressioni, puntiViso);
-      uscite.arrabbiato = dritta && rabbia.aggiungi(espressioni);
+      uscite.arrabbiato = dritta && rabbia.aggiungi(espressioni, puntiViso);
       uscite.socchiusi = dritta && socchiusi.aggiungi(espressioni);
       uscite.triste = dritta && tristezza.aggiungi(espressioni);
     }

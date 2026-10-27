@@ -243,21 +243,51 @@
   // faccia arrabbiata: sopracciglia aggrottate (e naso arricciato). Ognuno ha la sua faccia "normale" e gli occhiali
   // possono far sembrare le sopracciglia sempre un po' giù: si impara piano piano il valore di riposo di chi guarda e
   // conta solo quanto si aggrotta in più. Restituisce un oggetto con aggiungi(espressioni) → true se arrabbiato.
-  function creaRabbia({ scarto = 0.22, minimo = 0.3, lento = 0.03 } = {}) {
+  //
+  // Con gli occhiali la montatura copre le sopracciglia e MediaPipe non le vede scendere: c'è una seconda strada che
+  // non ne ha bisogno, gli altri segni della faccia arrabbiata rispetto alla faccia calma di chi guarda: occhi
+  // stretti, naso arricciato, labbra serrate, angoli della bocca giù e, dai punti del viso, sopracciglia più vicine
+  // agli occhi (55-159, 285-386) e più vicine tra loro (55-285 rispetto agli angoli interni degli occhi 133-362).
+  // aggiungi(espressioni, puntiViso?) → true se arrabbiato.
+  function creaRabbia({ scarto = 0.22, minimo = 0.3, lento = 0.03, scarto2 = 0.25 } = {}) {
     let riposo = null, prova = '', fila = 0;
+    let riposo2 = null, occhiSu = null, vicine = null; // seconda strada: punteggio e misure della faccia calma
+    const d = (k, a, b) => Math.hypot(k[a].x - k[b].x, k[a].y - k[b].y);
     return {
-      aggiungi(e) {
+      aggiungi(e, k) {
         if (!e) return false;
-        const v = (k) => e[k] || 0;
-        const giu = (v('browDownLeft') + v('browDownRight')) / 2 + 0.5 * (v('noseSneerLeft') + v('noseSneerRight')) / 2;
-        const sorriso = (v('mouthSmileLeft') + v('mouthSmileRight')) / 2;
+        const v = (n) => e[n] || 0, media = (n) => (v(n + 'Left') + v(n + 'Right')) / 2;
+        const giu = media('browDown') + 0.5 * media('noseSneer');
+        const sorriso = media('mouthSmile');
         // se all'inizio sei già accigliato il riposo non parte troppo alto (scende poi in fretta sulla faccia calma)
         if (riposo == null) riposo = Math.min(giu, minimo);
-        let arrabbiato = giu - riposo > scarto && giu > minimo && sorriso < 0.3;
-        if (arrabbiato && ++fila > FILA_MAX) { riposo = giu; fila = 0; arrabbiato = false; } else if (!arrabbiato) fila = 0;
-        prova = `${giu.toFixed(2)} (serve ${Math.max(minimo, riposo + scarto).toFixed(2)})`;
+        const prima = giu - riposo > scarto && giu > minimo;
+        // la seconda strada
+        let punti = 0, misure = null;
+        if (k && k.length > 386) {
+          const alto = d(k, 10, 152) || 0.0001;
+          const su = (d(k, 55, 159) + d(k, 285, 386)) / 2 / alto, tra = d(k, 55, 285) / (d(k, 133, 362) || 0.0001);
+          if (occhiSu == null) { occhiSu = su; vicine = tra; }
+          punti = Math.max(0, 1 - su / occhiSu) * 2 + Math.max(0, 1 - tra / vicine) * 2;
+          misure = { su, tra };
+        }
+        // gli occhi stretti da soli non bastano (anche socchiudendoli o con il sole in faccia si stringono): serve almeno
+        // un altro segno, naso, bocca o sopracciglia
+        const altri = 0.8 * media('noseSneer') + 0.6 * media('mouthPress') + 0.4 * media('mouthFrown') + punti;
+        const segni = media('eyeSquint') + altri;
+        if (riposo2 == null) riposo2 = Math.min(segni, 0.3);
+        const seconda = segni - riposo2 > scarto2 && altri > 0.15;
+        let arrabbiato = (prima || seconda) && sorriso < 0.3;
+        if (arrabbiato && ++fila > FILA_MAX) { riposo = giu; riposo2 = segni; if (misure) { occhiSu = misure.su; vicine = misure.tra; } fila = 0; arrabbiato = false; } else if (!arrabbiato) fila = 0;
+        prova = `sopracciglia ${giu.toFixed(2)} (serve ${Math.max(minimo, riposo + scarto).toFixed(2)}) · altri segni ${segni.toFixed(2)} (serve ${(riposo2 + scarto2).toFixed(2)})`;
         if (giu < riposo) riposo += (giu - riposo) * 0.1;
         else if (!arrabbiato && giu < riposo + scarto / 2) riposo += (giu - riposo) * lento; // il riposo segue solo la faccia calma
+        if (segni < riposo2) riposo2 += (segni - riposo2) * 0.1;
+        else if (!arrabbiato && segni < riposo2 + scarto2 / 2) riposo2 += (segni - riposo2) * lento;
+        if (misure && !arrabbiato) { // la faccia calma: le misure seguono piano (più in fretta verso sopracciglia alte)
+          occhiSu += (misure.su - occhiSu) * (misure.su > occhiSu ? 0.1 : 0.02);
+          vicine += (misure.tra - vicine) * (misure.tra > vicine ? 0.1 : 0.02);
+        }
         return arrabbiato;
       },
       get riposo() { return riposo; },

@@ -89,6 +89,20 @@ assert.ok(R.aggiungi({ browDownLeft: 0.75, browDownRight: 0.75 }), 'occhiali e s
 for (let i = 0; i < 100; i++) R.aggiungi({ browDownLeft: 0.75, browDownRight: 0.75 });
 assert.ok(R.aggiungi({ browDownLeft: 0.75, browDownRight: 0.75 }), 'arrabbiato a lungo: resta arrabbiato');
 assert.ok(!R.aggiungi(null), 'senza viso: no');
+// con gli occhiali MediaPipe non vede scendere le sopracciglia: bastano gli altri segni (occhi stretti, naso, bocca)
+R = G.creaRabbia();
+const calmoOcchiali = { browDownLeft: 0.1, browDownRight: 0.1, eyeSquintLeft: 0.1, eyeSquintRight: 0.1 };
+for (let i = 0; i < 60; i++) assert.ok(!R.aggiungi(calmoOcchiali), 'occhiali, calmo: no');
+assert.ok(R.aggiungi({ ...calmoOcchiali, eyeSquintLeft: 0.5, eyeSquintRight: 0.5, noseSneerLeft: 0.3, noseSneerRight: 0.3, mouthPressLeft: 0.3, mouthPressRight: 0.3 }), 'occhiali e faccia arrabbiata senza sopracciglia: sì');
+assert.ok(!R.aggiungi({ ...calmoOcchiali, eyeSquintLeft: 0.6, eyeSquintRight: 0.6 }), 'solo occhi stretti: no');
+assert.ok(!R.aggiungi({ ...calmoOcchiali, eyeSquintLeft: 0.5, eyeSquintRight: 0.5, noseSneerLeft: 0.3, noseSneerRight: 0.3, mouthSmileLeft: 0.6, mouthSmileRight: 0.6 }), 'sorriso con gli occhi stretti: no');
+// e dai punti del viso: sopracciglia che scendono verso gli occhi
+const fronte = (giu) => { const k = Array.from({ length: 478 }, () => ({ x: 0.5, y: 0.5 }));
+  k[10] = { x: 0.5, y: 0.2 }; k[152] = { x: 0.5, y: 0.8 }; k[133] = { x: 0.45, y: 0.4 }; k[362] = { x: 0.55, y: 0.4 };
+  k[159] = { x: 0.4, y: 0.39 }; k[386] = { x: 0.6, y: 0.39 }; k[55] = { x: 0.46 + giu / 4, y: 0.33 + giu }; k[285] = { x: 0.54 - giu / 4, y: 0.33 + giu }; return k; };
+R = G.creaRabbia();
+for (let i = 0; i < 60; i++) assert.ok(!R.aggiungi(calmoOcchiali, fronte(0)), 'punti, calmo: no');
+assert.ok(R.aggiungi({ ...calmoOcchiali, eyeSquintLeft: 0.3, eyeSquintRight: 0.3 }, fronte(0.02)), 'sopracciglia giù e vicine (dai punti) e occhi stretti: sì');
 
 // dito alzato anche un po' storto (mano girata di lato)
 const storta = mano(0.5, 0.7, [1]); storta[6] = { x: 0.5, y: 0.56 }; storta[7] = { x: 0.53, y: 0.52 }; storta[8] = { x: 0.56, y: 0.49 };
