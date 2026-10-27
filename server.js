@@ -58,6 +58,34 @@ console.log(fantasia.attiva ? '[fantasIA] accesa (100 domande al giorno per tutt
 // trucco segreto: la parola sta solo su Render (TRUCCO_PAROLA), mai nel codice; senza, il trucco è spento
 console.log(TRUCCO.attivo() ? '[trucco] acceso' : '[trucco] spento: su Render manca TRUCCO_PAROLA');
 if (process.env.GUARDIA !== 'attiva') console.log('[guardia] modalità prova: i ban vengono solo scritti nel log (GUARDIA=attiva per applicarli)');
+// fotocamera magica: programma e modelli di MediaPipe (~21 MB) compressi una volta sola (in memoria) e tenuti dal
+// browser per una settimana: la prima volta si scaricano ~12 MB, dalla seconda la fotocamera si accende quasi subito
+const MEDIAPIPE = path.join(__dirname, 'node_modules', '@mediapipe', 'tasks-vision');
+const compressi = new Map();
+function serviPesante(file, tipo) {
+  return (q, r, next) => {
+    fs.stat(file, (e, st) => {
+      if (e) return next();
+      const etag = `"${st.size.toString(36)}-${Math.round(st.mtimeMs).toString(36)}"`;
+      r.set({ 'Cache-Control': 'public, max-age=604800', ETag: etag, Vary: 'Accept-Encoding' }).type(tipo);
+      if (q.headers['if-none-match'] === etag) return r.status(304).end();
+      if (!/\bgzip\b/.test(q.headers['accept-encoding'] || '')) return r.sendFile(file, { etag: false, lastModified: false, cacheControl: false });
+      let z = compressi.get(file);
+      if (!z || z.etag !== etag) {
+        z = { etag, dati: new Promise((ok, ko) => fs.readFile(file, (e2, b) => (e2 ? ko(e2) : require('zlib').gzip(b, { level: 6 }, (e3, g) => (e3 ? ko(e3) : ok(g)))))) };
+        compressi.set(file, z);
+      }
+      z.dati.then((g) => r.set({ 'Content-Encoding': 'gzip', 'Content-Length': g.length }).end(g)).catch(() => { compressi.delete(file); next(); });
+    });
+  };
+}
+app.get('/modelli/:file', (q, r, next) => (/^(mani|viso)\.task$/.test(q.params.file) ? serviPesante(path.join(__dirname, 'public', 'modelli', q.params.file), 'application/octet-stream')(q, r, next) : next()));
+app.get('/js/mediapipe/vision_bundle.mjs', serviPesante(path.join(MEDIAPIPE, 'vision_bundle.mjs'), 'application/javascript'));
+app.get('/js/mediapipe/wasm/:file', (q, r, next) => {
+  const f = q.params.file;
+  if (!/^vision_wasm_(nosimd_)?internal\.(js|wasm)$/.test(f)) return next();
+  serviPesante(path.join(MEDIAPIPE, 'wasm', f), f.endsWith('.wasm') ? 'application/wasm' : 'application/javascript')(q, r, next);
+});
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/js/scala-regole.js', (_q, r) => r.sendFile(path.join(__dirname, 'giochi', 'scala-regole.js')));
 app.get('/js/navale-regole.js', (_q, r) => r.sendFile(path.join(__dirname, 'giochi', 'navale-regole.js')));
@@ -68,13 +96,7 @@ app.get('/js/tigerball-livelli.js', (_q, r) => r.sendFile(path.join(__dirname, '
 app.get('/js/isolation-mappa.js', (_q, r) => r.sendFile(path.join(__dirname, 'giochi3', 'isolation', 'mappa.js')));
 app.get('/js/three.module.min.js', (_q, r) => r.type('application/javascript').sendFile(path.join(__dirname, 'node_modules', 'three', 'build', 'three.module.min.js')));
 // fotocamera magica: MediaPipe (mani e viso) dalla dipendenza npm, niente CDN; i modelli stanno in public/modelli
-const MEDIAPIPE = path.join(__dirname, 'node_modules', '@mediapipe', 'tasks-vision');
-app.get('/js/mediapipe/vision_bundle.mjs', (_q, r) => r.type('application/javascript').sendFile(path.join(MEDIAPIPE, 'vision_bundle.mjs')));
-app.get('/js/mediapipe/wasm/:file', (q, r, next) => {
-  const f = q.params.file;
-  if (!/^vision_wasm_(nosimd_)?internal\.(js|wasm)$/.test(f)) return next();
-  r.type(f.endsWith('.wasm') ? 'application/wasm' : 'application/javascript').sendFile(path.join(MEDIAPIPE, 'wasm', f));
-});
+// (serviti compressi più sopra, prima dei file statici)
 // giochi nuovi: tutti i file di public/js/giochi2 e giochi3 (e i loro stili) in un colpo solo, così aggiungere un
 // gioco non richiede di toccare index.html
 function unisciCartella(cartella, est) {
@@ -443,7 +465,7 @@ const AIUTO_COMANDI = {
   '!restart': 'propone di ricominciare la partita da capo (se qualcosa è andato storto): decide la maggioranza del tavolo',
   '!fantasia': 'seguito da una domanda (per esempio !fantasia chi ha inventato il computer?): risponde fantasIA, la mini IA del sito. Una domanda ogni 20 secondi, al massimo 100 al giorno per tutto il sito',
   '!revive': 'in Draghi e Segrete riporta in vita i personaggi morti, con tutti i punti ferita e le stesse cose che avevano',
-  '!foto': 'accende (o spegne) la Fotocamera magica solo per te: ti vedi in una finestrella da spostare dove vuoi e i gatti reagiscono ai tuoi gesti',
+  '!foto': 'accende (o spegne) la Fotocamera magica solo per te: ti vedi in una finestrella da spostare dove vuoi e i gatti reagiscono ai tuoi gesti (!foto prova mostra i numeri dei gesti)',
   '!comandi': 'mostra questo elenco',
   // il 67 non si elenca: è un easter egg che si scopre giocando
 };
@@ -517,6 +539,7 @@ function videoPapi(s, posto) {
   }
   s.esecuzioneFino = ora + PAPI_MS;
   s.esecuzioneTipo = 'papi';
+  s.papiChiusi = new Set(); // chi ha già chiuso il video con la ✕: quando l'hanno chiuso tutti, il gioco riparte
   messaggioSistema(s, `🚗 ${g.nome} ha chiamato Enrico Papi`);
   io.to(s.codice).emit('papi', { nome: g.nome, durata: PAPI_MS });
   aggiorna(s);
@@ -1322,6 +1345,17 @@ io.on('connection', (socket) => {
   });
 
   // Boss Key: il giocatore è sulla pagina delle dispense (o è tornato)
+  // ENRICO PAPI: la ✕ chiude il video per chi la preme; quando l'hanno chiuso tutte le persone che lo stanno vedendo
+  // (non i computer, non chi è sulle dispense o scollegato) il gioco riparte subito, senza aspettare la fine
+  socket.on('papiChiuso', () => {
+    const s = stanza;
+    const i = mioPosto();
+    if (!s || i === -1 || s.esecuzioneTipo !== 'papi' || !inEsecuzione(s) || !s.papiChiusi) return;
+    s.papiChiusi.add(i);
+    const guardano = s.posti.map((g, j) => (g && !g.bot && presente(g) && !g.nascosto ? j : -1)).filter((j) => j >= 0);
+    if (guardano.every((j) => s.papiChiusi.has(j))) { s.esecuzioneFino = Date.now(); s.papiChiusi = null; aggiorna(s); }
+  });
+
   socket.on('boss', (attivo) => {
     const s = stanza;
     const i = mioPosto();

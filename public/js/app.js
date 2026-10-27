@@ -125,7 +125,7 @@
   socket.on('prof', () => Boss.attiva({ subito: true }));
   // esecuzione pubblica (qualcuno ha scritto 67 in chat): il nome finisce nel vulcano
   // "enrico papi" in chat: parte il video per tutti
-  socket.on('papi', (d) => { if (window.Esecuzione) Esecuzione.papi(d || {}); });
+  socket.on('papi', (d) => { if (window.Esecuzione) Esecuzione.papi({ ...(d || {}), chiuso: () => { if (!(d && d.globale)) socket.emit('papiChiuso'); } }); });
   socket.on('esecuzione', (d) => { if (window.Esecuzione) Esecuzione.avvia({ ...d, sonoIo: d.sonoIo !== undefined ? d.sonoIo : !!(stato && d.posto === stato.mioPosto) }); });
   // giochi in tempo reale: lo stato leggero arriva a ogni tick
   socket.on('tick', (d) => { const T = stato && stato.partita && Tavoli[stato.partita.gioco]; if (T && T.tick) T.tick(ctx, d); });

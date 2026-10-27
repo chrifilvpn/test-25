@@ -1762,6 +1762,8 @@ button.rl-c:hover:not(:disabled) { box-shadow: inset 0 0 0 2px var(--oro); }
 .ex-papi.via { animation: ex-papi-esce .5s ease-in both; }
 .ex-papi video { width: min(100%, 960px); max-height: 80vh; border-radius: 12px; box-shadow: 0 10px 40px rgba(0, 0, 0, .6); background: #000; }
 .ex-papi p { margin: 0; color: #fff; font: 600 1.05rem var(--sans); text-align: center; }
+.ex-papi-chiudi { position: absolute; top: max(12px, env(safe-area-inset-top)); right: max(12px, env(safe-area-inset-right)); width: 44px; height: 44px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, .7); background: rgba(0, 0, 0, .6); color: #fff; font: 700 1.3rem/1 var(--sans); cursor: pointer; display: grid; place-items: center; }
+.ex-papi-chiudi:hover, .ex-papi-chiudi:focus-visible { background: #c62828; border-color: #fff; outline: none; }
 @keyframes ex-papi-entra { from { opacity: 0; } }
 @keyframes ex-papi-esce { to { opacity: 0; } }
 
@@ -1775,12 +1777,26 @@ button.rl-c:hover:not(:disabled) { box-shadow: inset 0 0 0 2px var(--oro); }
 .fcam-testa h2 { margin: 0 auto 0 0; font-size: 1.05rem; }
 .fcam-schermo { position: relative; aspect-ratio: 4 / 3; background: #000; border-radius: 10px; overflow: hidden; }
 .fcam-video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: block; }
-.fcam-filtro { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; animation: fcam-entra .25s ease-out both; }
+.fcam-filtro { position: absolute; inset: 0; overflow: hidden; background: #000; animation: fcam-entra .25s ease-out both; }
+/* il gatto si vede intero (le foto alte non perdono la testa) e dietro c'è lo stesso gatto sfocato a riempire */
+.fcam-filtro img { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.fcam-sfondo { object-fit: cover; filter: blur(14px) brightness(.6); transform: scale(1.15); }
+.fcam-gatto { object-fit: contain; }
 .fcam-filtro[hidden] { display: none; }
 .fcam-stato { position: absolute; left: 6px; right: 6px; bottom: 6px; margin: 0; padding: 3px 8px; border-radius: 8px; background: rgba(0, 0, 0, .55); color: #fff; font-size: .8rem; text-align: center; }
 .fcam-stato:empty { display: none; }
+/* con un gatto davanti il nome del gesto va piccolo in alto a sinistra (in basso copriva la scritta «Huh?») */
+.fcam-con-gatto .fcam-stato { top: 6px; bottom: auto; right: auto; max-width: calc(100% - 12px); font-size: .75rem; }
 .fcam-trucchi { list-style: none; margin: 8px 0 4px; padding: 0; display: grid; gap: 3px; font-size: .88rem; }
 .fcam-trucchi[hidden] { display: none; }
 .fcam-nota { margin: 6px 0 0; opacity: .8; font-size: .78rem; }
+.fcam-testa .mini-bt { flex: none; }
+.fcam-testa h2 { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* finestra stretta (telefono): solo le icone, così «Spegni» non esce dalla finestra */
+@media (max-width: 600px) { .fcam-etichetta { display: none; } .fcam-testa { gap: 4px; } }
+.fcam-conto { position: absolute; inset: 0; margin: 0; display: grid; place-items: center; color: #fff; font: 800 4.5rem/1 var(--sans); text-shadow: 0 3px 16px rgba(0, 0, 0, .7); pointer-events: none; }
+.fcam-conto[hidden], .fcam-riaccendi[hidden], .fcam-prova[hidden] { display: none; }
+.fcam-riaccendi { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); }
+.fcam-prova { margin: 8px 0 0; padding: 6px 8px; border-radius: 8px; background: rgba(0, 0, 0, .35); font: .72rem/1.35 ui-monospace, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 @keyframes fcam-entra { from { opacity: 0; transform: scale(.92); } }
 @media (prefers-reduced-motion: reduce) { .fcam-filtro { animation: none; } }
