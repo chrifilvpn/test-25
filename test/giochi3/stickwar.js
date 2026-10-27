@@ -123,10 +123,10 @@ assert.strictEqual(LIVELLI.length, 8);
   g.round = 2; g.vinto = 1; g.fineRound(); assert.strictEqual(g.nRound, 2, 'persa: fuori');
   g.chiudi(); assert.ok(/eliminato alla battaglia 2/.test(g.risultato.titolo) && !g.risultato.vincitori.length);
 }
-// ---- con persone e computer: le persone insieme a sinistra, i computer guidano la tribù nemica ----
+// ---- con persone e computer: tutti insieme a sinistra (la tribù nemica la guida il gioco) ----
 {
   const g = M.crea({ n: 3, opzioni: {}, bot: [null, 'medio', null] });
-  assert.deepStrictEqual(g.lati, [0, 1, 0]);
+  assert.deepStrictEqual(g.lati, [0, 0, 0]);
   const s = M.crea({ n: 4, opzioni: { modo: 'sfida' }, bot: [null, null, null, null] });
   assert.deepStrictEqual(s.lati, [0, 1, 0, 1]);
 }

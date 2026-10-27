@@ -197,7 +197,7 @@
     recenti = [id, ...recenti.filter((x) => x !== id)].slice(0, 8);
     mem.set('recenti', JSON.stringify(recenti));
   }
-  const CATEGORIE = [['', 'Tutti'], ['pref', '⭐ Preferiti'], ['recenti', '🕑 Recenti'], ['carte', '🃏 Carte'], ['casino', '🎰 Casinò'], ['strategia', '♟️ Strategia'], ['parole', '🔤 Parole e quiz'], ['azione', '⚡ Azione'], ['squid', '🦑 Squid Game']];
+  const CATEGORIE = [['', 'Tutti'], ['pref', '⭐ Preferiti'], ['recenti', '🕑 Recenti'], ['carte', '🃏 Carte'], ['casino', '🎰 Casinò'], ['strategia', '♟️ Strategia'], ['rompicapo', '🧩 Rompicapo'], ['parole', '🔤 Parole e quiz'], ['azione', '⚡ Azione'], ['squid', '🦑 Squid Game']];
   function disegnaCategorie() {
     $('#filtro-cat').innerHTML = CATEGORIE.map(([k, t]) => `<button type="button" data-cat="${k}" aria-pressed="${filtro.cat === k}">${t}${k === 'pref' && preferiti.size ? ` <small>${preferiti.size}</small>` : ''}</button>`).join('');
   }

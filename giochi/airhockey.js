@@ -2,7 +2,7 @@
 // Squadra A = posti pari (difende la porta in basso), squadra B = posti dispari (porta in alto).
 const W = 600, H = 1000, R_DISCO = 28, R_MAZZA = 44, PORTA = 230;
 const V_MAX = 2100, V_MAZZA = 2600, ATTRITO = 0.9975, RIMBALZO = 0.88;
-const PAUSA_GOL = 1300, VIA_MS = 3000;
+const PAUSA_GOL = 1300, VIA_MS = 3000, FERMO_MAX = 5; // secondi di disco fermo in una metà prima che batta l'altra squadra
 const T = require('./trucco');
 const WIN_MS = 25000; // il trucco segreto (!win): per 25 secondi (o fino al suo gol) avversari lenti e tiri che vanno in porta
 
@@ -164,6 +164,16 @@ class AirHockey {
         this.calmaFino = ora + 900;
       }
     } else this.incastro = 0;
+    // disco quasi fermo nella stessa metà per 5 secondi (nessuno lo colpisce): batte l'altra squadra, come al tavolo vero
+    const meta = c.y > H / 2 ? 0 : 1;
+    if (Math.hypot(c.vx, c.vy) < 40 && meta === this.fermoMeta) this.fermoT = (this.fermoT || 0) + dt;
+    else { this.fermoMeta = meta; this.fermoT = 0; }
+    if (this.fermoT > FERMO_MAX) {
+      this.fermoT = 0;
+      this.metti(1 - meta);
+      this.annuncia(null, 'Disco fermo da 5 secondi: batte l\'altra squadra', 'Disco fermo da 5 secondi: batte l\'altra squadra');
+      return true;
+    }
     return false;
   }
 
@@ -292,5 +302,5 @@ module.exports = {
   },
   crea: (o) => new AirHockey(o),
   bot: () => ({}),
-  _test: { W, H },
+  _test: { W, H, FERMO_MAX },
 };

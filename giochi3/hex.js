@@ -216,6 +216,7 @@ function bot(g, p, livello) {
 module.exports = {
   meta: {
     id: 'hex',
+    pensaLento: true, // il computer difficile pensa a lungo: lo fa in un thread a parte (giochi/pensatore.js)
     nome: 'Hex',
     tipo: 'tabellone',
     giocatori: [2],
