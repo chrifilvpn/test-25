@@ -106,15 +106,29 @@ class NomiCose {
     this.pronto = new Array(this.n).fill(false);
     this.esito = null;
     // i computer: cosa scrivono e quando; se sono bravi e riempiono tutto dicono STOP
-    this.piano = this.bot.map((l) => {
-      if (!l) return null;
-      const L = LIVELLI[l] || LIVELLI.medio;
-      const ris = rispostePer(this.cats, this.lettera, l);
-      const passi = Object.entries(ris).map(([c, w]) => ({ c, w, ms: Math.round(this.durata * (L.inizio + Math.random() * (L.fine - L.inizio))) })).sort((a, b) => a.ms - b.ms);
-      const tutte = passi.length === this.cats.length;
-      if (L.stop && tutte && this.conStop && this.n > 1) passi.push({ stop: true, ms: passi[passi.length - 1].ms + 1500 + Math.round(Math.random() * 3000) });
-      return passi;
-    });
+    this.piano = this.bot.map((l) => this.pianoBot(l));
+  }
+
+  pianoBot(l, da = 0) {
+    if (!l) return null;
+    const L = LIVELLI[l] || LIVELLI.medio;
+    const ris = rispostePer(this.cats, this.lettera, l);
+    const passi = Object.entries(ris).map(([c, w]) => ({ c, w, ms: da + Math.round((this.durata - da) * (L.inizio + Math.random() * (L.fine - L.inizio))) })).sort((a, b) => a.ms - b.ms);
+    const tutte = passi.length === this.cats.length;
+    if (L.stop && tutte && this.conStop && this.n > 1) passi.push({ stop: true, ms: passi[passi.length - 1].ms + 1500 + Math.round(Math.random() * 3000) });
+    return passi;
+  }
+
+  // il server mette il computer al posto di chi è uscito: da qui in poi scrive e vota da solo (col suo orologio)
+  impostaBot(p, livello = 'medio') {
+    if (!Number.isInteger(p) || p < 0 || p >= this.n || this.finita) return;
+    this.bot[p] = livello;
+    if (this.fase === 'scrivi') {
+      const passato = Math.max(0, Date.now() - this.inizio);
+      this.piano[p] = (this.pianoBot(livello, passato) || []).filter((x) => x.stop || !D.normalizza(this.risposte[p][x.c]));
+    }
+    if (this.fase === 'voto' && !this.confermato[p]) { this.confermato[p] = true; if (!this.attesi().length) this.chiudiVoto(); }
+    if (this.fase === 'punti' && !this.pronto[p]) { this.pronto[p] = true; if (!this.attesi().length) this.avanti(); }
   }
 
   attesi() {
@@ -141,7 +155,7 @@ class NomiCose {
     if (this.fase === 'punti') { if (ora >= this.finePunti) { this.avanti(); return true; } return false; }
     let cambiato = false;
     for (let p = 0; p < this.n && this.fase === 'scrivi'; p++) {
-      const pi = this.piano[p];
+      const pi = this.bot[p] ? this.piano[p] : null; // chi è tornato a giocare non riceve più le risposte del computer
       while (pi && pi.length && this.inizio + pi[0].ms <= Math.min(ora, this.fine) && this.fase === 'scrivi') {
         const x = pi.shift();
         if (x.stop) this.stop(p); else this.risposte[p][x.c] = x.w;
@@ -183,8 +197,10 @@ class NomiCose {
       if (Date.now() > this.fine + 1500) return { errore: 'Tempo scaduto!' };
       if (a.tipo === 'risposta') {
         if (!this.cats.includes(a.cat)) return { errore: 'Categoria non valida' };
+        const prima = !!D.normalizza(this.risposte[p][a.cat]);
         this.risposte[p][a.cat] = pulisci(a.testo);
-        return { ok: true, silenzioso: true };
+        // se la casella resta piena (o vuota) gli altri non vedono niente di nuovo: il server non rimanda lo stato a tutti
+        return { ok: true, silenzioso: prima === !!D.normalizza(this.risposte[p][a.cat]) };
       }
       if (a.tipo === 'stop') {
         if (!this.conStop) return { errore: 'In questa partita non si può dire STOP' };
@@ -335,7 +351,12 @@ class NomiCose {
 }
 
 // il server lo chiama per un computer messo al posto di chi è uscito
-function bot(g) {
+function bot(g, p, livello) {
+  if (g.fase === 'scrivi') {
+    // (di solito il server ha già chiamato impostaBot) da qui in poi il computer scrive col suo orologio
+    if (!g.bot[p]) g.impostaBot(p, livello || 'medio');
+    return { tipo: 'risposta', cat: g.cats[0], testo: g.risposte[p][g.cats[0]] };
+  }
   if (g.fase === 'voto') return { tipo: 'conferma' };
   if (g.fase === 'punti') return { tipo: 'pronto' };
   return null;

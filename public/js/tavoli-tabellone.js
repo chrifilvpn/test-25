@@ -595,7 +595,14 @@
   let ctxImp = null;
   const impiccato = {
     libero: true,
-    reset(ctx) { ctxImp = ctx; ctxTesto = ctx; },
+    reset(ctx) {
+      ctxImp = ctx; ctxTesto = ctx;
+      // il testo scritto resta finché il server non accetta la mossa (se la parola viene rifiutata non si riscrive):
+      // si svuota quando cambia il giro, o dopo una prova accettata (lettere provate o errori cambiati)
+      const p = ctx.partita, ui = ctx.ui, firma = `${p.round}:${p.fase}:${p.errori}:${p.provate.length}`;
+      if (ui._imFirma !== undefined && ui._imFirma !== firma) { if (p.fase !== 'scelta') ui.t_parola = ''; ui.t_prova = ''; }
+      ui._imFirma = firma;
+    },
     dopo: rimettiFuoco,
     panno(ctx) {
       const p = ctx.partita;
@@ -668,14 +675,14 @@
       if (az === 'conferma') {
         const w = (ui.t_parola || '').trim();
         if (!w) return ctx.avviso('Scrivi prima la parola');
-        ui.t_parola = ''; ui.fuoco = null;
+        ui.fuoco = null;
         return ctx.invia({ tipo: 'parola', parola: w });
       }
       if (az === 'lettera') { el.disabled = true; return ctx.invia({ tipo: 'lettera', lettera: el.dataset.l }); }
       if (az === 'prova') {
         const w = (ui.t_prova || '').trim();
         if (!w) return ctx.avviso('Scrivi la parola che vuoi provare');
-        ui.t_prova = ''; ui.fuoco = null;
+        ui.fuoco = null;
         return ctx.invia({ tipo: 'prova', parola: w });
       }
     },

@@ -2893,43 +2893,71 @@ fissa('DIFESE: GUARDIA E BAN AUTOMATICO');
 fissa('PONTE FRAGILE');
 {
   const M = GIOCHI.ponte;
-  const { LUNGHEZZE, BONUS_ARRIVO } = M._test;
-  // una caduta apre la strada: la riga diventa nota e il prossimo parte da lì
-  const g = M.crea({ n: 3, primo: 0, opzioni: { lunghezza: 'corto', round: 1 } });
-  assert.ok(g.L === LUNGHEZZE.corto && g.turno === 0 && g.fronte === 0, 'si parte dal primo della fila');
-  assert.ok(g.azione(1, { tipo: 'salta', lato: 0 }).errore, 'salta solo chi è davanti');
-  assert.ok(g.azione(0, { tipo: 'salta', lato: 2 }).errore, 'solo sinistra o destra');
-  assert.strictEqual(g.vista(1).sicuroFinale, null, 'i vetri buoni non arrivano al browser');
-  g.azione(0, { tipo: 'salta', lato: g.sicuro[0] });
-  assert.ok(g.fronte === 1 && g.passi[0] === 1 && g.noto[0] === g.sicuro[0] && g.turno === 0, 'il vetro regge: si va avanti e tutti vedono il pannello buono');
-  g.azione(0, { tipo: 'salta', lato: 1 - g.sicuro[1] });
-  assert.ok(g.stato[0] === 'caduto' && g.passi[0] === 1 && g.rotto[1] === 1 - g.sicuro[1] && g.noto[1] === g.sicuro[1] && g.inAttesa, 'il vetro si rompe: cade, ma la riga ora è nota');
-  g.avanza();
-  assert.ok(g.turno === 1 && g.passi[1] === 2 && g.fronte === 2, 'il prossimo cammina sui vetri noti fino alla prima riga sconosciuta');
-  // il riflesso: una volta per round, visto solo da chi lo usa
-  assert.ok(g.azione(1, { tipo: 'riflesso' }).ok && g.azione(1, { tipo: 'riflesso' }).errore, 'un riflesso per round');
-  assert.ok([0, 1].includes(g.vista(1).indizio) && g.vista(2).indizio === null, 'l\'indizio lo vede solo chi l\'ha chiesto');
-  while (!g.finita) { if (g.inAttesa) g.avanza(); else g.azione(g.turno, { tipo: 'salta', lato: g.sicuro[g.fronte] }); }
-  assert.ok(g.stato[1] === 'salvo' && g.stato[2] === 'salvo' && g.punti[1] === g.L + BONUS_ARRIVO && g.punti[0] === 1, 'chi arriva prende le righe + il bonus');
-  assert.deepStrictEqual(g.risultato.vincitori, [], 'due arrivati a pari punti: pareggio');
-  // tutti i vetri già noti: chi resta in fila attraversa da solo
-  const t = M.crea({ n: 2, opzioni: { lunghezza: 'corto', round: 1 } });
-  t.noto = t.sicuro.slice(); t.fronte = t.L - 1;
-  t.azione(t.turno, { tipo: 'salta', lato: t.sicuro[t.L - 1] }); t.avanza();
-  assert.ok(t.finita && t.stato.every((x) => x === 'salvo'), 'il secondo passa da solo sui vetri noti');
-  // più round: la fila gira, tutti partono davanti; migliaia di partite tra computer senza blocchi
-  const r = M.crea({ n: 3, primo: 0, opzioni: { round: 3 } }); const primi = new Set();
-  while (!r.finita) { primi.add(r.ordine[0]); if (r.inAttesa) r.avanza(); else r.azione(r.turno, M.bot(r, r.turno, 'medio')); }
-  assert.ok(primi.size === 3 && r.storico.length === 3, 'a ogni round parte davanti un altro');
-  const media = { facile: 0, medio: 0, difficile: 0 };
-  for (let k = 0; k < 1500; k++) {
-    const n = 2 + (k % 7), liv = ['facile', 'medio', 'difficile'];
-    const p = M.crea({ n, primo: k % n, opzioni: { lunghezza: ['corto', 'medio', 'lungo'][k % 3], round: [1, 3, 5][k % 3] } });
-    let mosse = 0;
-    while (!p.finita) { assert.ok(++mosse < 3000, 'la partita finisce'); if (p.inAttesa) { p.avanza(); continue; } const x = p.azione(p.turno, M.bot(p, p.turno, liv[p.turno % 3])); assert.ok(!x.errore, x.errore); }
-    p.punti.forEach((x, i) => { media[liv[i % 3]] += x; });
-  }
-  console.log(`✓ Ponte fragile: vetro che regge o si rompe, righe note a tutti, il prossimo parte dalla caduta, riflesso privato una volta per round, bonus all'arrivo, fila che gira, 1500 partite tra computer (punti f/m/d ${media.facile}/${media.medio}/${media.difficile})`);
+  const { LUNGHEZZE, BONUS_ARRIVO, TEMPI, SPINTA_PRIMA, SPINTA_RICARICA, EQUILIBRIO } = M._test;
+  // un orologio finto: il tempo del round, l'equilibrio dopo un salto e la ricarica della spinta dipendono dall'ora
+  const vero = Date.now; let ora = vero(); Date.now = () => ora;
+  try {
+    const g = M.crea({ n: 3, primo: 0, opzioni: { lunghezza: 'corto', round: 1 } });
+    assert.ok(g.L === LUNGHEZZE.corto && g.turno === null && g.pos.every((x) => x === -1), 'niente turni: tutti sulla piattaforma');
+    assert.strictEqual(g.durata, LUNGHEZZE.corto * TEMPI.normale * 1000, '6 secondi per riga');
+    assert.strictEqual(g.vista(1).sicuroFinale, null, 'i vetri buoni non arrivano al browser');
+    assert.ok(g.azione(0, { tipo: 'salta', lato: 2 }).errore, 'solo sinistra o destra sul vetro nuovo');
+    // chiunque può saltare per primo: salta il 2
+    g.azione(2, { tipo: 'salta', lato: g.sicuro[0] });
+    assert.ok(g.pos[2] === 0 && g.fronte === 1 && g.noto[0] === g.sicuro[0], 'il vetro regge: tutti vedono il pannello buono');
+    assert.ok(g.azione(2, { tipo: 'salta', lato: g.sicuro[1] }).errore, 'dopo un salto serve un attimo di equilibrio');
+    // sul vetro noto si va avanti senza scegliere (anche indicando il lato sbagliato)
+    assert.ok(g.azione(0, { tipo: 'salta', lato: 1 - g.sicuro[0] }).ok && g.pos[0] === 0 && g.stato[0] === 'ponte', 'sui vetri scoperti si va sul pannello buono');
+    ora += EQUILIBRIO + 1;
+    g.azione(2, { tipo: 'salta', lato: 1 - g.sicuro[1] });
+    assert.ok(g.stato[2] === 'caduto' && g.rotto[1] === 1 - g.sicuro[1] && g.noto[1] === g.sicuro[1] && g.fronte === 2 && !g.inAttesa, 'il vetro si rompe: cade, la riga diventa nota e gli altri continuano subito');
+    // il riflesso: solo davanti al vetro sconosciuto, una volta per round, visto solo da chi lo usa
+    assert.ok(g.azione(1, { tipo: 'riflesso' }).errore, 'il riflesso non si usa lontano dal vetro sconosciuto');
+    ora += EQUILIBRIO + 1; g.azione(0, { tipo: 'salta' });
+    assert.ok(g.azione(0, { tipo: 'riflesso' }).ok && g.azione(0, { tipo: 'riflesso' }).errore, 'un riflesso per round');
+    assert.ok([0, 1].includes(g.vista(0).indizio) && g.vista(1).indizio === null, 'l\'indizio lo vede solo chi l\'ha chiesto');
+    // la spinta: non subito, solo verso chi è sulla stessa riga davanti al vetro sconosciuto, poi si ricarica piano
+    const s = M.crea({ n: 3, opzioni: { lunghezza: 'lungo', tempo: 'largo', round: 1 } }); // 162 s: c'è tempo per la ricarica
+    assert.ok(/ricarica/.test(s.azione(0, { tipo: 'spingi', chi: 1 }).errore), 'all\'inizio la spinta non è pronta');
+    ora += SPINTA_PRIMA;
+    assert.ok(s.vista(0).spintaFra === 0, 'la spinta è pronta dopo un po\'');
+    assert.ok(s.azione(0, { tipo: 'spingi', chi: 0 }).errore && s.azione(0, { tipo: 'spingi', chi: 7 }).errore, 'non si spinge sé stessi né un posto che non c\'è');
+    assert.ok(s.azione(0, { tipo: 'spingi', chi: 1 }).ok && s.fronte === 1 && s.ultimo.spinto && s.ultimo.da === 0 && s.ultimo.posto === 1, 'spinto sul vetro sconosciuto: la riga si scopre');
+    assert.ok(/ricarica/.test(s.azione(0, { tipo: 'spingi', chi: 2 }).errore) && s.vista(0).spintaFra === SPINTA_RICARICA, 'poi si ricarica lentamente');
+    ora += SPINTA_RICARICA;
+    if (s.stato[1] === 'ponte') { s.azione(0, { tipo: 'salta' }); assert.ok(/stessa riga|spingere non serve/.test(s.azione(2, { tipo: 'spingi', chi: 1 }).errore), 'si spinge solo chi è sulla tua riga'); }
+    // tempo scaduto: il ponte crolla e chi non è arrivato cade; i punti sono le righe superate
+    const t = M.crea({ n: 2, opzioni: { lunghezza: 'corto', round: 1 } });
+    t.azione(0, { tipo: 'salta', lato: t.sicuro[0] });
+    assert.ok(t.scadenza() === t.fine && !t.controllaTempo(), 'c\'è un orologio per il round');
+    ora = t.fine;
+    assert.ok(t.controllaTempo() && t.finita && t.stato.every((x) => x === 'caduto') && t.punti[0] === 1 && t.punti[1] === 0, 'allo scadere il ponte crolla: perdono tutti quelli sul ponte');
+    // chi arriva prende le righe + il bonus; i vetri già noti si fanno di corsa
+    const a = M.crea({ n: 2, opzioni: { lunghezza: 'corto', round: 1 } });
+    a.noto = a.sicuro.slice(); a.fronte = a.L;
+    for (let k = 0; k < a.L; k++) { ora += EQUILIBRIO + 1; a.azione(0, { tipo: 'salta' }); a.azione(1, { tipo: 'salta' }); }
+    assert.ok(a.finita && a.stato.every((x) => x === 'salvo') && a.punti[0] === a.L + BONUS_ARRIVO, 'tutti arrivati: righe + bonus');
+    assert.deepStrictEqual(a.risultato.vincitori, [], 'due arrivati a pari punti: pareggio');
+    // partite tra computer guidate dall'orologio (come nel sito): finiscono sempre, a volte qualcuno arriva
+    const media = { facile: 0, medio: 0, difficile: 0 }; let arrivati = 0, spinte = 0;
+    for (let k = 0; k < 600; k++) {
+      const n = 2 + (k % 7), liv = ['facile', 'medio', 'difficile'];
+      const p = M.crea({ n, primo: k % n, opzioni: { lunghezza: ['corto', 'medio', 'lungo'][k % 3], round: [1, 3, 5][k % 3], tempo: ['normale', 'stretto', 'largo'][k % 3] }, bot: Array.from({ length: n }, (_, i) => liv[i % 3]) });
+      let passi = 0;
+      while (!p.finita) {
+        assert.ok(++passi < 20000, 'la partita finisce');
+        if (p.inAttesa) { p.avanza(); continue; }
+        ora = Math.max(ora, p.scadenza());
+        const prima = p.ultimo; p.controllaTempo();
+        if (p.ultimo && p.ultimo !== prima && p.ultimo.spinto) spinte++;
+        if (p.stato.includes('salvo')) arrivati += 0;
+      }
+      p.storico.forEach((r) => r.forEach((x) => { if (x > p.L) arrivati++; }));
+      p.punti.forEach((x, i) => { media[liv[i % 3]] += x; });
+    }
+    assert.ok(arrivati > 0 && spinte > 0, `i computer arrivano (${arrivati}) e si spingono (${spinte})`);
+    console.log(`✓ Ponte fragile: niente turni, salta chi vuole, vetri noti percorsi sicuri, equilibrio dopo il salto, riflesso privato, spinta che si ricarica piano, il ponte crolla allo scadere del tempo, 600 partite tra computer (punti f/m/d ${media.facile}/${media.medio}/${media.difficile}, ${arrivati} arrivi, ${spinte} spinte)`);
+  } finally { Date.now = vero; }
 }
 
 // ======================= MIGLIORIE AI GIOCHI (ottobre) =======================
@@ -2960,13 +2988,6 @@ fissa('MIGLIORIE AI GIOCHI (ottobre)');
   Object.assign(G.inp[0], { a: true, mx: 500, my: 330 }); for (let k = 0; k < 30; k++) G.passo(0.033);
   assert.ok(G.b[0].stato === 'gioco' && G.b[0].danno < 60, `un secondo fermo fuori dal solco non rompe il biscotto (${Math.round(G.b[0].danno)}%)`);
   console.log('✓ Migliorie: Sblocca con annulla e aiuto, ripasso delle bandiere sbagliate, differenza cerchiata nella soluzione, Dalgona più giusta con l\'ago fermo');
-}
-{
-  // ponte fragile: chi è davanti ha 20 secondi, poi salta a caso
-  const P = GIOCHI.ponte.crea({ n: 2, opzioni: { round: 1 } });
-  assert.ok(P.scadenza() > Date.now() && !P.controllaTempo(), 'c\'è un orologio per il salto');
-  P.fineSalto = Date.now() - 1; assert.ok(P.controllaTempo() && P.fronte === 1 && /a caso/.test(P.evento.testo), 'allo scadere salta a caso');
-  console.log('✓ Ponte fragile: 20 secondi per saltare, poi si salta a caso');
 }
 {
   // blackjack: il consiglio della strategia di base arriva solo a chi deve giocare

@@ -203,6 +203,7 @@ giochi3/draghi/mappe.js
 giochi3/draghi/master.js
 giochi3/draghi/mostri.js
 giochi3/draghi/regole.js
+giochi3/draghi/salva.js
 giochi3/draghi/stazione.js
 giochi3/draghi/tempo-reale.js
 giochi3/forza3d.js
@@ -581,6 +582,7 @@ test/giochi3/navale.js
 test/giochi3/nurikabe.js
 test/giochi3/picross.js
 test/giochi3/piramide.js
+test/giochi3/revisione-party.js
 test/giochi3/sfere.js
 test/giochi3/stickwar.js
 test/giochi3/wavelength.js

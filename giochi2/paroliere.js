@@ -343,6 +343,7 @@ function bot(g) {
 module.exports = {
   meta: {
     id: 'paroliere',
+    squadreSala: { nomi: ['🅰️ Squadra A', '🅱️ Squadra B'], min: 4, pari: true, se: { squadre: ['si'] } },
     nome: 'Paroliere',
     tipo: 'tabellone',
     saltaAssenti: true,

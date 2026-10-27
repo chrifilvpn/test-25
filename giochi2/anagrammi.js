@@ -266,6 +266,7 @@ function bot(g) {
 module.exports = {
   meta: {
     id: 'anagrammi',
+    squadreSala: { nomi: ['☀️ Squadra Sole', '🌙 Squadra Luna'], min: 2 },
     nome: 'Anagrammi a squadre',
     tipo: 'tabellone',
     saltaAssenti: true,

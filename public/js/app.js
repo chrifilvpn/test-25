@@ -149,19 +149,23 @@
     $('#saluto').hidden = !n;
     mem.set('nome', n);
     socket.emit('presenza', { id: mioId, imp: impronta, nome: n });
+    // seduto in sala (partita non iniziata o finita): il nome cambia subito anche al tavolo
+    if (stato && !stato.spettatore && (!stato.partita || stato.partita.finita)) socket.emit('cambiaNome', n);
   }
   // il nome si sceglie alla prima visita; poi si può cambiare dalla home (vale dal prossimo tavolo)
   function chiediNome(cambia = false) {
     $('#nome-errore').hidden = true;
     $('#nome-ingresso').value = cambia ? mem.get('nome', '') : '';
     $('#benvenuto-titolo').textContent = cambia ? 'Cambia nome' : 'Benvenuto su Informatica Facile!';
-    $('#benvenuto-testo').textContent = cambia ? 'Il nuovo nome si vede dal prossimo tavolo in cui ti siedi.' : 'Come ti chiami? È il nome che vedranno gli altri giocatori (potrai cambiarlo dalla home con «Cambia nome»).';
+    const inSala = stato && !stato.spettatore && (!stato.partita || stato.partita.finita);
+    $('#benvenuto-testo').textContent = cambia ? (inSala ? 'Il nuovo nome si vede subito a questo tavolo.' : stato ? 'Il nuovo nome si vede a questo tavolo quando la partita finisce, e dal prossimo tavolo.' : 'Il nuovo nome si vede dal prossimo tavolo in cui ti siedi.') : 'Come ti chiami? È il nome che vedranno gli altri giocatori (potrai cambiarlo dalla home con «Cambia nome»).';
     $('#nome-ok').textContent = cambia ? 'Salva ✔️' : 'Entra 🎮';
     $('#nome-annulla').hidden = !cambia;
     $('#benvenuto').hidden = false;
     setTimeout(() => { $('#nome-ingresso').focus(); $('#nome-ingresso').select(); }, 30);
   }
   $('#cambia-nome').addEventListener('click', () => chiediNome(true));
+  $('#sala-cambia-nome').addEventListener('click', () => chiediNome(true));
   $('#nome-annulla').addEventListener('click', () => { $('#benvenuto').hidden = true; });
   $('#form-nome').addEventListener('submit', (e) => {
     e.preventDefault();
@@ -531,6 +535,7 @@
     socket.emit('classificaSfida', mioId);
     mem.del('tavolo');
     stato = null;
+    ultimaChat = 0; $('#messaggi').dataset.firma = ''; $('#messaggi').dataset.ultimo = ''; // il prossimo tavolo ha una chat sua
     firmaPartita = null;
     history.replaceState(null, '', location.pathname);
     for (const id of ['#fine', '#riepilogo', '#chat', '#conferma']) $(id).hidden = true;
@@ -587,6 +592,8 @@
     Boss.attivita(); // per l'overlay di caricamento se si preme Esc proprio adesso
     const primo = !stato;
     stato = s;
+    // giochi che ricevono solo le novità (es. i tratti nuovi di Disegna e indovina) le uniscono a quello che hanno già
+    if (s.partita && window.Tavoli && Tavoli[s.partita.gioco] && Tavoli[s.partita.gioco].ricevi) Tavoli[s.partita.gioco].ricevi(s.partita);
     mem.set('tavolo', s.codice);
     if (primo) { $('#avviso').hidden = true; history.replaceState(null, '', `?tavolo=${s.codice}`); }
     const firma = s.partita ? `${s.codice}:${s.gioco}:${s.partita.gioco}` : null;
@@ -665,8 +672,7 @@
   const globale = { messaggi: [], nonLetti: 0 };
   function disegnaGlobale() {
     const ol = $('#messaggi-globale');
-    const mioNome = ($('#nome').value || mem.get('nome', '')).trim();
-    ol.innerHTML = globale.messaggi.map((m) => (m.sistema ? `<li class="sistema">${esc(m.nome)} ${esc(m.testo)}</li>` : m.ia ? rigaIA(m.nome, m.a, m.a === mioNome, m.testo) : `<li><b>${esc(m.nome === mioNome ? 'Tu' : m.nome)}</b> ${esc(m.testo)}</li>`)).join('') || '<li class="sistema">Ancora nessun messaggio: scrivi tu il primo!</li>';
+    ol.innerHTML = globale.messaggi.map((m) => (m.sistema ? `<li class="sistema">${esc(m.nome)} ${esc(m.testo)}</li>` : m.ia ? rigaIA(m.nome, m.a, !!m.aMe, m.testo) : `<li><b>${esc(m.mio ? 'Tu' : m.nome)}</b> ${esc(m.testo)}</li>`)).join('') || '<li class="sistema">Ancora nessun messaggio: scrivi tu il primo!</li>';
     ol.scrollTop = ol.scrollHeight;
     $('#globale-non-letti').hidden = !globale.nonLetti;
     $('#globale-non-letti-tavolo').hidden = !globale.nonLetti;
@@ -714,7 +720,8 @@
     tVoto = setInterval(() => { const t = box.querySelector('.voto-testo'); if (t) t.innerHTML = testo(); }, 1000);
   }
   $('#torna-tavolo').addEventListener('click', () => {
-    if (confirm('Vuoi uscire da questa partita e tornare al tavolo? Gli altri continuano (al tuo posto gioca il computer) e tu li aspetti nella sala.')) socket.emit('tornaAlTavolo');
+    const chi = (meta(stato.gioco) || {}).soloPersone ? 'il tuo posto resta vuoto' : 'al tuo posto gioca il computer';
+    if (confirm(`Vuoi uscire da questa partita e tornare al tavolo? Gli altri continuano (${chi}) e tu li aspetti nella sala.`)) socket.emit('tornaAlTavolo');
   });
   $('#termina-voto').addEventListener('click', () => {
     if (stato && stato.votoFine) return;
@@ -736,6 +743,13 @@
   // =================== SALA D'ATTESA ===================
   const giocaInCoppia = () => stato.numPosti === 4 && ['briscola', 'scopa', 'scopone'].includes(stato.gioco);
 
+  // giochi a squadre per posto (pari / dispari): la sala mostra già in che squadra finisce ogni posto
+  function squadraSala(m, i) {
+    const q = m.squadreSala;
+    if (!q || stato.numPosti < q.min || (q.pari && stato.numPosti % 2)) return '';
+    if (q.se && !Object.entries(q.se).every(([k, v]) => v.map(String).includes(String(stato.opzioni[k])))) return '';
+    return `<span class="squadra">${esc(q.nomi[i % 2])}</span>`;
+  }
   function disegnaAttesa() {
     const m = meta(stato.gioco);
     $('#codice-grande').textContent = stato.codice;
@@ -748,10 +762,11 @@
     $('#sala-gioco-nome').hidden = stato.sonoHost;
     $('.sala-gioco [data-regole-di]').dataset.regoleDi = stato.gioco;
     // si ridisegna solo se il gioco o le opzioni cambiano (così un menu aperto non si chiude a ogni messaggio)
-    const firmaSala = JSON.stringify([stato.codice, stato.gioco, stato.numPosti, stato.opzioni, giochi.length]);
+    const firmaSala = JSON.stringify([stato.codice, stato.gioco, stato.numPosti, stato.opzioni, giochi.length, stato.giocatori.some((x) => x && x.bot)]);
     if (stato.sonoHost && firmaSala !== $('#sala-gioco-scelta').dataset.firma) {
       $('#sala-gioco-scelta').dataset.firma = firmaSala;
-      $('#sala-select').innerHTML = giochi.filter((g) => g.giocatori.includes(stato.numPosti))
+      const conComputer = stato.giocatori.some((x) => x && x.bot);
+      $('#sala-select').innerHTML = giochi.filter((g) => g.giocatori.includes(stato.numPosti) && (g.id === stato.gioco || !(g.soloPersone && conComputer)))
         .map((g) => `<option value="${g.id}" ${g.id === stato.gioco ? 'selected' : ''}>${esc(g.nome)}</option>`).join('');
       $('#sala-opzioni').innerHTML = m.opzioni.map((o) => selectOpzione(o, stato.opzioni[o.id], '')).join('');
       abbellisciOpzioni($('#sala-gioco-scelta'), '#sala-select');
@@ -759,13 +774,14 @@
       opzioniVisibili($('#sala-opzioni'));
     }
 
+    const scambi = stato.scambi || [];
     $('#lista-posti').innerHTML = stato.giocatori.map((g, i) => {
       const io = i === stato.mioPosto && !stato.spettatore;
       if (stato.spettatore) {
         return g ? `<li><span>${esc(g.nome)} ${g.bot ? '<span class="distintivo">computer</span>' : ''}</span></li>`
           : `<li class="vuoto"><span>Posto libero</span><span class="posto-az"><button class="bottone mini-bt" data-prendi="${i}">Siediti qui</button></span></li>`;
       }
-      const coppia = giocaInCoppia() ? `<span class="squadra">coppia ${i % 2 === 0 ? 'A' : 'B'}</span>` : '';
+      const coppia = giocaInCoppia() ? `<span class="squadra">coppia ${i % 2 === 0 ? 'A' : 'B'}</span>` : squadraSala(m, i);
       if (!g) {
         return `<li class="vuoto"><span>Posto libero</span>${coppia}
           <span class="posto-az">
@@ -777,7 +793,9 @@
       return `<li class="${io ? 'mio' : ''}"><span>${esc(g.nome)} ${etichetta}${!g.connesso ? ' <small>(non connesso)</small>' : ''}</span>${coppia}
         <span class="posto-az">
           ${m.masterUmano && !g.bot && stato.numPosti > 1 && !(Number(stato.opzioni.stessoPc) > 1) && stato.opzioni.modalita !== 'reale' ? (stato.sonoHost ? `<button class="bottone mini-bt" data-master="${i}" title="${g.master ? 'Torna a fare il master l\'IA' : 'Fa il master al posto dell\'IA'}">🎩 ${g.master ? 'Master ✕' : 'Master'}</button>` : g.master ? '<span class="distintivo">🎩 master</span>' : '') : ''}
-          ${!io ? `<button class="bottone mini-bt" data-cambia="${i}">Scambia posto</button>` : ''}
+          ${!io ? (scambi.some((x) => x.da === i && x.a === stato.mioPosto) ? `<button class="bottone mini-bt primario" data-cambia="${i}">✔ Accetta lo scambio</button>`
+            : scambi.some((x) => x.da === stato.mioPosto && x.a === i) ? '<span class="piccolo">richiesta inviata…</span>'
+            : `<button class="bottone mini-bt" data-cambia="${i}">${g.bot || stato.sonoHost ? 'Scambia posto' : 'Chiedi di scambiare'}</button>`) : ''}
           ${stato.sonoHost && !io ? `<button class="bottone mini-bt" data-togli="${i}">Togli</button>` : ''}
         </span></li>`;
     }).join('');
@@ -809,7 +827,8 @@
     const box = $('#sala-extra');
     if (!stato.sonoHost || stato.spettatore) { box.hidden = true; return; }
     const adatti = giochi.filter((g) => g.giocatori.includes(stato.numPosti) && !(g.soloPersone && stato.giocatori.some((x) => x && x.bot)));
-    if (!serataScelti) serataScelti = new Set([stato.gioco]);
+    if (!serataScelti || serataScelti.codice !== stato.codice) { serataScelti = new Set([stato.gioco]); serataScelti.codice = stato.codice; } // ogni tavolo ha la sua serata
+    for (const id of [...serataScelti]) if (!adatti.some((g) => g.id === id)) serataScelti.delete(id); // tolti i giochi non più adatti
     const torneo = stato.numPosti === 2 ? `<div class="extra-riga"><b>🏆 Torneo a eliminazione</b>
       <p class="piccolo">Partecipano chi è al tavolo e chi entra col codice (guarda finché non tocca a lui); i posti che mancano li prende il computer.</p>
       <button type="button" class="bottone mini-bt" data-torneo="4">Torneo a 4</button><button type="button" class="bottone mini-bt" data-torneo="8">Torneo a 8</button></div>` : '';
@@ -833,7 +852,7 @@
     if (e.target.closest('[data-serata-caso]')) {
       const adatti = [...$$('#sala-extra [data-serata]')].map((x) => x.dataset.serata);
       for (let i = adatti.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [adatti[i], adatti[j]] = [adatti[j], adatti[i]]; }
-      serataScelti = new Set(adatti.slice(0, 4));
+      serataScelti = new Set(adatti.slice(0, 4)); serataScelti.codice = stato.codice;
       return disegnaAttesa();
     }
     if (e.target.closest('[data-serata-via]')) socket.emit('iniziaSerata', { giochi: [...serataScelti] });
@@ -1140,7 +1159,9 @@
     else if (!r.vincitori.length) titolo = 'Partita finita'; // nessun vincitore (es. Wordle da soli, parola non trovata)
     else titolo = `Vince ${nomi(r.vincitori)}`;
     const alContrario = r.etichetta === 'penalità' || r.crescente;
-    const ordinate = [...r.fazioni].sort((a, b) => (alContrario ? a.punti - b.punti : b.punti - a.punti));
+    // chi ha vinto va sempre in cima (es. Indovina il numero in tanti: vince chi lo trova, anche se ha provato più volte)
+    const vince = (f) => (!r.pareggio && f.posti.some((i) => r.vincitori.includes(i)) ? 0 : 1);
+    const ordinate = [...r.fazioni].sort((a, b) => vince(a) - vince(b) || (alContrario ? a.punti - b.punti : b.punti - a.punti));
     const vittorie = stato.giocatori.map((g, i) => (g ? `<span>${esc(nomeDi(i))} <b>${g.vittorie}</b></span>` : '')).join('');
     const rec = recordPersonale(p, r, alContrario);
     $('#fine-scheda').innerHTML = `
@@ -1272,6 +1293,7 @@
     const soloPc = stato.giocatori.every((g, i) => i === stato.mioPosto || (g && g.bot));
     $('#conferma-testo').textContent = soloPc
       ? 'La partita contro il computer verrà chiusa.'
+      : (meta(stato.gioco) || {}).soloPersone ? 'Gli altri continuano senza di te: in questo gioco il tuo posto resta vuoto (non lo prende il computer).'
       : 'Al tuo posto giocherà il computer, così gli altri possono finire la partita.';
     $('#conferma').hidden = false;
     $('#conferma-no').focus();
@@ -1294,12 +1316,20 @@
   function gestisciChat() {
     $('#suggerimento-ricarica').hidden = !stato.ricaricaConsigliata;
     const lista = $('#messaggi');
-    const mioNomeTavolo = (stato.giocatori && stato.giocatori[stato.mioPosto] || {}).nome;
-    lista.innerHTML = stato.chat.map((m) => (m.sistema
+    // si torna in fondo solo se si era già in fondo (o se arriva un mio messaggio): chi rilegge i vecchi resta lì
+    const inFondo = lista.scrollHeight - lista.scrollTop - lista.clientHeight < 40;
+    const primaId = lista.dataset.ultimo;
+    const firmaChat = stato.chat.map((m) => m.id).join(',');
+    const cambiata = lista.dataset.firma !== firmaChat;
+    lista.dataset.firma = firmaChat;
+    if (cambiata) lista.innerHTML = stato.chat.map((m) => (m.sistema
       ? `<li class="sistema">${esc(m.testo)}</li>`
-      : m.ia ? rigaIA(`🤖 ${m.nome}`, m.a, m.a === mioNomeTavolo, m.testo)
+      : m.ia ? rigaIA(`🤖 ${m.nome}`, m.a, m.aPosto === stato.mioPosto && !stato.spettatore, m.testo)
       : `<li class="${m.posto === -2 ? 'spett' : ''}"><b>${esc(m.posto === stato.mioPosto && !stato.spettatore ? 'Tu' : m.nome)}</b> ${esc(m.testo)}</li>`)).join('');
-    lista.scrollTop = lista.scrollHeight;
+    const ultimoMsg = stato.chat[stato.chat.length - 1];
+    lista.dataset.ultimo = ultimoMsg ? ultimoMsg.id : '';
+    const mio = ultimoMsg && String(ultimoMsg.id) !== primaId && ultimoMsg.posto === stato.mioPosto;
+    if (cambiata && (inFondo || mio || !primaId)) lista.scrollTop = lista.scrollHeight;
     const nuovi = stato.chat.filter((m) => m.id > ultimaChat);
     const primaVolta = ultimaChat === 0;
     if (stato.chat.length) ultimaChat = stato.chat[stato.chat.length - 1].id;

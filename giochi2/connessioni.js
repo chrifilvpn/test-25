@@ -55,6 +55,15 @@ class Connessioni {
     this.prossimaBot = this.bot.map((l) => (l ? Date.now() + this.ritmo(l) : null));
     this.inizio = Date.now();
     this.pausaBoss = n === 1; // da soli: con le dispense aperte la partita aspetta
+    // nella sfida chi ha finito conosce la soluzione: i suoi messaggi li leggono solo gli altri che hanno finito
+    // (con leggiChat il server chiude anche la chat globale per chi è al tavolo)
+    if (n > 1) {
+      this.leggiChat = (p) => {
+        if (this.finita || !(this.giocatori[p].fatto)) return {};
+        const finiti = Array.from({ length: this.n }, (_, i) => i).filter((i) => i === p || this.giocatori[i].fatto);
+        return { soloPer: finiti, privato: '🤐 Hai finito: finché la sfida non è chiusa ti leggono solo gli altri che hanno finito' };
+      };
+    }
     this.turno = null;
     this.inAttesa = false;
     this.pausaMs = 0;

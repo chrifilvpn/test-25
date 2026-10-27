@@ -28,7 +28,26 @@
   // ---------- i comandi ----------
   const io = { yaw: 0, pitch: 0, acc: false, corre: false, ril: false, respiro: false, c: [0, 0, 0, 0] };
   window.__isolationIO = io; // per le prove automatiche
-  let inviato = '', ultimoInvio = 0, yawPronto = false, spettaIdx = 0;
+  let inviato = '', ultimoInvio = 0, yawPronto = false, spettaIdx = 0, aiuto = false, partitaVista = null;
+  // le impostazioni di chi gioca (restano nel browser): sensibilità del mouse, asse invertito, campo visivo, qualità
+  const IMP_BASE = { sens: 1, inverti: false, fov: 72, qualita: 'alta' };
+  const imp = (() => { try { return { ...IMP_BASE, ...JSON.parse(localStorage.getItem('isolation-impostazioni') || '{}') }; } catch (_) { return { ...IMP_BASE }; } })();
+  const salvaImp = () => { try { localStorage.setItem('isolation-impostazioni', JSON.stringify(imp)); } catch (_) { /* niente */ } };
+  window.__isolationImp = imp; // per le prove automatiche
+  // porte, generatori, scorte e task arrivano solo quando cambiano: qui gli ultimi valori
+  const lenti = {};
+  function completa(st) {
+    if (!st) return st;
+    for (const k of ['p', 'g', 'o', 'ts']) { if (st[k] !== undefined) lenti[k] = st[k]; else if (lenti[k] !== undefined) st[k] = lenti[k]; }
+    return st;
+  }
+  // una partita nuova: si rimette tutto a posto (sguardo, chi guardi da morto, minigioco, aiuto)
+  function nuovaPartita(ctx) {
+    const id = ctx && ctx.partita && ctx.partita.extra ? ctx.partita.extra.idPartita : null;
+    if (id === partitaVista) return;
+    partitaVista = id; yawPronto = false; spettaIdx = 0; morteT = null; mg = null; predMio = null; aiuto = false;
+    for (const k of Object.keys(lenti)) delete lenti[k];
+  }
   const attiva = () => ctxA && ctxA.partita && ctxA.partita.gioco === 'isolation' && !ctxA.partita.finita && ctxA.stato && !ctxA.stato.spettatore;
   const bloccato = () => document.pointerLockElement && document.pointerLockElement.classList.contains('ar-tela');
   const bits = () => (io.corre ? BIT.corre : 0) | (io.acc ? BIT.accucciato : 0) | (io.ril ? BIT.rilevatore : 0) | (io.respiro ? BIT.respiro : 0);
@@ -47,7 +66,8 @@
   const SENS = 0.0023;
   document.addEventListener('mousemove', (e) => {
     if (!attiva() || !bloccato()) return;
-    io.yaw += e.movementX * SENS; io.pitch = Math.max(-1.35, Math.min(1.35, io.pitch - e.movementY * SENS));
+    const k = SENS * imp.sens;
+    io.yaw += e.movementX * k; io.pitch = Math.max(-1.35, Math.min(1.35, io.pitch - e.movementY * k * (imp.inverti ? -1 : 1)));
   });
   document.addEventListener('keydown', (e) => {
     if (!attiva() || (window.Boss && Boss.attivo) || (e.target.closest && e.target.closest('input, textarea, select'))) return;
@@ -65,6 +85,7 @@
     else if (k === 'f') premi(2);
     else if (k === 'g') premi(3);
     else if (k === 'tab') { e.preventDefault(); spettaIdx++; }
+    else if (k === 'h') { aiuto = !aiuto; return; }
     else return;
     invia(true);
   });
@@ -92,6 +113,32 @@
     const su = (e) => { if (e.pointerType === 'mouse' && e.button === 2) { io.ril = false; invia(true); } };
     tela.addEventListener('pointerup', su); tela.addEventListener('pointercancel', su);
   }
+  // le impostazioni: il pannello si apre col pulsante ⚙ (il mouse si libera), i valori restano nel browser
+  function pannello(apri) {
+    const P = document.querySelector('.is-pannello'); if (!P) return;
+    P.hidden = !apri;
+    document.querySelectorAll('[data-is="opzioni"].is-ingr').forEach((b) => b.setAttribute('aria-expanded', String(apri)));
+    if (!apri) return;
+    if (bloccato()) document.exitPointerLock();
+    P.querySelector('#is-sens').value = imp.sens; P.querySelector('#is-inverti').checked = imp.inverti;
+    P.querySelector('#is-fov').value = imp.fov; P.querySelector('#is-fov-n').textContent = `${imp.fov}°`; P.querySelector('#is-qualita').value = imp.qualita;
+  }
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest && e.target.closest('[data-is="opzioni"]');
+    if (!b) return;
+    const P = document.querySelector('.is-pannello');
+    pannello(!!P && P.hidden);
+  });
+  const leggi = (e) => {
+    const t = e.target; if (!t || !t.id || !t.id.startsWith('is-')) return;
+    if (t.id === 'is-sens') imp.sens = Math.max(0.3, Math.min(2.5, Number(t.value) || 1));
+    else if (t.id === 'is-inverti') imp.inverti = !!t.checked;
+    else if (t.id === 'is-fov') { imp.fov = Math.max(60, Math.min(95, Number(t.value) || 72)); const n = document.getElementById('is-fov-n'); if (n) n.textContent = `${imp.fov}°`; }
+    else if (t.id === 'is-qualita') imp.qualita = ['alta', 'media', 'bassa'].includes(t.value) ? t.value : 'alta';
+    else return;
+    salvaImp();
+  };
+  document.addEventListener('input', leggi); document.addEventListener('change', leggi);
   // il pulsante dello schermo intero (nello strato sopra la scena)
   document.addEventListener('click', (e) => {
     const b = e.target.closest && e.target.closest('[data-is="schermo"]');
@@ -137,7 +184,7 @@
   function aperte(s) { const o = {}; if (s && s.p) s.p.forEach((v, i) => { o[i] = v % 100 > 7; }); return o; }
   const predici = {
     prendi(ultimo, ctx) {
-      const s = ultimo.s; if (!s || !s.u) return null;
+      const s = completa(ultimo.s); if (!s || !s.u || !s.p) return null;
       if (sonoMostro(ctx)) { const a = mioA(s, ctx); if (!a || a[4] || a[6] === 'uccide' || (s.me && s.me[2])) return null; return { x: a[0], y: a[1] }; }
       const u = mioUmano(s, ctx);
       if (!u || !(u[5] & 1) || (u[5] & 2) || (u[5] & 64) || (u[5] & 2048) || (u[5] & 4096) || (s.me && s.me[4] >= 0)) return null;
@@ -147,7 +194,7 @@
       if (!M) return pred;
       const mostro = sonoMostro(ctx), s = ultimo.s;
       let v;
-      if (mostro) v = io.corre && s.me && s.me[0] > 5 ? VEL.alienoCorre : VEL.alieno;
+      if (mostro) v = (io.corre && s.me && s.me[0] > 5 ? VEL.alienoCorre : VEL.alieno) * (s.me && s.me[3] ? 1.25 : 1);
       else v = io.acc ? VEL.accucciato : io.ril ? VEL.rilevatore : io.corre ? VEL.corre : VEL.cammina;
       const f = -inp.y, l = inp.x;
       let dx = Math.cos(io.yaw) * f - Math.sin(io.yaw) * l, dy = Math.sin(io.yaw) * f + Math.cos(io.yaw) * l;
@@ -241,7 +288,7 @@
   })();
 
   // ---------- quello che serve a ogni fotogramma ----------
-  let ultimoT = performance.now(), passiT = 0, bipT = 0, battitoT = 0, morteT = null, salvoT = null, ultimiPing = [], scossa = 0, stanzaVista = null, stanzaT = 0, messaggi = [];
+  let ultimoT = performance.now(), passiT = 0, bipT = 0, battitoT = 0, morteT = null, ultimiPing = [], scossa = 0, stanzaVista = null, stanzaT = 0, messaggi = [];
   const grana = (() => { const c = document.createElement('canvas'); c.width = c.height = 256; const g = c.getContext('2d'); const d = g.createImageData(256, 256); for (let i = 0; i < d.data.length; i += 4) { const v = Math.random() * 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 22; } g.putImageData(d, 0, 0); return c; })();
   const NOMI_OGG = { b: 'batteria', f: 'carburante', r: 'razzo' };
   // survival: le stazioni delle task (come sul server: prima i terminali, poi i generatori)
@@ -262,19 +309,20 @@
       g.fillText(errore ? String(errore.message || errore) : 'SEEGSON · APOLLO · collegamento in corso', W / 2, H / 2 + 24);
       return;
     }
-    const st = s.s; if (!st || !st.u) return;
+    nuovaPartita(ctx);
+    const st = completa(s.s); if (!st || !st.u || !st.p || !st.g) return;
+    if (prima && prima.s) completa(prima.s);
     const I = interpola(st, prima && prima.s, u);
     const mostro = sonoMostro(ctx), mio = ctx.mio;
     const mu = I.umani.find((x) => x.k === mio);
     const ex = p.extra || {};
     // la direzione iniziale: verso l'interno dell'atrio
-    if (!yawPronto) { yawPronto = true; io.yaw = mostro ? 0 : 0; io.pitch = 0; }
+    if (!yawPronto) { yawPronto = true; io.yaw = 0; io.pitch = 0; }
     // ---------- la telecamera ----------
     let cam, vistaDi = null, modo = mostro ? 'alieno' : 'umano';
     const morto = mu && !(mu.f & 1), salvo = mu && (mu.f & 64);
     if (morto && morteT === null) morteT = ora;
     if (!morto) morteT = null;
-    if (salvo && salvoT === null) salvoT = ora;
     const IA = mostro ? I.alieni.find((a) => a.posto === mio) || I.alieni[0] : null;
     I.mio = IA;
     if (mostro) {
@@ -306,10 +354,13 @@
       const sc = urto * 0.08 + morso * 0.12 + (tm < 0.85 ? 0.006 : 0), ri = () => (Math.random() - 0.5) * sc;
       cam = { x: mu.x, y: mu.y, h: Math.max(0.4, 1.6 - Math.min(1, tm / 0.3) * 0.85 - Math.max(0, tm - 1.2) * 0.3) + ri(), yaw: io.yaw + ri(), pitch: ri(), torcia: true, batteria: 100, modo: 'morte', rollio: Math.min(0.35, tm * 0.6) + ri() + (tm > 1.2 ? Math.min(0.5, (tm - 1.2) * 0.4) : 0) };
     } else {
-      // si guarda un altro sopravvissuto (clic o Tab per cambiare)
+      // si guarda un altro sopravvissuto o la mappa dall'alto (clic o Tab per cambiare)
       const vivi = I.umani.filter((x) => (x.f & 1) && !(x.f & 64) && x.k !== mio);
-      if (vivi.length) {
-        vistaDi = vivi[spettaIdx % vivi.length];
+      if (spettaIdx % (vivi.length + 1) === vivi.length) {
+        modo = 'mappa';
+        cam = { x: M.COLS * M.T / 2, y: M.RIGHE * M.T / 2, h: 2, yaw: 0, pitch: 0, torcia: false, modo: 'umano' };
+      } else if (vivi.length) {
+        vistaDi = vivi[spettaIdx % (vivi.length + 1)];
         cam = { x: vistaDi.x, y: vistaDi.y, h: vistaDi.f & 4 ? 0.95 : 1.62, yaw: vistaDi.yaw, pitch: vistaDi.pitch, torcia: !!(vistaDi.f & 32), batteria: 100, modo: 'umano' };
       } else {
         const A0 = I.alieni[0];
@@ -332,10 +383,12 @@
     if (!mostro && tensione > 0.45 && mu && (mu.f & 1)) { battitoT -= dt * (0.8 + tensione * 1.4); if (battitoT <= 0) { battitoT = 1; audio.suona('battito', Math.min(1, tensione)); } }
     // ---------- la scena 3D ----------
     const umani = I.umani.map((x) => ({ ...x, io: x.k === mio && !mostro && !morto, nascondi: vistaDi && x.k === vistaDi.k }));
-    const qualita = touch() ? 0.7 : Math.min(1, 1.3 / (window.devicePixelRatio || 1));
+    const qualita = (touch() ? 0.7 : Math.min(1, 1.3 / (window.devicePixelRatio || 1))) * (imp.qualita === 'bassa' ? 0.6 : 1);
+    if (!cam.fov && cam.modo !== 'morte') cam.fov = imp.fov;
     const w = Math.max(320, Math.round(g.canvas.width * qualita)), h = Math.max(180, Math.round(g.canvas.height * qualita));
-    const V = { w, h, dt, cam, umani, alieni: I.alieni, porte: st.p, gen: st.g, raccolti: st.o, razzi: st.fl, sbloccato: !!st.sb, nascondiXeno: IA ? IA.i : -1 };
+    const V = { w, h, dt, cam, umani, alieni: I.alieni, porte: st.p, gen: st.g, raccolti: st.o, razzi: st.fl, sbloccato: !!st.sb, nascondiXeno: IA ? IA.i : -1, ombre: imp.qualita === 'alta' };
     if (modo === 'condotto') disegnaCondotti(g, W, H, st, I, ctx);
+    else if (modo === 'mappa') disegnaMappa(g, W, H, st, I, ctx);
     else {
       const tela = mot.disegna(V);
       g.drawImage(tela, 0, 0, W, H);
@@ -354,18 +407,42 @@
     const task = !mostro && st.me && st.me[5];
     if (task && (!mg || mg.s !== task[0] || mg.seme !== task[3])) apriMinigioco(task);
     if (!task && mg) mg = null;
-    if (mg) disegnaMinigioco(g, W, H);
+    if (mg) {
+      disegnaMinigioco(g, W, H);
+      // il pericolo si vede anche durante la task: bordo rosso che pulsa e un avviso
+      if (tensione > 0.3) {
+        const k = Math.min(1, tensione) * (0.55 + 0.45 * Math.sin(ora / 110));
+        g.save(); g.strokeStyle = `rgba(255,40,30,${k})`; g.lineWidth = 18; g.strokeRect(9, 9, W - 18, H - 18); g.restore();
+        testo(g, '⚠ LO XENOMORFO È VICINO · E per lasciare la task', W / 2, H / 2 + 260, { size: 20, al: 'center', col: '#ff7060', peso: 700 });
+      }
+    }
     // i messaggi in basso (eventi)
     messaggi = messaggi.filter((m) => ora - m.t < 4000);
     g.textAlign = 'center'; g.font = '600 20px "Courier New", monospace';
     messaggi.forEach((m, i) => { g.globalAlpha = Math.min(1, (4000 - (ora - m.t)) / 600); g.fillStyle = '#d8f0d8'; g.fillText(m.testo, W / 2, H - 150 - (messaggi.length - 1 - i) * 26); });
     g.globalAlpha = 1;
+    if (aiuto) disegnaAiuto(g, W, H, mostro, survival(ctx));
+    else if (!touch() && attiva()) testo(g, 'H · comandi', W - 28, H - 16, { size: 13, al: 'right', col: 'rgba(210,230,210,.6)' });
     // clic per giocare (mouse non bloccato)
-    if (!touch() && attiva() && !bloccato() && ctx.partita.stato.fase === 'gioco' && !morto && !salvo && !mg) {
-      g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(W / 2 - 260, H / 2 - 40, 520, 70);
+    if (!touch() && attiva() && !bloccato() && ctx.partita.stato.fase === 'gioco' && !morto && !salvo && !mg && !aiuto) {
+      g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(W / 2 - 300, H / 2 - 42, 600, 94);
+      g.textAlign = 'center';
       g.fillStyle = '#e8f6e8'; g.font = '700 22px "Courier New", monospace'; g.fillText('Clicca qui per giocare', W / 2, H / 2 - 8);
-      g.font = '15px "Courier New", monospace'; g.fillText('il mouse serve a guardarsi intorno · Esc per liberarlo', W / 2, H / 2 + 16);
+      g.font = '15px "Courier New", monospace';
+      g.fillText('il mouse serve a guardarsi intorno · Esc per liberarlo', W / 2, H / 2 + 14);
+      g.fillText('H · comandi    ⚙ · impostazioni', W / 2, H / 2 + 36);
     }
+    g.restore();
+  }
+  // H: i comandi sopra la scena
+  function disegnaAiuto(g, W, H, mostro, surv) {
+    const righe = mostro
+      ? ['WASD · muoverti', 'mouse · guardare', 'Maiusc · scatto (consuma il fiato)', 'clic · attacca davanti a te', 'E · entra o scendi dalle grate dei condotti', 'E · apri armadietti e casse', surv ? 'chi sta fermo non lo vedi: colpisci dove senti i rumori' : 'i rumori sono segni sullo schermo e nuvolette sulla minimappa']
+      : ['WASD · muoverti', 'mouse · guardare', 'Maiusc · correre (fa rumore)', 'C · accucciarti (passi sotto scrivanie e letti)', 'Q o tasto destro · rilevatore di movimento', 'F · torcia', 'E · usa: armadietti, casse, botole, ' + (surv ? 'task' : 'generatori'), 'clic · lanciafiamme', 'G · lancia un razzo (attira lo xenomorfo)', 'spazio · trattieni il respiro (nascosto)', 'Tab · da morto cambi chi guardi o la mappa'];
+    const w = 560, h = 70 + righe.length * 26, x = W / 2 - w / 2, y = H / 2 - h / 2;
+    g.save(); g.fillStyle = 'rgba(6,12,8,.9)'; g.strokeStyle = '#6fae6a'; g.lineWidth = 2; g.beginPath(); g.roundRect(x, y, w, h, 14); g.fill(); g.stroke();
+    testo(g, 'COMANDI · H per chiudere', W / 2, y + 36, { size: 18, al: 'center', col: '#b8f0b0' });
+    righe.forEach((r, i) => testo(g, r, x + 30, y + 70 + i * 26, { size: 15 }));
     g.restore();
   }
   const bob = { fase: 0, amp: 0 };
@@ -401,9 +478,7 @@
         let best = null, bd = Infinity;
         STAZ.forEach((t, i) => { if (st.ts[2][i] !== '1') return; const c = M.centro(t), d = Math.hypot(c.x - cam.x, c.y - cam.y); if (d < bd) { bd = d; best = c; } });
         if (best && !(mu.f & 4096)) {
-          const a = angolo(Math.atan2(best.y - cam.y, best.x - cam.x) - io.yaw);
-          g.save(); g.translate(46, 70); g.rotate(a); g.fillStyle = '#f0c040'; g.beginPath(); g.moveTo(12, 0); g.lineTo(-8, -8); g.lineTo(-4, 0); g.lineTo(-8, 8); g.closePath(); g.fill(); g.restore();
-          testo(g, `task pronta a ${(bd / 10).toFixed(0)} m (luce gialla)`, 66, 76, { size: 15, col: '#e8d8a0' });
+          freccia(g, 46, 70, best, cam, `task pronta a ${(bd / 10).toFixed(0)} m (luce gialla)`);
         } else testo(g, 'nessuna task pronta: aspetta che i terminali si riavviino', 40, 76, { size: 15, col: '#a8b8a8' });
       }
       // fermo = invisibile agli xenomorfi
@@ -413,13 +488,24 @@
       testo(g, st.sb ? '▶ RAGGIUNGI IL TORRENS (ATTRACCO, IN FONDO A EST)' : `▶ RIACCENDI I GENERATORI  ${acc}/3`, 28, 40, { size: 18 });
       const nomi = ['Medicina', 'Ingegneria', 'Comunicazioni'];
       if (!st.sb) st.g.forEach((x, i) => testo(g, `${x >= 100 ? '■' : '□'} ${nomi[i]}${x > 0 && x < 100 ? ` ${x}%` : ''}`, 40, 66 + i * 22, { size: 15, col: x >= 100 ? '#8fe08f' : '#a8b8a8' }));
+      // la freccia verso il generatore spento più vicino
+      if (!st.sb && mu && (mu.f & 1) && !(mu.f & 2) && !(st.me && st.me[4] >= 0)) {
+        let best = null, bd = Infinity, bi = 0;
+        M.OGGETTI.G.forEach((t, i) => { if (st.g[i] >= 100) return; const c = M.centro(t), d = Math.hypot(c.x - cam.x, c.y - cam.y); if (d < bd) { bd = d; best = c; bi = i; } });
+        if (best) freccia(g, 46, 144, best, cam, `generatore (${nomi[bi]}) a ${(bd / 10).toFixed(0)} m`);
+      }
+    }
+    // la fuga: la freccia verso l'attracco
+    if (st.sb && mu && (mu.f & 1) && !(mu.f & 2) && !(mu.f & 64)) {
+      const e = M.centro(M.OGGETTI.E[0]), d = Math.hypot(e.x - cam.x, e.y - cam.y);
+      freccia(g, 46, 70, e, cam, `attracco del Torrens a ${(d / 10).toFixed(0)} m`);
     }
     const stanza = M.stanzaDi(cam);
     const nome = stanza ? stanza.nome : 'Corridoio di servizio';
     if (nome !== stanzaVista) { stanzaVista = nome; stanzaT = ora; }
     if (ora - stanzaT < 4000) { g.globalAlpha = Math.min(1, (4000 - (ora - stanzaT)) / 800); testo(g, nome.toUpperCase(), W / 2, 84, { size: 22, al: 'center', col: '#e6efe0' }); g.globalAlpha = 1; }
     const m = Math.floor(st.tr / 60), sec = String(st.tr % 60).padStart(2, '0');
-    testo(g, `${m}:${sec}`, W - 28, 40, { size: 20, al: 'right' });
+    testo(g, `${m}:${sec}`, W - 150, 40, { size: 20, al: 'right' });
     if (morto || salvo) {
       if (morto && morteT !== null && ora - morteT < 3200) {
         const k = (ora - morteT) / 3200, tm = (ora - morteT) / 1000;
@@ -430,7 +516,7 @@
         if (tm < 1.3) return; // prima il morso, poi la scritta
       }
       testo(g, morto ? 'SEI MORTO' : 'SEI SALVO: SEI SUL TORRENS', W / 2, H / 2 - 60, { size: 40, al: 'center', col: morto ? '#ff6a5a' : '#9fffa0', peso: 700 });
-      if (vistaDi) testo(g, `Stai guardando ${ctx.nome(vistaDi.k)} · clic o Tab per cambiare`, W / 2, H - 40, { size: 16, al: 'center' });
+      testo(g, vistaDi ? `Stai guardando ${ctx.nome(vistaDi.k)} · clic o Tab per cambiare` : 'Mappa della stazione · clic o Tab per cambiare', W / 2, H - 40, { size: 16, al: 'center' });
       return;
     }
     if (!mu) return;
@@ -460,6 +546,12 @@
     }
     // il rilevatore di movimento
     if (mu.f & 16) rilevatore(g, W, H, st, I, ctx, cam);
+  }
+  // una freccia gialla che ruota con la visuale verso un punto della stazione, con la scritta accanto
+  function freccia(g, x, y, verso, cam, scritta) {
+    const a = angolo(Math.atan2(verso.y - cam.y, verso.x - cam.x) - io.yaw);
+    g.save(); g.translate(x, y); g.rotate(a); g.fillStyle = '#f0c040'; g.beginPath(); g.moveTo(12, 0); g.lineTo(-8, -8); g.lineTo(-4, 0); g.lineTo(-8, 8); g.closePath(); g.fill(); g.restore();
+    testo(g, scritta, x + 20, y + 6, { size: 15, col: '#e8d8a0' });
   }
   // come il server: il generatore o l'armadietto davanti
   function suggerimento(st, mu, cam) {
@@ -518,8 +610,7 @@
     g.fillStyle = '#7dff9a'; g.font = '700 22px "Courier New", monospace'; g.textAlign = 'center';
     g.fillText(vicino < Infinity ? `${(vicino / 10).toFixed(1)}m` : '--.-m', cx, cy - 12);
     g.restore();
-    bipT -= 1 / 60;
-    if (bipT <= 0) { bipT = 1; audio.suona('bip', 1, 0, 900); if (vicino < Infinity) setTimeout(() => audio.suona('ping', 1, 0, 1800 - Math.min(1200, vicino * 4)), 160); }
+    if (ora - bipT >= 1000) { bipT = ora; audio.suona('bip', 1, 0, 900); if (vicino < Infinity) setTimeout(() => audio.suona('ping', 1, 0, 1800 - Math.min(1200, vicino * 4)), 160); }
   }
 
   // ---------- lo schermo dello xenomorfo ----------
@@ -584,7 +675,7 @@
     testo(g, titolo, 28, 40, { size: 18, col: '#d0d8f0' });
     if (surv && modo !== 'condotto') testo(g, 'Chi sta fermo non lo vedi: colpisci dove senti i rumori', 28, 64, { size: 14, col: '#9aa6c8' });
     const m = Math.floor(st.tr / 60), sec = String(st.tr % 60).padStart(2, '0');
-    testo(g, `${m}:${sec}`, W - 28, 40, { size: 20, al: 'right', col: '#d0d8f0' });
+    testo(g, `${m}:${sec}`, W - 150, 40, { size: 20, al: 'right', col: '#d0d8f0' });
     if (st.sb) testo(g, '⚠ IL TORRENS È ATTRACCATO: FERMALI ALL\'ATTRACCO', 28, surv ? 88 : 66, { size: 15, col: '#ff8070' });
   }
   function suggerimentoAlieno(I) {
@@ -603,7 +694,12 @@
       const c = M.griglia[ty][tx]; if (c === '#') continue;
       g.fillStyle = c === 'D' ? '#1d2c3c' : '#142030'; g.fillRect(ox + tx * M.T * k, oy + ty * M.T * k, M.T * k + 0.5, M.T * k + 0.5);
     }
-    for (const t of M.OGGETTI.V) { const c = M.centro(t); g.strokeStyle = '#7fb0ff'; g.lineWidth = 2; g.strokeRect(ox + c.x * k - 7, oy + c.y * k - 7, 14, 14); }
+    // le grate: rosse e più grandi quelle vicine a un rumore sentito (lì conviene scendere)
+    for (const t of M.OGGETTI.V) {
+      const c = M.centro(t), calda = (st.pi || []).some(([x, y]) => Math.hypot(x - c.x, y - c.y) < 90);
+      g.strokeStyle = calda ? '#ff6050' : '#7fb0ff'; g.lineWidth = calda ? 3 : 2; const r = calda ? 10 : 7;
+      g.strokeRect(ox + c.x * k - r, oy + c.y * k - r, r * 2, r * 2);
+    }
     for (const [x, y, tipo, t] of st.pi || []) {
       const v = Math.max(0, Math.min(1, (t || 20) / 30)), r = 8 + (1 - v) * 10;
       const gr = g.createRadialGradient(ox + x * k, oy + y * k, 0, ox + x * k, oy + y * k, r);
@@ -617,6 +713,22 @@
     const vicino = Math.hypot(v.x - A.x, v.y - A.y) < 40;
     testo(g, 'NEI CONDOTTI · WASD per muoverti sopra i soffitti', W / 2, 72, { size: 16, al: 'center', col: '#c0d0f0' });
     testo(g, vicino ? 'E · scendi da questa grata' : 'avvicinati a una grata (quadrati azzurri) per scendere', W / 2, H - 20, { size: 16, al: 'center', col: vicino ? '#ffffff' : '#8090b0' });
+  }
+
+  // da morti o salvi: la pianta della stazione con i sopravvissuti (verdi), gli xenomorfi (rossi), generatori e uscita
+  function disegnaMappa(g, W, H, st, I) {
+    g.fillStyle = '#05070c'; g.fillRect(0, 0, W, H);
+    const k = Math.min((W - 80) / (M.COLS * M.T), (H - 140) / (M.RIGHE * M.T)), ox = (W - M.COLS * M.T * k) / 2, oy = 90;
+    for (let ty = 0; ty < M.RIGHE; ty++) for (let tx = 0; tx < M.COLS; tx++) {
+      const c = M.griglia[ty][tx]; if (c === '#') continue;
+      g.fillStyle = c === 'D' ? '#1d2c3c' : 'LmcG'.includes(c) ? '#22324a' : '#142030'; g.fillRect(ox + tx * M.T * k, oy + ty * M.T * k, M.T * k + 0.5, M.T * k + 0.5);
+    }
+    const punto = (x, y, r, col) => { g.fillStyle = col; g.beginPath(); g.arc(ox + x * k, oy + y * k, r, 0, Math.PI * 2); g.fill(); };
+    M.OGGETTI.G.forEach((t, i) => { const c = M.centro(t); punto(c.x, c.y, 6, st.g[i] >= 100 ? '#8fe08f' : st.g[i] > 0 ? '#f0c040' : '#a04030'); });
+    for (const t of M.OGGETTI.E) { const c = M.centro(t); g.fillStyle = st.sb ? 'rgba(120,255,140,.35)' : 'rgba(255,80,60,.25)'; g.fillRect(ox + (c.x - M.T / 2) * k, oy + (c.y - M.T / 2) * k, M.T * k, M.T * k); }
+    for (const u of I.umani) if ((u.f & 1) && !(u.f & 64)) { punto(u.x, u.y, 5, u.f & 2 ? '#6a9a6a' : '#9fffa0'); testo(g, ctxA.nome(u.k), ox + u.x * k, oy + u.y * k - 9, { size: 11, al: 'center', col: '#cfe8cf' }); }
+    for (const A of I.alieni) punto(A.x, A.y, 6, A.inCondotto ? '#803030' : '#ff4a3a');
+    testo(g, 'LA STAZIONE · verdi i sopravvissuti, rossi gli xenomorfi', W / 2, 64, { size: 16, al: 'center', col: '#c0d0f0' });
   }
 
   // ---------- i minigiochi delle task (survival) ----------
@@ -730,6 +842,8 @@
   // ---------- gli eventi del server: suoni, scosse, scritte ----------
   function dopoTick(ctx, d) {
     ctxA = ctx;
+    nuovaPartita(ctx);
+    completa(d.s);
     if (!d.s || !M) return;
     const st = d.s, mostro = sonoMostro(ctx);
     window.__isolationStato = st; // per le prove automatiche
@@ -757,7 +871,7 @@
       else if (tipo === 'sbloccato') audio.suona('allarme', 1);
       else if (tipo === 'morte') { if (e[1] === ctx.mio) { audio.suona('morte', 1); scossa = 1; } else { const u = st.u.find((x) => x[0] === e[1]); if (u) audio.suona('urlo', volDi(u[1], u[2], 600) * 0.8, panDi(u[1], u[2])); sottotitolo(`${ctx.nome(e[1])} è stato preso`); } }
       else if (tipo === 'fugge' && e[1] !== ctx.mio) sottotitolo(`${ctx.nome(e[1])} è salito sul Torrens`);
-      else if (tipo === 'fiuto' && mostro) sottotitolo('Senti un odore… (segno rosso)');
+      else if (tipo === 'fiuto' && mostro && (e[1] === undefined || e[1] === ctx.mio)) sottotitolo('Senti un odore… (segno rosso)');
       else if (tipo === 'colpo') audio.suona('sibilo', volDi(e[1], e[2], 200), panDi(e[1], e[2]));
       else if (tipo === 'task') { const c = M.centro(STAZ[e[1]]); audio.suona('gen', Math.max(0.15, volDi(c.x, c.y, 400)) * 0.6, panDi(c.x, c.y)); if (e[2] === ctx.mio) sottotitolo(`Task completata (${e[3]})`); else if (!mostro) sottotitolo(`${ctx.nome(e[2])} ha completato una task (${e[3]})`); }
       else if (tipo === 'botola') { const u = st.u.find((x) => x[0] === e[1]); if (u) audio.suona('armadietto', volDi(u[1], u[2], 160), panDi(u[1], u[2])); }
@@ -797,7 +911,13 @@
     dopoTick,
     disegna,
     // il pulsante dello schermo intero
-    sopra: () => '<div class="is-strato"><button type="button" class="is-bt is-pieno" data-is="schermo" title="Schermo intero">⛶</button></div>',
+    sopra: () => `<div class="is-strato"><button type="button" class="is-bt is-pieno" data-is="schermo" title="Schermo intero">⛶</button><button type="button" class="is-bt is-ingr" data-is="opzioni" title="Impostazioni" aria-expanded="false">⚙</button>
+      <div class="is-pannello" hidden><b>Impostazioni</b>
+        <label>Sensibilità del mouse <input type="range" id="is-sens" min="0.3" max="2.5" step="0.1"></label>
+        <label><input type="checkbox" id="is-inverti"> Inverti su e giù</label>
+        <label>Campo visivo <span id="is-fov-n"></span> <input type="range" id="is-fov" min="60" max="95" step="1"></label>
+        <label>Qualità <select id="is-qualita"><option value="alta">Alta (ombre)</option><option value="media">Media (senza ombre)</option><option value="bassa">Bassa (per PC lenti)</option></select></label>
+        <button type="button" class="is-bt is-chiudi" data-is="opzioni">Chiudi</button></div></div>`,
   });
   Object.assign(window.Tavoli, { isolation: tavolo });
 })();

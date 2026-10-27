@@ -20,7 +20,7 @@ In quale paese sono nati i Giochi olimpici antichi?|Grecia|Italia|Egitto|Turchia
 Quanto è lunga una maratona?|42,195 km|40 km|21,097 km|50 km|1
 Con quale colore è la maglia del leader del Giro d'Italia?|Rosa|Gialla|Verde|Azzurra|1
 Con quale colore è la maglia del leader del Tour de France?|Gialla|Rosa|Verde|A pois|1
-In quale sport si usa il "birdie"?|Golf|Tennis|Badminton|Cricket|2
+In quale sport un "birdie" è un colpo sotto il par?|Golf|Tennis|Bowling|Cricket|2
 In quale sport si fa "strike"?|Bowling|Golf|Curling|Biliardo|1
 Su quale superficie si gioca il torneo di tennis di Wimbledon?|Erba|Terra rossa|Cemento|Sintetico|1
 Su quale superficie si gioca il Roland Garros?|Terra rossa|Erba|Cemento|Moquette|1

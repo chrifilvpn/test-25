@@ -9,6 +9,7 @@ const TRUCCO = require('./giochi/trucco');
 const PORTA = process.env.PORT || 3000;
 const ATTESA_BOT_MS = Number(process.env.ATTESA_BOT_MS) || 900; // pausa "di riflessione" del computer
 const SOSTITUZIONE_MS = 25000; // dopo quanto il computer gioca per chi si è disconnesso
+const ASSENTE_SFIDA_MS = Number(process.env.ASSENTE_SFIDA_MS) || 90000; // nelle sfide (saltaAssenti): dopo quanto chi è via si ritira
 const VITA_STANZA_VUOTA_MS = 10 * 60 * 1000;
 const LIVELLI = ['facile', 'medio', 'difficile'];
 const FICHE_INIZIALI = 1000; // fiche di ogni giocatore a inizio tavolo (blackjack, poker, baccarat...)
@@ -148,6 +149,8 @@ function fermaTutti(s) {
   if (!umani(s).some((g) => !g.nascosto && presente(g))) return true; // tutti sulle dispense
   return nascosti.some((g) => Date.now() - (g.nascostoDal || 0) < PAUSA_MAX_MS);
 }
+// la partita in corso legge la chat del tavolo (leggiChat): lì la chat globale è chiusa per giocatori e spettatori
+const chatControllata = (s) => !!(s.partita && !s.partita.finita && s.partita.leggiChat);
 const inPausa = (s) => !!(s.partita && !s.partita.finita && (inEsecuzione(s) || (pausaBossDi(s) && fermaTutti(s))));
 
 function messaggioSistema(s, testo) {
@@ -168,17 +171,31 @@ function invia(s) {
       mioPosto: posto,
       sonoHost: s.host === g.id,
       giocatori: s.posti.map((x, i) => (x ? { nome: x.nome, connesso: x.connesso, bot: x.bot || null, autoplay: !!x.autoplay, nascosto: !!x.nascosto, uscito: !!x.uscito, inSala: !!x.inSala, fiche: x.fiche, vittorie: s.vittorie[i], master: !!(s.master && s.master === x.id && !x.bot) } : null)),
+      scambi: !s.partita && s.scambi ? s.scambi.filter((x) => s.posti[x.da] && s.posti[x.da].id === x.idDa && s.posti[x.a] && s.posti[x.a].id === x.idA).map((x) => ({ da: x.da, a: x.a })) : [],
       inPausa: inPausa(s),
       ricaricaConsigliata: !!(s.partita && s.partita.ficheDi && !g.bot && s.partita.ficheDi(posto) <= 0 && !(s.partita.ficheInGioco && s.partita.ficheInGioco(posto) > 0)),
       votoFine: s.votoFine ? { tipo: s.votoFine.tipo, da: s.votoFine.da, si: s.votoFine.si, no: s.votoFine.no, servono: s.votoFine.servono, votanti: s.votoFine.votanti, resta: Math.max(0, s.votoFine.scade - Date.now()) } : null,
       esecuzione: inEsecuzione(s) ? s.esecuzioneFino - Date.now() : 0, esecuzioneTipo: inEsecuzione(s) ? s.esecuzioneTipo || 'vulcano' : null,
       sfida: s.sfida && s.sfida.gioco === s.gioco ? { data: s.sfida.data, prova: !!s.sfida.prova } : null,
       torneo: tornei.vistaTorneo(s), serata: tornei.vistaSerata(s),
-      partita: s.partita ? s.partita.vista(posto) : null,
+      partita: s.partita ? vistaLeggera(s, g.socketId, s.partita.vista(posto)) : null,
       chat: s.chat.filter((m) => !m.spett && (!m.per || m.per.includes(posto))).slice(-40), // m.per: messaggio visibile solo ad alcuni (es. i fantasmi di Chi è l'Alieno)
     });
   });
   inviaSpettatori(s);
+}
+
+// VISTE LEGGERE: un gioco con alleggerisci(vista, memo) può togliere dalla vista quello che quel browser ha già
+// (es. Disegna e indovina manda solo i tratti nuovi, non tutto il disegno a ogni messaggio di chat). memo è un oggetto
+// per ogni collegamento (socket) e per ogni partita: un browser nuovo o ricaricato riceve sempre tutto.
+function vistaLeggera(s, sid, v) {
+  const g = s.partita;
+  if (!g || !g.alleggerisci || !v) return v;
+  if (!s.memoViste || s.memoViste.partita !== g) s.memoViste = { partita: g, perSocket: new Map() };
+  const m = s.memoViste.perSocket;
+  if (!m.has(sid)) m.set(sid, {});
+  try { g.alleggerisci(v, m.get(sid)); } catch (e) { /* in caso di problemi si manda la vista intera */ }
+  return v;
 }
 
 // SPETTATORI: chi entra in un tavolo pieno (o a partita iniziata) guarda la partita "dagli occhi" di un giocatore che
@@ -201,7 +218,7 @@ function inviaSpettatori(s) {
       torneo: tornei.vistaTorneo(s), serata: tornei.vistaSerata(s),
       inPausa: inPausa(s), ricaricaConsigliata: false, votoFine: null,
       esecuzione: inEsecuzione(s) ? s.esecuzioneFino - Date.now() : 0, esecuzioneTipo: inEsecuzione(s) ? s.esecuzioneTipo || 'vulcano' : null,
-      partita: s.partita ? s.partita.vista(posto) : null,
+      partita: s.partita ? vistaLeggera(s, sid, s.partita.vista(posto)) : null,
       chat: s.chat.filter((m) => !m.per || m.per.includes(posto)).slice(-40),
     });
   }
@@ -323,7 +340,9 @@ function pianifica(s) {
       const gio = s.posti[posto];
       let attesa = null;
       if (gio.bot) attesa = ATTESA_BOT_MS * (g.velocitaBot || 1) * (1 + Math.random() * 2);
-      else if (!gio.connesso || gio.autoplay || gio.nascosto) attesa = SOSTITUZIONE_MS;
+      // nelle sfide dove ognuno gioca per conto suo (saltaAssenti) chi è sulle dispense o ha perso la linea viene
+      // ritirato: lì si aspetta di più (con il prof in giro capita spesso di restare sulle dispense un minuto)
+      else if (!gio.connesso || gio.autoplay || gio.nascosto) attesa = GIOCHI[s.gioco].meta.saltaAssenti && !senzaBot(s) ? ASSENTE_SFIDA_MS : SOSTITUZIONE_MS;
       if (attesa == null) continue;
       s.timerSim.set(posto, { partita, id: setTimeout(() => {
         s.timerSim.delete(posto);
@@ -571,10 +590,13 @@ let nChatGlobale = 0;
 const MAX_CHAT_GLOBALE = 60;
 let ultimoProfGlobale = 0, ultimaEsecuzioneGlobale = 0;
 const PROF_GLOBALE_ATTESA_MS = 30000; // l'allarme prof per tutto il sito al massimo ogni 30 secondi
+// _da e _a (l'identificativo di chi scrive e di chi ha chiesto a fantasIA) restano sul server: a ognuno arriva solo
+// "mio" / "aMe", così "Tu" non dipende dal nome (due persone con lo stesso nome non si confondono)
+const vistaGlobale = (m, id) => { const { _da, _a, ...resto } = m; return { ...resto, mio: !!(id && _da === id), aMe: !!(id && _a === id) }; };
 function pubblicaGlobale(m) {
   const msg = { id: ++nChatGlobale, ora: Date.now(), ...m };
   chatGlobale.push(msg); if (chatGlobale.length > MAX_CHAT_GLOBALE) chatGlobale.shift();
-  io.emit('chatGlobale', msg);
+  for (const [, y] of presenze) y.socket.emit('chatGlobale', vistaGlobale(msg, y.id));
 }
 
 // ESILIO: chi viene esiliato dall'amministratore non può tornare per un po' (per identificativo del browser e,
@@ -685,7 +707,23 @@ io.on('connection', (socket) => {
     if (imp) presenza.disp = chiaveDispositivo(ipSocket, pulisciId(imp));
     const f = esiliato(presenza.id, ipSocket, presenza.disp);
     if (f) { socket.emit('esiliato', { fino: f }); socket.disconnect(true); return; }
+    socket.emit('chatGlobaleStorico', chatGlobale.map((m) => vistaGlobale(m, presenza.id))); // ora si sa quali sono i miei
     aggiornaAdmin();
+  });
+  // "Cambia nome" dalla sala: se la partita non è ancora iniziata (o è finita) il nuovo nome vale subito al tavolo
+  socket.on('cambiaNome', (n) => {
+    const nuovo = pulisciNome(n);
+    if (!nuovo) return;
+    presenza.nome = nuovo;
+    const s = stanza;
+    const i = mioPosto();
+    if (!s || i === -1 || (s.partita && !s.partita.finita)) return;
+    const g = s.posti[i];
+    const prima = g.nome;
+    g.nome = nomeLibero(s, nuovo, i);
+    if (g.nome === prima) return;
+    messaggioSistema(s, `✏️ ${prima} ora si chiama ${g.nome}`);
+    invia(s);
   });
   // il comando segreto: chi lo scrive diventa amministratore per questa connessione (il messaggio non si vede)
   const provaAdmin = (testo) => {
@@ -729,13 +767,19 @@ io.on('connection', (socket) => {
       else if (socket.connected) socket.emit('avvisoPrivato', r.errore);
     }).catch(() => { /* rispondi non lancia mai */ });
   };
-  socket.emit('chatGlobaleStorico', chatGlobale);
+  socket.emit('chatGlobaleStorico', chatGlobale.map((m) => vistaGlobale(m, presenza.id)));
   socket.on('chatGlobale', ({ testo, nome } = {}) => {
     if (TRUCCO.eComando(testo)) return; // il trucco segreto non si vede mai, neanche nella chat globale
     if (provaAdmin(testo)) return;
+    // nei giochi che controllano la chat del tavolo (Disegna, Chi è l'Alieno, Nomi in codice…) la chat globale
+    // permetterebbe di aggirare le regole (scrivere la parola, dire chi è l'Alieno): chi gioca o guarda lì aspetta
+    if (stanza && chatControllata(stanza) && !/^!(prof|comandi)\b/i.test(String(testo || '').trim())) {
+      socket.emit('avvisoPrivato', '🔒 Durante questa partita la chat globale è chiusa per chi è al tavolo: usa la chat del tavolo');
+      return;
+    }
     if (!COMANDI[String(testo || '').trim().toLowerCase().split(/\s+/)[0]] && domandaDa(testo) === null) comandoFinto(testo);
     const grezzo = String(testo || '').replace(/\s+/g, ' ').trim().slice(0, 200);
-    const chi = pulisciNome(nome || presenza.nome);
+    const chi = pulisciNome(presenza.nome || nome); // il nome registrato per questa connessione, non uno qualsiasi
     // i comandi funzionano anche dalla chat globale (quindi anche dalla home), per tutto il sito
     const cmd = grezzo.toLowerCase();
     const spento = comandiBloccati() && !SEMPRE_ATTIVI.includes(cmd.split(' ')[0]);
@@ -744,8 +788,8 @@ io.on('connection', (socket) => {
     const domanda = domandaDa(grezzo);
     if (domanda !== null) {
       chiediFantasia(domanda,
-        () => pubblicaGlobale({ nome: pulisciNome(nome || presenza.nome), testo: censura(grezzo) }),
-        (risposta) => pubblicaGlobale({ nome: `🤖 ${NOME_IA}`, testo: risposta, ia: true, a: chi }));
+        () => pubblicaGlobale({ nome: chi, testo: censura(grezzo), _da: presenza.id }),
+        (risposta) => pubblicaGlobale({ nome: `🤖 ${NOME_IA}`, testo: risposta, ia: true, a: chi, _a: presenza.id }));
       return;
     }
     if (cmd === '!prof') {
@@ -777,10 +821,7 @@ io.on('connection', (socket) => {
     }
     const t = censura(grezzo);
     if (!t) return;
-    const m = { id: ++nChatGlobale, nome: pulisciNome(nome), testo: t, ora: Date.now() };
-    chatGlobale.push(m);
-    if (chatGlobale.length > MAX_CHAT_GLOBALE) chatGlobale.shift();
-    io.emit('chatGlobale', m);
+    pubblicaGlobale({ nome: chi, testo: t, _da: presenza.id });
   });
   let mioId = null;
   socket.emit('giochi', elencoGiochi());
@@ -788,6 +829,13 @@ io.on('connection', (socket) => {
   const mioPosto = () => (stanza ? stanza.posti.findIndex((g) => g && g.id === mioId) : -1);
   const sonoHost = () => stanza && stanza.host === mioId;
 
+  // due persone con lo stesso nome allo stesso tavolo non si distinguerebbero (voti, accuse in chat): chi arriva
+  // dopo diventa "Marco 2"
+  function nomeLibero(s, nome, posto) {
+    const usati = new Set(s.posti.map((g, k) => (g && k !== posto ? String(g.nomeVero || g.nome).toLowerCase() : null)).filter(Boolean));
+    if (!usati.has(nome.toLowerCase())) return nome;
+    for (let k = 2; ; k++) { const n = `${nome.slice(0, 15)} ${k}`; if (!usati.has(n.toLowerCase())) return n; }
+  }
   function siediti(s, id, nome) {
     if (esiliato(id, ipSocket, presenza.disp)) { socket.emit('esiliato', { fino: esiliato(id, ipSocket, presenza.disp) }); socket.disconnect(true); return; }
     let i = s.posti.findIndex((g) => g && g.id === id);
@@ -806,6 +854,7 @@ io.on('connection', (socket) => {
       if (s.posti[i] && s.posti[i].uscito && s.partita && s.partita.rientra) s.partita.rientra(i);
       // nei giochi in tempo reale il computer che teneva il posto smette di giocare: ora comanda la persona
       if (s.partita && Array.isArray(s.partita.bot)) s.partita.bot[i] = null;
+      nome = nomeLibero(s, nome, i);
       s.posti[i] = { id, nome, socketId: null, connesso: false, bot: null, fiche: FICHE_INIZIALI };
       if (!s.partita) messaggioSistema(s, `${nome} si è seduto al tavolo`);
     }
@@ -816,7 +865,7 @@ io.on('connection', (socket) => {
     g.connesso = true;
     g.nascosto = false;
     g.autoplay = false;
-    if (!s.partita) g.nome = nome;
+    if (!s.partita) g.nome = nomeLibero(s, nome, i);
     if (stanza && stanza !== s) esci();
     stanza = s;
     mioId = id;
@@ -857,7 +906,7 @@ io.on('connection', (socket) => {
     if (vecchio && vecchio.uscito && s.partita && s.partita.rientra) s.partita.rientra(posto);
     if (vecchio && s.partita) messaggioSistema(s, `${sp.nome} prende il posto di ${vecchio.nome}`);
     else messaggioSistema(s, `${sp.nome} si è seduto al tavolo`);
-    s.posti[posto] = { id: sp.id, nome: sp.nome, socketId: null, connesso: false, bot: null, fiche: FICHE_INIZIALI };
+    s.posti[posto] = { id: sp.id, nome: nomeLibero(s, sp.nome, posto), socketId: null, connesso: false, bot: null, fiche: FICHE_INIZIALI };
     if (s.partita && Array.isArray(s.partita.bot)) s.partita.bot[posto] = null;
     s.spettatori.delete(socket.id);
     siediti(s, sp.id, sp.nome);
@@ -872,6 +921,13 @@ io.on('connection', (socket) => {
     const i = mioPosto();
     const nome = i >= 0 ? s.posti[i].nome : sonoSpettatore() ? s.spettatori.get(socket.id).nome : null;
     if (!nome) return;
+    // le emoji sono un modo di parlare: dove la chat è chiusa (fantasmi e vivi fuori dalle riunioni di Chi è l'Alieno,
+    // capitani e Psichico, spettatori dei giochi che controllano la chat) non partono
+    const g = s.partita;
+    if (g && !g.finita && ((i >= 0 && typeof g.puoReagire === 'function' && !g.puoReagire(i)) || (i < 0 && chatControllata(s)))) {
+      socket.emit('avvisoPrivato', '🤐 Adesso non puoi mandare reazioni: valgono le stesse regole della chat');
+      return;
+    }
     io.to(s.codice).emit('reazione', { r, nome, posto: i, spettatore: i < 0 });
   });
 
@@ -962,7 +1018,18 @@ io.on('connection', (socket) => {
     const i = mioPosto();
     posto = Number(posto);
     if (!s || s.partita || i === -1 || !(posto >= 0 && posto < s.posti.length) || posto === i) return;
+    const altro = s.posti[posto];
+    // con un posto vuoto o un computer ci si sposta subito; con una persona (che magari ha scelto la sua squadra) serve
+    // il suo sì, tranne per chi ha aperto il tavolo. Chi riceve la richiesta preme "Accetta" e lo scambio avviene.
+    const libero = !altro || altro.bot || sonoHost();
+    const richiesta = s.scambi && s.scambi.find((x) => x.da === posto && x.a === i && x.idDa === (altro && altro.id));
+    if (!libero && !richiesta) {
+      s.scambi = (s.scambi || []).filter((x) => x.da !== i).concat([{ da: i, a: posto, idDa: s.posti[i].id, idA: altro.id }]);
+      messaggioSistema(s, `🔁 ${s.posti[i].nome} chiede a ${altro.nome} di scambiarsi il posto`);
+      return aggiorna(s);
+    }
     [s.posti[i], s.posti[posto]] = [s.posti[posto], s.posti[i]]; // scambio con chi c'è (anche un posto vuoto)
+    s.scambi = [];
     aggiorna(s);
   });
 
@@ -1031,6 +1098,7 @@ io.on('connection', (socket) => {
     }
     const r = s.partita.azione(i, azione || {});
     if (r.errore) return errore(r.errore);
+    if (r.silenzioso) return; // la mossa non cambia niente di quello che vedono gli altri (es. una lettera in Nomi, cose, città)
     aggiorna(s);
   });
 

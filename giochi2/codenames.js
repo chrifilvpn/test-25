@@ -243,6 +243,13 @@ class NomiInCodice {
     };
   }
 
+  // la chat: i capitani conoscono la mappa, quindi durante la partita parlano solo tra loro (niente indizi in più)
+  leggiChat(p, testo) {
+    if (this.finita || !this.capitani.includes(p)) return {};
+    return { soloPer: [...new Set(this.capitani)], privato: '🤐 Sei capitano: durante la partita il tuo messaggio lo legge solo l\'altro capitano' };
+  }
+
+  puoReagire(p) { return this.finita || !this.capitani.includes(p); } // anche un'emoji sarebbe un indizio
   // ---------------- computer ----------------
   // l'agente computer sceglie (e ricorda per questo momento del turno) quale parola girare, o se passare
   sceltaAgente(p, livello) {
@@ -444,6 +451,7 @@ function bot(g, p, livello) {
 module.exports = {
   meta: {
     id: 'codenames',
+    squadreSala: { nomi: ['🟥 Rossi', '🟦 Blu'], min: 4 }, // la sala mostra la squadra di ogni posto
     nome: 'Nomi in codice',
     tipo: 'tabellone',
     giocatori: [4, 5, 6, 7, 8],
@@ -458,6 +466,7 @@ module.exports = {
       'Il capitano di turno dà un indizio: UNA parola e un numero (da 1 a 9), cioè quante parole della squadra c\'entrano. L\'indizio non può essere una delle parole coperte sul tavolo né una loro parte o forma (con «girasole» in gioco non si può dire «sole»; con «gatto» non si può dire «gatti»).',
       'Gli agenti della squadra scoprono le parole una alla volta, fino a numero + 1 (il tentativo in più serve a recuperare un indizio vecchio). Possono fermarsi quando vogliono, dopo averne scoperta almeno una, con «Passa».',
       'Come si sceglie: tocca una parola per proporla, così i compagni vedono il tuo segno sopra; per girarla premi «Scopri». Decide il primo agente che conferma, quindi mettetevi d\'accordo in chat!',
+      'I capitani non possono parlare con la squadra: durante la partita i loro messaggi in chat li legge solo l\'altro capitano (e la chat globale è chiusa per chi è al tavolo).',
       'Se la parola è della tua squadra si continua; se è neutrale o degli avversari il turno passa all\'altra squadra (e la parola avversaria resta scoperta per loro). Se è l\'assassino la tua squadra perde subito.',
       'Vince la squadra che scopre per prima tutte le sue parole (anche se l\'ultima l\'hanno scoperta per sbaglio gli avversari).',
       'Con l\'opzione del tempo, il capitano e gli agenti hanno 90 o 150 secondi per turno: se il capitano non decide, il computer suggerisce un indizio per lui; se gli agenti non finiscono, il turno passa.',
