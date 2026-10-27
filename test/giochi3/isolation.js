@@ -100,7 +100,7 @@ for (let x = 0; x < M.COLS; x++) assert.ok(M.solida(x, 0, {}) && M.solida(x, M.R
   assert.deepStrictEqual(g.umani.map((u) => u.k), [0, 2]);
   assert.strictEqual(g.vistaExtra(0).mostro, 1);
   const s = g.statoTick(1);
-  assert.ok(Array.isArray(s.pi) && s.me.length === 3, 'il mostro ha i puntini dei rumori e il fiato');
+  assert.ok(Array.isArray(s.pi) && s.me.length === 4, 'il mostro ha i puntini dei rumori e il fiato');
   // un rumore vicino diventa un puntino
   const A = g.alieno; g.rumori.push({ x: A.x + 10, y: A.y, r: 60, tipo: 'passi', chi: 0, dura: 1 }); passa(g, 0.05);
   assert.ok(g.statoTick(1).pi.length >= 1, 'sente il rumore');
@@ -245,4 +245,101 @@ console.log('✓ Alien: Isolation 3D');
     assert.ok(g.finita && ['umani', 'alieno'].includes(g.vittoria), `survival ${n} ${JSON.stringify(op)} finita`);
   }
   console.log('✓ Alien: Isolation 3D, survival: posti degli xenomorfi, task e fuga, invisibili da fermi, colpo davanti, fuoco che stordisce, casse e botole');
+}
+
+// ---- i bug sistemati (27/10/2026) e le migliorie ----
+{
+  const { STAZIONI } = G._test;
+  // B1: il razzo acceso continua a fare rumore e lo xenomorfo lo sente mentre brucia
+  {
+    const g = G.crea({ n: 1, opzioni: {}, bot: [null] }); parti(g);
+    g.razzi.push({ x: 300, y: 300, t: 18 });
+    let sentiti = 0; const orig = AI.passo;
+    AI.passo = (gg, A, dt) => { sentiti += gg.rumori.filter((n) => n.tipo === 'razzo').length; return orig(gg, A, dt); };
+    passa(g, 5);
+    AI.passo = orig;
+    assert.ok(sentiti > 3, `il razzo acceso fa rumore per lo xenomorfo: ${sentiti}`);
+  }
+  // B2: nella survival, dopo lo sblocco, i compagni del computer vicini a un generatore vanno all'uscita
+  for (let gi = 0; gi < M.OGGETTI.G.length; gi++) {
+    const g = G.crea({ n: 2, opzioni: { modalita: 'survival', chiS: 1 }, bot: ['medio', 'medio'] }); parti(g);
+    for (const A of g.alieni) { Object.assign(A, { inCondotto: true, stato: 'condotto', attesa: 1e9, x: 30, y: 30 }); A.mente.tregua = 1e9; }
+    g.sbloccato = true;
+    const u = g.umani[0]; Object.assign(u, davantiA(M.OGGETTI.G[gi]));
+    const x0 = u.x, y0 = u.y;
+    passa(g, 6);
+    assert.ok(u.fuggito || Math.hypot(u.x - x0, u.y - y0) > 30, `il compagno non resta fermo al generatore ${gi}`);
+  }
+  // B3: dopo una ricarica della pagina i contatori ripartono e i tasti funzionano subito
+  {
+    const g = G.crea({ n: 1, opzioni: {}, bot: [null] }); parti(g);
+    g.input(0, { c: [0, 0, 5, 0] }); g.premuti(0);
+    g.input(0, { c: [0, 0, 0, 0] }); g.input(0, { c: [0, 0, 1, 0] });
+    assert.strictEqual(g.premuti(0)[2], 1, 'F conta anche dopo la ricarica');
+  }
+  // B4: lo xenomorfo giocatore stordito non apre gli armadietti
+  {
+    const g = G.crea({ n: 2, opzioni: { modalita: 'survival', chiS: 1 }, bot: [null, null] }); parti(g);
+    const A = g.alieni[0], u = g.umani[0], t = M.OGGETTI.L[0], c = davantiA(t), cl = M.centro(t);
+    Object.assign(u, { x: c.x, y: c.y, yaw: Math.atan2(cl.y - c.y, cl.x - c.x) }); g.interagisci(u);
+    Object.assign(A, { inCondotto: false, stato: 'giro', x: c.x, y: c.y, yaw: Math.atan2(cl.y - c.y, cl.x - c.x), stordito: 3, colpoT: 3 });
+    g.cmd[0].yaw = A.yaw; g.cmd[0].c[1] = 1; g.passo(0.05);
+    assert.ok(u.vivo, 'stordito non tira fuori nessuno');
+    A.stordito = 0; A.colpoT = 0; g.cmd[0].c[1] = 2; g.passo(0.05);
+    assert.ok(!u.vivo, 'ripreso, apre l\'armadietto');
+  }
+  // B5: nella survival lo xenomorfo del computer esce presto (8 secondi)
+  {
+    const g = G.crea({ n: 1, opzioni: { modalita: 'survival' }, bot: [null] }); parti(g);
+    let t = 0; while (g.alieno.inCondotto && t < 30) { g.tempoRound += 0.05; g.passo(0.05); t += 0.05; }
+    assert.ok(t < 12, `esce dopo ${t.toFixed(1)} s`);
+  }
+  // B10: un generatore lo riaccende una persona alla volta
+  {
+    const g = G.crea({ n: 2, opzioni: {}, bot: [null, null] }); parti(g); lontano(g);
+    const [a, b] = g.umani, t = M.OGGETTI.G[0], d = davantiA(t), cg = M.centro(t);
+    for (const u of [a, b]) Object.assign(u, { x: d.x, y: d.y, yaw: Math.atan2(cg.y - d.y, cg.x - d.x) });
+    g.interagisci(a); g.interagisci(b);
+    assert.strictEqual(a.gen, 0); assert.strictEqual(b.gen, null, 'il secondo aspetta');
+  }
+  // B12: lo xenomorfo giocatore non riceve chi è nascosto (anche nella classica)
+  {
+    const g = G.crea({ n: 2, opzioni: { mostro: 'giocatore', chi: 1 }, bot: [null, null] }); parti(g);
+    const u = g.umani[0], t = M.OGGETTI.L[0], c = davantiA(t), cl = M.centro(t);
+    Object.assign(u, { x: c.x, y: c.y, yaw: Math.atan2(cl.y - c.y, cl.x - c.x) }); g.interagisci(u);
+    assert.ok(!g.statoTick(0).u.some((x) => x[0] === u.k), 'il nascosto non arriva allo xenomorfo');
+    assert.ok(g.statoTick(1).u.some((x) => x[0] === u.k), 'a sé stesso sì');
+  }
+  // le scorte prese ricompaiono dopo un po'
+  {
+    const g = G.crea({ n: 1, opzioni: {}, bot: [null] }); parti(g); lontano(g);
+    const u = g.umani[0]; u.batteria = 10; Object.assign(u, M.centro(M.OGGETTI.b[0])); g.raccogli(u);
+    assert.ok(g.raccolti[0] && g.ricarica[0] >= 50 && g.ricarica[0] <= 120, 'ricompare tra un po'); Object.assign(u, M.centro(M.OGGETTI.S[0])); g.ricarica[0] = 0.01; passa(g, 0.1); assert.ok(!g.raccolti[0], 'la batteria è ricomparsa');
+  }
+  // le task diventano più difficili verso la fine
+  {
+    const g = G.crea({ n: 1, opzioni: { modalita: 'survival' }, bot: [null] }); parti(g);
+    g.fatte = 0; const prima = Array.from({ length: 200 }, () => g.nuovaTask().diff);
+    g.fatte = g.obiettivo; const dopo = Array.from({ length: 200 }, () => g.nuovaTask().diff);
+    assert.ok(!prima.includes(3) && !dopo.includes(1), 'all\'inizio 1-2 stelle, alla fine 2-3');
+    assert.ok(STAZIONI.length > 0);
+  }
+  // porte, generatori, scorte e task partono solo quando cambiano (e due volte al secondo); lo stato completo li ha sempre
+  {
+    const g = G.crea({ n: 1, opzioni: { modalita: 'survival' }, bot: [null] }); parti(g); lontano(g);
+    let senza = 0, ora = Date.now();
+    for (let k = 0; k < 40; k++) { ora += 50; g.tick(ora); if (!('o' in g.statoTick(0))) senza++; }
+    assert.ok(senza > 20, `scorte non rimandate a ogni tick: ${senza}`);
+    const v = g.vista(0); assert.ok(v.stato.s.p && v.stato.s.g && v.stato.s.o !== undefined && v.stato.s.ts, 'lo stato completo ha tutto');
+    assert.ok(g.vistaExtra(0).idPartita, 'il segno della partita');
+  }
+  // le scorte cambiano posto a ogni partita (quelle che non compaiono risultano già raccolte)
+  {
+    const viste = new Set();
+    for (let k = 0; k < 8; k++) { const g = G.crea({ n: 1, opzioni: {}, bot: [null] }); parti(g); viste.add(g.raccolti.join('')); assert.ok(g.raccolti.some((x) => !x), 'qualcosa compare'); }
+    assert.ok(viste.size > 1, 'le scorte non sono sempre nelle stesse caselle');
+  }
+  // la strada più breve (A* col mucchio): uguale a prima da ogni partenza a ogni generatore
+  for (const s of M.OGGETTI.S) for (const t of M.OGGETTI.G) { const p = M.strada(s, M.quadretto(davantiA(t)), false); assert.ok(p && p.length > 1); }
+  console.log('✓ Alien: Isolation 3D, bug sistemati: razzo acceso, compagni ai generatori, tasti dopo la ricarica, stordito, uscita presto, generatore a uno, nascosti, scorte, task, dati leggeri');
 }

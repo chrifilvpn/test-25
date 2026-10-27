@@ -155,6 +155,16 @@ function passo(g, A, dt) {
     if (A.stato !== 'caccia') { g.ev(['urlo', Math.round(A.x), Math.round(A.y)]); stato(A, 'caccia', 'corre'); }
     A.preda = u.k; A.ultimoVisto = { x: u.x, y: u.y, vx: u.vx || 0, vy: u.vy || 0 }; A.timer = 0;
   }
+  // survival: dove ha sentito qualcosa colpisce anche all'aria davanti a sé (chi sta fermo è invisibile, ma non intoccabile)
+  if (g.survival && !visti.length && !A.inCondotto && ['indaga', 'cerca'].includes(A.stato)) {
+    A.aria = (A.aria || 0) - dt;
+    const davanti = g.umaniInGioco().filter((u) => !u.nascosto && !u.botola && !g.invisibile(u.k) && dist(A, u) < PRESA + 8
+      && Math.abs(angolo(Math.atan2(u.y - A.y, u.x - A.x) - A.yaw)) < 0.5 && M.vede(A, u, g.aperte));
+    if (davanti.length && A.aria <= 0) {
+      A.aria = 1.2; g.ev(['colpo', Math.round(A.x), Math.round(A.y)]);
+      if (Math.random() < 0.5) { uccide(g, A, davanti[0]); return; }
+    }
+  }
   switch (A.stato) {
     case 'condotto': {
       // si muove sopra i soffitti fino alla grata scelta, poi aspetta (tregua) e scende

@@ -4,3 +4,14 @@
 .is-strato .is-bt:active { background: rgba(60, 120, 70, .7); }
 .is-strato .is-pieno { position: absolute; top: .6rem; right: .6rem; min-width: 2.4rem; min-height: 2.4rem; font-size: 1.1rem; opacity: .75; }
 .is-schermo:fullscreen { background: #000; display: grid; place-items: center; }
+/* le impostazioni: il pulsante ⚙ accanto allo schermo intero e il pannello */
+.is-strato .is-ingr { position: absolute; top: .6rem; right: 3.6rem; min-width: 2.4rem; min-height: 2.4rem; font-size: 1.1rem; opacity: .75; }
+.is-strato .is-pannello { pointer-events: auto; position: absolute; top: 3.6rem; right: .6rem; width: min(20rem, calc(100% - 1.2rem)); display: grid; gap: .7rem; padding: 1rem; border-radius: 12px; border: 1px solid rgba(160, 220, 160, .45); background: rgba(8, 14, 10, .94); color: #d8f0d8; font: .95rem/1.35 "Courier New", monospace; }
+.is-strato .is-pannello[hidden] { display: none; }
+.is-strato .is-pannello label { display: grid; gap: .3rem; }
+.is-strato .is-pannello label:has(input[type="checkbox"]) { display: flex; align-items: center; gap: .5rem; }
+.is-strato .is-pannello select { background: #101a12; color: #d8f0d8; border: 1px solid #4a7a48; border-radius: 6px; padding: .3rem; font: inherit; }
+.is-strato .is-pannello input[type="range"] { accent-color: #7dd892; }
+.is-strato .is-chiudi { min-height: 2.2rem; font-size: .95rem; }
+.is-strato .is-pannello input[type="checkbox"] { width: auto; flex: none; margin: 0; }
+.is-strato .is-pannello input[type="range"] { width: 100%; }

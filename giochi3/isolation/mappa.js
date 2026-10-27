@@ -36,9 +36,9 @@
     c: [[10, 26], [11, 26], [10, 29], [34, 23], [37, 25], [34, 27], [28, 15], [31, 16], [19, 15]],
     G: [[7, 6], [7, 28], [40, 5]],
     V: [[9, 17], [4, 7], [24, 6], [35, 5], [11, 24], [23, 29], [36, 28], [16, 16], [33, 15], [43, 18]],
-    b: [[10, 5], [29, 8], [43, 4], [19, 29], [37, 22]],
-    f: [[12, 30], [38, 23], [30, 3]],
-    r: [[3, 17], [28, 22], [35, 8]],
+    b: [[10, 5], [29, 8], [43, 4], [19, 29], [37, 22], [3, 12], [22, 2], [34, 2], [25, 30], [13, 24], [27, 29], [8, 23]],
+    f: [[12, 30], [38, 23], [30, 3], [2, 19], [27, 9], [39, 12], [33, 21], [18, 28]],
+    r: [[3, 17], [28, 22], [35, 8], [11, 2], [23, 7], [41, 9], [6, 31], [36, 30]],
     S: [[4, 14], [4, 17], [5, 13], [5, 18], [8, 14], [8, 17], [9, 13], [9, 18]],
     E: [[45, 14], [46, 14], [45, 15], [46, 15], [45, 16], [46, 16], [45, 17], [46, 17]],
     P: [[11, 7], [18, 5], [10, 18], [3, 28], [43, 7], [37, 29], [28, 26], [29, 6]],
@@ -145,11 +145,22 @@
     const k = (x, y) => y * COLS + x;
     const libera = (x, y) => { const c = cella(x, y); if (c === '#' || SOLIDI.includes(c) || c === 'T') return false; if (c === 'D') { const p = PORTE[portaIn.get(`${x},${y}`)]; return !p.bloccata || !!sbloccate; } return true; };
     if (!libera(a[0], a[1]) || !libera(da[0], da[1])) return null;
-    const g = new Map([[k(da[0], da[1]), 0]]), prima = new Map(), aperti = [[da[0], da[1], 0]];
+    const g = new Map([[k(da[0], da[1]), 0]]), prima = new Map(), aperti = [[da[0], da[1], 0]], chiusi = new Set();
     const h = (x, y) => Math.hypot(x - a[0], y - a[1]);
+    // la coda con priorità (un mucchio binario): il punto aperto più promettente si prende senza scorrere tutta la lista
+    const metti = (e) => { aperti.push(e); let i = aperti.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (aperti[p][2] <= aperti[i][2]) break; [aperti[p], aperti[i]] = [aperti[i], aperti[p]]; i = p; } };
+    const togli = () => {
+      const top = aperti[0], fine = aperti.pop();
+      if (aperti.length) {
+        aperti[0] = fine; let i = 0;
+        for (;;) { const l = 2 * i + 1, r = l + 1; let m = i; if (l < aperti.length && aperti[l][2] < aperti[m][2]) m = l; if (r < aperti.length && aperti[r][2] < aperti[m][2]) m = r; if (m === i) break; [aperti[m], aperti[i]] = [aperti[i], aperti[m]]; i = m; }
+      }
+      return top;
+    };
     while (aperti.length) {
-      let bi = 0; for (let i = 1; i < aperti.length; i++) if (aperti[i][2] < aperti[bi][2]) bi = i;
-      const [x, y] = aperti.splice(bi, 1)[0];
+      const [x, y] = togli();
+      if (chiusi.has(k(x, y))) continue;
+      chiusi.add(k(x, y));
       if (x === a[0] && y === a[1]) {
         const out = [[x, y]]; let c = k(x, y);
         while (prima.has(c)) { c = prima.get(c); out.push([c % COLS, Math.floor(c / COLS)]); }
@@ -163,7 +174,7 @@
         const ng = g.get(k(x, y)) + (dx && dy ? 1.414 : 1);
         if (g.has(k(nx, ny)) && g.get(k(nx, ny)) <= ng) continue;
         g.set(k(nx, ny), ng); prima.set(k(nx, ny), k(x, y));
-        aperti.push([nx, ny, ng + h(nx, ny)]);
+        metti([nx, ny, ng + h(nx, ny)]);
       }
     }
     return null;
