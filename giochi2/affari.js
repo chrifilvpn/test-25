@@ -589,7 +589,11 @@ function bot(g, p, livello) {
   if (g.fase === 'scambio') return { tipo: valutaScambio(g, p, g.scambio, livello) ? 'accetta' : 'rifiuta' };
   if (g.fase === 'asta') {
     const s = g.asta;
-    const tetto = Math.min(g.soldi[p] - (livello === 'facile' ? 0 : riserva(g, p, livello) * 0.5), valore(g, p, s.c, livello) * (livello === 'facile' ? 0.6 + Math.random() * 0.6 : 1));
+    // il difficile in due alle aste non tiene riserva e non ha un tetto fisso: offre a scatti fino a poco più del prezzo
+    // (provato con migliaia di partite, è il modo che vince di più in due; in più giocatori va meglio quello prudente);
+    // il medio tiene metà della riserva
+    const tetto = livello === 'difficile' && g.n === 2 ? Math.min(g.soldi[p], valore(g, p, s.c, 'facile') * (0.6 + Math.random() * 0.6))
+      : Math.min(g.soldi[p] - (livello === 'facile' ? 0 : riserva(g, p, livello) * 0.5), valore(g, p, s.c, livello) * (livello === 'facile' ? 0.6 + Math.random() * 0.6 : 1));
     const passo = s.offerta < 100 ? 10 : 20;
     if (s.migliore !== p && s.offerta + passo <= tetto) return { tipo: 'offri', importo: s.offerta + passo };
     return { tipo: 'passa' };
@@ -600,7 +604,9 @@ function bot(g, p, livello) {
     if (livello === 'facile') return { tipo: Math.random() < 0.7 ? 'compra' : 'asta' };
     const resta = g.soldi[p] - x.prezzo;
     const vale = valore(g, p, c, livello);
-    if (livello === 'difficile') return { tipo: resta >= riserva(g, p, livello) * 0.6 || vale > x.prezzo * 1.5 ? 'compra' : 'asta' };
+    // il difficile in due compra solo se gli resta la riserva intera (o se la carta vale molto): le altre vanno all'asta,
+    // dove spesso si prendono a meno
+    if (livello === 'difficile') return { tipo: resta >= riserva(g, p, livello) * (g.n === 2 ? 1.2 : 0.6) || vale > x.prezzo * 1.5 ? 'compra' : 'asta' };
     return { tipo: resta >= riserva(g, p, livello) ? 'compra' : 'asta' };
   }
   if (g.fase === 'tira' || g.fase === 'fine') {

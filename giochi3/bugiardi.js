@@ -155,8 +155,12 @@ function bot(g, p, livello) {
   const sospetto = livello === 'difficile' ? 1 : 0;
   if (P) {
     const pv = vera(P.q, P.f, P.chi !== p ? sospetto : 0);
-    if (g.calza && livello === 'difficile' && esatto(ignoti, P.q - conta(miei, P.f), pf(P.f)) > 0.36 && g.nDadi[p] < g.massimo) return { tipo: 'calza' };
-    const soglia = { facile: 0.18 + Math.random() * 0.25, medio: 0.38, difficile: 0.45 }[livello];
+    // "Calza!" solo se conviene più di "Dubito!": la calza giusta fa guadagnare un dado ma quella sbagliata lo fa
+    // perdere, quindi serve che sia giusta più di una volta su due (prima bastava una su tre e il difficile perdeva
+    // dadi: vinceva quanto il facile)
+    const ex = P.chi !== p ? sospetto : 0;
+    if (g.calza && livello === 'difficile' && g.nDadi[p] < g.massimo && esatto(ignoti - ex, P.q - conta(miei, P.f) - ex, pf(P.f)) > Math.max(0.5, 1 - pv)) return { tipo: 'calza' };
+    const soglia = { facile: 0.18 + Math.random() * 0.25, medio: 0.38, difficile: 0.4 }[livello];
     if (pv < soglia) return { tipo: 'dubito' };
   }
   // la puntata più sicura tra quelle minime sopra; il facile a volte esagera, il difficile ogni tanto bluffa

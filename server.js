@@ -5,6 +5,7 @@ const express = require('express');
 const { Server } = require('socket.io');
 const { GIOCHI, pulisciOpzioni } = require('./giochi');
 const TRUCCO = require('./giochi/trucco');
+const PENSATORE = require('./giochi/pensatore'); // il computer che pensa in un thread a parte (giochi con meta.pensaLento)
 
 const PORTA = process.env.PORT || 3000;
 const ATTESA_BOT_MS = Number(process.env.ATTESA_BOT_MS) || 900; // pausa "di riflessione" del computer
@@ -373,14 +374,36 @@ function pianifica(s) {
 function mossaComputer(s, posto, livello) {
   const g = s.partita;
   const mod = GIOCHI[s.gioco];
-  let r;
-  try { r = g.azione(posto, mod.bot(g, posto, livello)); } catch (e) { r = { errore: e.message }; }
-  if (r && r.errore) {
-    console.warn(`[${s.gioco}] mossa del computer rifiutata: ${r.errore}`);
-    try { r = g.azione(posto, mod.bot(g, posto, 'facile')); } catch (e) { r = { errore: e.message }; }
-    if (r && r.errore && g.sblocca) g.sblocca(posto);
+  // giochi dove il computer pensa a lungo: la ricerca va nel thread a parte, così gli altri tavoli non si fermano
+  if (mod.meta.pensaLento && livello !== 'facile' && !process.env.TEST_VELOCE) {
+    if (s.pensando && s.pensando.partita === g) return; // ci sta già pensando
+    const versione = s.mosseFatte || 0;
+    s.pensando = { partita: g, posto };
+    const crea = { n: g.n, primo: 0, opzioni: s.opzioni, bot: s.posti.map((x) => (x && x.bot) || null) };
+    PENSATORE.pensa(s.gioco, g, posto, livello, crea).then((mossa) => {
+      if (s.pensando && s.pensando.partita === g) s.pensando = null;
+      // nel frattempo la partita è cambiata (annulla, fine del tempo, rivincita): si ricomincia da capo
+      if (s.partita !== g || g.finita || g.turno !== posto || (s.mosseFatte || 0) !== versione || !stanze.has(s.codice)) { if (s.partita === g && !g.finita) aggiorna(s); return; }
+      gioca(mossa);
+    }, () => {
+      if (s.pensando && s.pensando.partita === g) s.pensando = null;
+      if (s.partita !== g || g.finita || g.turno !== posto || (s.mosseFatte || 0) !== versione) return;
+      gioca(null);
+    });
+    return;
   }
-  aggiorna(s);
+  gioca(null);
+  function gioca(pronta) {
+    let r;
+    try { r = g.azione(posto, pronta || mod.bot(g, posto, livello)); } catch (e) { r = { errore: e.message }; }
+    if (r && r.errore) {
+      console.warn(`[${s.gioco}] mossa del computer rifiutata: ${r.errore}`);
+      try { r = g.azione(posto, mod.bot(g, posto, 'facile')); } catch (e) { r = { errore: e.message }; }
+      if (r && r.errore && g.sblocca) g.sblocca(posto);
+    }
+    s.mosseFatte = (s.mosseFatte || 0) + 1;
+    aggiorna(s);
+  }
 }
 
 // Spiegazione dei comandi: compare con !comandi e nelle regole di ogni gioco.
@@ -1074,6 +1097,7 @@ io.on('connection', (socket) => {
       if (inEsecuzione(s)) return errore('Esecuzione pubblica in corso: aspetta un attimo 🌋');
     }
     const r = s.partita.azione(i, azione || {});
+    if (!r.errore) s.mosseFatte = (s.mosseFatte || 0) + 1;
     if (r.errore) return errore(r.errore);
     if (r.silenzioso) return; // la mossa non cambia niente di quello che vedono gli altri (es. una lettera in Nomi, cose, città)
     aggiorna(s);

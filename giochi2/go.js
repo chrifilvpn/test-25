@@ -268,6 +268,8 @@ class Go {
     void n;
   }
   annuncia(posto, testo, testoIo, forte = false) { this.evento = { id: ++this.nEv, posto, testo, testoIo, forte }; }
+  // nel conteggio si aspetta chi non ha ancora accettato: così il server fa accettare anche il computer (e chi non c'è)
+  attesi() { return this.finita || this.fase !== 'conteggio' ? [] : [0, 1].filter((p) => !this.accettato[p]); }
   chiave() { return String.fromCharCode(...this.t.c); }
   nomePunto(p) { const x = (p % this.t.W) - 1, y = ((p / this.t.W) | 0) - 1; return `${LETTERE[x]}${this.N - y}`; }
   // legale anche col superko (la posizione dopo la mossa non deve essere già comparsa)
@@ -434,6 +436,7 @@ function bot(g, p, livello) {
 module.exports = {
   meta: {
     id: 'go',
+    pensaLento: true, // il computer difficile pensa a lungo: lo fa in un thread a parte (giochi/pensatore.js)
     nome: 'Go',
     tipo: 'tabellone',
     giocatori: [2],

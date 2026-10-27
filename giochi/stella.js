@@ -26,6 +26,9 @@ class Stella extends Arena {
     super(o, { id: 'stella', round: 3 });
     this.W = W; this.H = H;
     this.bambolaGiocatore = o.opzioni && o.opzioni.bambola === 'giocatore' && o.n >= 2;
+    // con la bambola-giocatore tutti devono fare la bambola lo stesso numero di volte: i round salgono al multiplo del
+    // numero di giocatori (3 round in 4: 4 round; in 2: 4)
+    if (this.bambolaGiocatore) this.nRound = Math.ceil(this.nRound / this.n) * this.n;
     this.tolleranza = TOLLERANZA[o.opzioni && o.opzioni.eliminazione] ?? TOLLERANZA.margine;
     this.modoElim = this.tolleranza === TOLLERANZA.spietata ? 'spietata' : 'margine';
     this.contiVisti = {}; // quanto ha contato ogni bambola-giocatore (il computer difficile lo ricorda)
@@ -180,7 +183,7 @@ module.exports = {
     descrizione: 'Squid Game: corri verso il traguardo mentre la bambola conta, e resta immobile quando si gira. Chi si muove è fuori!',
     alias: ['stella', '123 stella', 'squid game', 'luce rossa', 'luce verde', 'red light green light', 'bambola'],
     opzioni: [
-      { id: 'bambola', nome: 'La bambola', valori: ['computer', 'giocatore'], etichette: ['La fa il computer', 'La fa un giocatore (a turno)'], predefinito: 'computer' },
+      { id: 'bambola', nome: 'La bambola', valori: ['computer', 'giocatore'], etichette: ['La fa il computer', 'La fa un giocatore (a turno: tutti la fanno lo stesso numero di volte)'], predefinito: 'computer' },
       { id: 'eliminazione', nome: 'Eliminazione', valori: ['margine', 'spietata'], etichette: ['Con margine (0,4 s per fermarsi)', 'Spietata'], predefinito: 'margine' },
       { id: 'round', nome: 'Round', valori: [3, 1, 5], etichette: ['3 round', '1 round', '5 round'], predefinito: 3 },
     ],
