@@ -11,7 +11,7 @@
     const p = ctx.partita, ui = ctx.ui;
     if (p.sonoImpostore) {
       return `<section class="ip-ruolo impostore" aria-label="Il tuo ruolo">${LENTE}
-        <div><h3>Sei l'impostore${p.categoria ? ` <small>${esc(p.categoria)}</small>` : ''}</h3><p>Non conosci la parola${p.categoria ? ', ma sai la categoria' : ''}. Ascolta gli indizi degli altri e inventane uno credibile.</p></div></section>`;
+        <div><h3>Sei ${p.nImpostori > 1 ? 'uno dei due impostori' : 'l\'impostore'}${p.categoria ? ` <small>${esc(p.categoria)}</small>` : ''}</h3><p>Non conosci la parola${p.categoria ? ', ma sai la categoria' : ''}. Ascolta gli indizi degli altri e inventane uno credibile.${p.nImpostori > 1 ? ' C\'è un altro impostore, ma non sai chi è.' : ''}</p></div></section>`;
     }
     const vedi = !!ui.vediParola;
     return `<section class="ip-ruolo" aria-label="La tua parola">${BUSTA}
@@ -29,7 +29,7 @@
         const adesso = p.fase === 'indizi' && p.turno === i && p.giro === g;
         return `<td class="${adesso ? 'adesso' : ''} ${g > p.giriBase ? 'extra' : ''}">${x ? `«${esc(x.testo)}»` : adesso ? '<span class="ip-scrive">sta scrivendo<i>.</i><i>.</i><i>.</i></span>' : ''}</td>`;
       }).join('');
-      return `<tr class="${i === ctx.mio ? 'riga-mia' : ''} ${p.fuori[i] ? 'fuori' : ''}"><th scope="row">${esc(nomeCorto(ctx, i))}</th>${celle}</tr>`;
+      return `<tr class="${i === ctx.mio ? 'riga-mia' : ''} ${p.fuori[i] || (p.scoperti || []).includes(i) ? 'fuori' : ''}"><th scope="row">${esc(nomeCorto(ctx, i))}</th>${celle}</tr>`;
     }).join('');
     return `<div class="ip-scorri"><table class="ip-indizi"><thead><tr><th></th>${giri.map((g) => `<th scope="col">${g > p.giriBase ? `Spareggio ${g - p.giriBase}` : `Giro ${g}`}</th>`).join('')}</tr></thead><tbody>${righe}</tbody></table></div>`;
   }
@@ -45,16 +45,17 @@
 
   function pannelloVoto(ctx) {
     const p = ctx.partita;
-    const bottoni = Array.from({ length: p.n }, (_, i) => i).filter((i) => !p.fuori[i]).map((i) => {
+    const scoperti = p.scoperti || [];
+    const bottoni = Array.from({ length: p.n }, (_, i) => i).filter((i) => !p.fuori[i] && !scoperti.includes(i)).map((i) => {
       const io = i === ctx.mio;
       const scelto = p.mioVoto === i;
       return `<button type="button" class="ip-sospetto ${scelto ? 'scelto' : ''}" data-az="vota" data-posto="${i}" ${io ? 'disabled' : ''} aria-pressed="${scelto}">
         <span class="ip-faccia">${esc(ctx.nome(i).slice(0, 1).toUpperCase())}</span><b>${esc(nomeCorto(ctx, i))}</b>
         <small>${p.haVotato[i] ? '🗳️ ha votato' : 'sta decidendo…'}</small>${scelto ? '<em>il tuo voto</em>' : ''}</button>`;
     }).join('');
-    const quanti = p.haVotato.filter((x, i) => x && !p.fuori[i]).length;
-    return `<div class="ip-voto"><h3>Chi è l'impostore?</h3>
-      <p class="piccolo">Il voto è segreto e puoi cambiarlo finché non hanno votato tutti (${quanti} su ${p.fuori.filter((f) => !f).length}).</p>
+    const quanti = p.haVotato.filter((x, i) => x && !p.fuori[i] && !scoperti.includes(i)).length;
+    return `<div class="ip-voto"><h3>${scoperti.length ? 'Chi è l\'altro impostore?' : p.nImpostori > 1 ? 'Chi è un impostore?' : 'Chi è l\'impostore?'}</h3>
+      <p class="piccolo">Il voto è segreto e puoi cambiarlo finché non hanno votato tutti (${quanti} su ${p.fuori.filter((f, i) => !f && !scoperti.includes(i)).length}).</p>
       <div class="ip-sospetti">${bottoni}</div></div>`;
   }
 
@@ -83,32 +84,33 @@
 
   function ultima(ctx) {
     const p = ctx.partita;
-    if (p.sonoImpostore) {
+    if (p.impostore === ctx.mio) {
       return `<div class="ip-ultima"><h3>Ti hanno scoperto!</h3><p>Ultima possibilità: scrivi la parola segreta. Se la indovini, vinci tu.</p>
         <div class="riga"><input maxlength="40" autocomplete="off" spellcheck="false" placeholder="La parola segreta è…" data-tieni="tentativo" data-invio="indovina" value="${esc(ctx.ui.t_tentativo || '')}">
         <button type="button" class="bottone primario-bt" data-az="indovina">Tenta</button></div></div>`;
     }
-    return `<div class="ip-ultima"><h3>${esc(ctx.nome(p.impostore))} era l'impostore!</h3>
-      <p>Adesso prova a indovinare la parola. Se ci riesce vince lo stesso…</p><p class="ip-scrive grande">sta pensando<i>.</i><i>.</i><i>.</i></p></div>`;
+    return `<div class="ip-ultima"><h3>${esc(ctx.nome(p.impostore))} era ${p.nImpostori > 1 ? 'un' : 'l\''}impostore!</h3>
+      <p>${p.nImpostori > 1 && p.scoperti.length === 0 ? 'Se sbaglia, si cerca l\'altro impostore. ' : ''}Adesso prova a indovinare la parola. Se ci riesce vince lo stesso…</p><p class="ip-scrive grande">sta pensando<i>.</i><i>.</i><i>.</i></p></div>`;
   }
 
   // la grande rivelazione finale
   function finale(ctx) {
     const p = ctx.partita;
-    const imp = p.impostore;
-    const sonoIo = imp === ctx.mio;
-    const titolo = p.esito === 'fuga' ? 'L\'impostore è scappato!' : p.vinceImpostore ? (sonoIo ? 'Hai vinto tu!' : 'Vince l\'impostore!') : (sonoIo ? 'Hai perso…' : 'Vincono i giocatori!');
+    const imp = p.impostori || [p.impostore];
+    const due = imp.length > 1;
+    const sonoIo = imp.includes(ctx.mio);
+    const titolo = p.esito === 'fuga' ? (due ? 'Gli impostori sono scappati!' : 'L\'impostore è scappato!') : p.vinceImpostore ? (sonoIo ? 'Hai vinto tu!' : due ? 'Vincono gli impostori!' : 'Vince l\'impostore!') : (sonoIo ? 'Hai perso…' : 'Vincono i giocatori!');
     const motivo = {
       innocente: 'Avete accusato un innocente.',
       'scoperto-indovina': `Scoperto, ma ha indovinato la parola${p.tentativo ? ` («${esc(p.tentativo)}»)` : ''}.`,
-      scoperto: p.tentativo ? `Ha provato con «${esc(p.tentativo)}»: sbagliato!` : 'Non ha provato a indovinare.',
+      scoperto: due ? 'Li avete scoperti tutti e due!' : p.tentativo ? `Ha provato con «${esc(p.tentativo)}»: sbagliato!` : 'Non ha provato a indovinare.',
       fuga: 'Ha lasciato la partita.',
       resta: 'Siete rimasti in pochi: l\'impostore non si può più trovare.',
       pareggio: 'Troppi pareggi: l\'impostore è rimasto nascosto.',
     }[p.esito] || '';
     return `<div class="ip-finale ${p.vinceImpostore === sonoIo ? 'verde' : 'rosso'}" style="${ritardo(ctx.ui, 'finale')}">
-      <p class="ip-f1">L'impostore era…</p>
-      <div class="ip-carta-rivela"><div class="ip-fronte">?</div><div class="ip-retro">${LENTE}<b>${esc(sonoIo ? 'Tu' : ctx.nome(imp))}</b></div></div>
+      <p class="ip-f1">${due ? 'Gli impostori erano…' : 'L\'impostore era…'}</p>
+      <div class="ip-carta-rivela"><div class="ip-fronte">?</div><div class="ip-retro">${LENTE}<b>${esc(imp.map((i) => (i === ctx.mio ? 'Tu' : ctx.nome(i))).join(' e '))}</b></div></div>
       <p class="ip-f2">e la parola era</p>
       <p class="ip-f3">${esc(p.parola)}</p>
       <h2 class="ip-f4">${esc(titolo)}</h2>
@@ -154,14 +156,15 @@
     },
     punteggio(ctx) {
       const p = ctx.partita;
-      return `<span>Giocatori <b>${p.fuori.filter((f) => !f).length}</b></span><span>Impostori <b>1</b></span>${p.spareggi ? `<span>Spareggi <b>${p.spareggi}</b></span>` : ''}`;
+      return `<span>Giocatori <b>${p.fuori.filter((f) => !f).length}</b></span><span>Impostori <b>${p.nImpostori || 1}</b></span>${p.spareggi ? `<span>Spareggi <b>${p.spareggi}</b></span>` : ''}`;
     },
     infoPosto(ctx, posto) {
       const p = ctx.partita;
       if (p.fuori[posto]) return '<span class="eliminato">uscito</span>';
+      if ((p.scoperti || []).includes(posto)) return '<span class="eliminato">🕵️ scoperto</span>';
       if (p.fase === 'voto') return p.haVotato[posto] ? '🗳️ ha votato' : 'sta votando…';
       if (p.fase === 'indizi') return p.turno === posto ? '✍️ sta scrivendo' : `${p.indizi.filter((d) => d.posto === posto).length} indizi`;
-      if ((p.fase === 'finale' || p.fase === 'fine') && p.impostore === posto) return '<span class="eliminato">🕵️ impostore</span>';
+      if ((p.fase === 'finale' || p.fase === 'fine') && (p.impostori || [p.impostore]).includes(posto)) return '<span class="eliminato">🕵️ impostore</span>';
       return '';
     },
     clic(ctx, el) {

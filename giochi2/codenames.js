@@ -455,9 +455,11 @@ module.exports = {
     nome: 'Nomi in codice',
     tipo: 'tabellone',
     giocatori: [4, 5, 6, 7, 8],
+    passaTelefono: true, // si può giocare tutti da un solo dispositivo (server.js: posti locali)
     descrizione: 'Due squadre, 25 parole e un capitano che dà indizi di una parola sola. Trovate le vostre, evitate l\'assassino!',
     alias: ['codenames', 'nomi in codice', 'spie', 'agenti segreti', 'indizi', 'parole segrete'],
     opzioni: [
+      { id: 'telefono', nome: 'Dispositivi', valori: ['no', 'si'], etichette: ['Ognuno col suo dispositivo', 'Un solo dispositivo: ci si passa il telefono'], predefinito: 'no' },
       { id: 'tempo', nome: 'Tempo per turno', valori: ['no', 90, 150], etichette: ['Senza limite', '90 secondi', '150 secondi'], predefinito: 'no' },
     ],
     regole: [
@@ -471,6 +473,7 @@ module.exports = {
       'Vince la squadra che scopre per prima tutte le sue parole (anche se l\'ultima l\'hanno scoperta per sbaglio gli avversari).',
       'Con l\'opzione del tempo, il capitano e gli agenti hanno 90 o 150 secondi per turno: se il capitano non decide, il computer suggerisce un indizio per lui; se gli agenti non finiscono, il turno passa.',
       'Il computer sa fare sia il capitano sia l\'agente, usando una rete di temi (per esempio «mela» → frutta, albero, rosso). Il capitano facile dà indizi da 1 o 2 parole e a volte rischia; il medio fino a 3 parole sicure; il difficile cerca l\'indizio più lungo senza nessun rischio. L\'agente facile si confonde più spesso, il difficile quasi mai e usa bene il tentativo in più. Se in squadra ci sono persone, gli agenti computer propongono la loro parola (il segno sopra) e lasciano decidere a voi.',
+      'Con l\'opzione «Un solo dispositivo» si gioca tutti dallo stesso telefono o computer: chi apre il tavolo scrive i nomi degli amici nei posti liberi e, quando tocca a un altro, compare il sipario «Passa il telefono a…»: solo quando chi deve giocare tocca «Sono io» si vede il suo schermo (la parola, il bersaglio o la mappa).',
     ],
   },
   crea: (o) => new NomiInCodice(o),

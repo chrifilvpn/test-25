@@ -1039,3 +1039,11 @@
 .dr .dr-cr-compagnia li .dr-cr-dm { margin-left: auto; flex: none; padding: .18rem .5rem; font-size: .74rem; }
 .dr .dr-cr-compagnia li span.dr-cr-dm { display: inline-block; }
 .dr .dr-cr-compagnia li > span:nth-child(2) { display: grid; min-width: 0; }
+/* 💾 salvare e 📂 riprendere la campagna */
+.dr .dr-salva, .dr .dr-riprendi { display: grid; gap: .35rem; justify-items: start; margin-top: .9rem; padding-top: .7rem; border-top: 1px dashed rgba(216, 178, 90, .3); }
+.dr .dr-riprendi label { cursor: pointer; }
+.dr .dr-riprendi label:focus-within { outline: 2px solid var(--dr-oro2); outline-offset: 2px; }
+.dr .dr-riprendi-barra { display: none; }
+@media (max-width: 980px) {
+  .dr .dr-riprendi-barra { display: block; cursor: pointer; font-size: .8rem; text-align: left; padding: .45rem 7.2rem .45rem .7rem; margin-bottom: .3rem; border-radius: 10px; border: 1px dashed rgba(216, 178, 90, .4); color: var(--dr-oro2); }
+}

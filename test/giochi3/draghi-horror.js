@@ -77,6 +77,38 @@ function nuova(amb, opz = {}) {
     finali.push(`${amb} ${g.incubo.mosse} mosse, ${revive} !revive${scelte ? `, ${scelte} scelte` : ''}`);
   }
 
+  // ---------- 💾 salvare e 📂 riprendere una campagna horror a turni ----------
+  {
+    const g = nuova('sevastopol');
+    g.azione(0, { tipo: 'crea', casuale: true, scelte: {} }); g.azione(1, { tipo: 'crea', casuale: true, scelte: {} });
+    for (let k = 0; k < 5; k++) { await aspetta(); g.controllaTempo(); }
+    for (let giro = 0; giro < 40 && g.incubo.visitate.length < 3; giro++) {
+      if (g.fase === 'avventura' && !g.attesaIA) { const v = g.vista(0).incubo; const s = v.strade.find((x) => !x.chiuso && !g.incubo.visitate.includes(x.id)) || v.strade.find((x) => !x.chiuso); g.azione(0, { tipo: 'incubo', az: 'vai', area: s && s.id }); }
+      else if (g.fase === 'prove') { for (const x of g.prove.filter((q) => !q.esito)) g.azione(x.posto, { tipo: 'tira', id: x.id }); }
+      else if (g.fase === 'combattimento') { const att = g.attesi(); if (att.length) g.azione(att[0], { tipo: 'autoTurno' }); g.prossimaMossaMostro = 0; }
+      else if (g.fase === 'caduti') g.revive();
+      for (let k = 0; k < 3; k++) { await aspetta(); g.controllaTempo(); }
+    }
+    g.incubo.stato[1].paura = 6;
+    assert.ok(g.azione(1, { tipo: 'salva' }).ok);
+    const file = JSON.parse(JSON.stringify(g.vista(1).salvataggio.dati));
+    assert.ok(!g.vista(0).salvataggio, 'il file arriva solo a chi l\'ha chiesto');
+    assert.ok(Buffer.byteLength(JSON.stringify({ tipo: 'riprendi', dati: file })) < 100000, 'il file ci sta nei 100 kB del server');
+    // un tavolo fantasy da 3: diventa la stazione, con lo stesso settore, gli obiettivi e la paura di ognuno
+    const h = G.crea({ n: 3, bot: [null, 'medio', 'medio'], opzioni: {} }); h.chiave = '';
+    assert.ok(h.azione(0, { tipo: 'riprendi', dati: file }).ok);
+    assert.strictEqual(h.ambientazione, 'sevastopol'); assert.strictEqual(h.fase, 'avventura');
+    assert.strictEqual(h.incubo.area, g.incubo.area); assert.deepStrictEqual(h.incubo.visitate, g.incubo.visitate); assert.strictEqual(h.incubo.obiettivo, g.incubo.obiettivo);
+    assert.strictEqual(h.incubo.stato[1].paura, 6); assert.strictEqual(h.incubo.stato.length, 3);
+    assert.deepStrictEqual(h.pg.slice(0, 2).map((x) => x.nome), g.pg.map((x) => x.nome));
+    assert.ok(h.pg[2] && (G._test.CLASSI[h.pg[2].classe].tema || []).includes('sevastopol'), 'il posto in più crea un personaggio a tema');
+    JSON.stringify(h.vista(0));
+    // e si continua a giocare
+    const v = h.vista(0).incubo; assert.ok(!h.azione(0, { tipo: 'incubo', az: 'vai', area: v.strade.find((x) => !x.chiuso).id }).errore);
+    // in tempo reale non si salva
+    const r = nuova('sevastopol', { modalita: 'reale' }); r.azione(0, { tipo: 'crea', casuale: true, scelte: {} }); r.azione(1, { tipo: 'crea', casuale: true, scelte: {} });
+    assert.ok(r.azione(0, { tipo: 'salva' }).errore);
+  }
   // ---------- le due IA: direttrice e abitudini ----------
   {
     const m = D.nuovaMente();
