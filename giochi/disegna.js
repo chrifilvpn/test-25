@@ -29,6 +29,8 @@ class Disegna {
     this.punti = new Array(n).fill(0);
     this.usciti = new Array(n).fill(false);
     this.usate = new Set();
+    const cat = PAROLE.categorie[opzioni.categoria];
+    this.elenco = cat ? cat.parole : PAROLE; // le parole della categoria scelta (o tutte)
     this.turnoN = -1; // quanti turni di disegno sono stati fatti
     this.tickMs = 100;
     this.turno = null; this.inAttesa = false; this.finita = false; this.risultato = null; this.evento = null; this.nEv = 0;
@@ -55,9 +57,10 @@ class Disegna {
     }
     this.disegnatore = this.turnoN % this.n;
     this.giro = Math.floor(this.turnoN / this.n) + 1;
-    const pool = PAROLE.filter((p) => !this.usate.has(p));
+    const tutte = this.elenco;
+    const pool = tutte.filter((p) => !this.usate.has(p));
     const scelte = [];
-    while (scelte.length < 3) { const w = (pool.length ? pool : PAROLE)[Math.floor(Math.random() * (pool.length || PAROLE.length))]; if (!scelte.includes(w)) scelte.push(w); }
+    while (scelte.length < 3) { const w = (pool.length ? pool : tutte)[Math.floor(Math.random() * (pool.length || tutte.length))]; if (!scelte.includes(w)) scelte.push(w); }
     this.scelte = scelte;
     this.parola = null;
     this.fase = 'scelta';
@@ -124,7 +127,8 @@ class Disegna {
     const contiene = t === w || (` ${t} `).includes(` ${w} `);
     if (p === this.disegnatore) return contiene ? { nascondi: true, privato: 'Non puoi scrivere la parola in chat!' } : {};
     if (this.indovinato[p] !== null) return contiene ? { nascondi: true, privato: 'Hai già indovinato: non svelarla agli altri 🤫' } : {};
-    if (t === w) {
+    // vale anche la parola dentro una frase ("secondo me è un gatto"): altrimenti il messaggio la svelerebbe a tutti
+    if (contiene) {
       const ora = Date.now();
       this.indovinato[p] = ora - this.inizio;
       this.ordine.push(p);
@@ -188,7 +192,9 @@ class Disegna {
   chiudi() {
     this.finita = true;
     this.fase = 'fine';
-    const max = Math.max(...this.punti);
+    // il primo tra chi è rimasto (se il primo in classifica è uscito vince chi era dietro di lui)
+    const presenti = this.punti.filter((_, i) => !this.usciti[i]);
+    const max = presenti.length ? Math.max(...presenti) : Math.max(...this.punti);
     const v = this.punti.map((x, i) => (x === max && !this.usciti[i] ? i : -1)).filter((i) => i >= 0);
     this.risultato = { fazioni: this.punti.map((x, i) => ({ posti: [i], punti: x })), etichetta: 'punti', pareggio: v.length > 1, vincitori: v.length > 1 ? [] : v };
   }
@@ -197,6 +203,14 @@ class Disegna {
   suggerimentoWin(posto) {
     if (this.fase !== 'disegno' || !this.parola || posto === this.disegnatore || this.usciti[posto] || this.indovinato[posto] !== null) return null;
     return `✏️ ${this.parola.toUpperCase()}`;
+  }
+
+  // (server.js) a chi ha già il disegno di questa versione si mandano solo i tratti nuovi
+  alleggerisci(v, memo) {
+    if (!v.segmenti) return;
+    if (memo.v === this.versione && Number.isInteger(memo.id)) { v.segmenti = v.segmenti.filter((x) => x.id > memo.id); v.segmentiNuovi = true; }
+    memo.v = this.versione;
+    memo.id = this.nSeg;
   }
 
   vistaTick() {
@@ -238,12 +252,14 @@ module.exports = {
     opzioni: [
       { id: 'tempo', nome: 'Tempo per disegnare', valori: DURATE, etichette: ['80 secondi', '60 secondi', '120 secondi'], predefinito: 80 },
       { id: 'giri', nome: 'Giri', valori: GIRI, etichette: ['2 giri', '1 giro', '3 giri'], predefinito: 2 },
+      { id: 'categoria', nome: 'Parole', valori: ['tutte', ...Object.keys(PAROLE.categorie)], etichette: ['Tutte le categorie', ...Object.values(PAROLE.categorie).map((c) => c.nome)], predefinito: 'tutte' },
     ],
     regole: [
       'Si gioca solo tra persone, da 2 a 8 (è più divertente in 3 o più). A turno uno disegna e gli altri indovinano; in ogni giro tutti disegnano una volta.',
       'Chi disegna sceglie una parola tra 3 (ha 15 secondi, poi ne viene data una a caso) e la disegna sulla lavagna in 80 secondi (o 60, o 120), con i colori, gli spessori, la gomma, "annulla" e "cancella tutto".',
+      'Le parole sono oltre 450; nelle opzioni si può giocare con una sola categoria: animali, cibo, casa e oggetti, vestiti, natura e luoghi, trasporti, persone, sport e giochi, altro.',
       'Non si scrivono lettere o parole sul disegno e non si dice la parola in chat: se chi disegna la scrive, il messaggio non viene mostrato.',
-      'Gli altri scrivono in chat cosa pensano che sia. Maiuscole, accenti e punteggiatura non contano. Se scrivi la parola giusta, il tuo messaggio non si vede (così non la sveli) e compare "ha indovinato!". Se sbagli di una sola lettera ricevi un avviso solo per te: ci sei quasi!',
+      'Gli altri scrivono in chat cosa pensano che sia. Maiuscole, accenti e punteggiatura non contano. Se scrivi la parola giusta (da sola o dentro una frase), il tuo messaggio non si vede (così non la sveli) e compare "ha indovinato!". Se sbagli di una sola lettera ricevi un avviso solo per te: ci sei quasi!',
       'In alto c\'è la parola nascosta con le lettere come trattini; a metà tempo e a tre quarti viene svelata una lettera (al massimo un terzo della parola).',
       'Punti di chi indovina: da 50 a 300, più ne fai quanto prima indovini (in base al tempo che resta), più 50 per il primo. Chi disegna prende 60 punti per ogni persona che indovina.',
       'Il turno finisce quando scade il tempo o quando hanno indovinato tutti; poi si vede la parola e disegna il prossimo.',

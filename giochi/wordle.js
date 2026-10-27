@@ -28,6 +28,28 @@ for (const w of new Set(ELENCO.split(/\s+/).filter(Boolean))) {
   if (!/^[a-z]+$/.test(w) || w.length < 4 || w.length > 8) continue;
   (PAROLE[w.length] = PAROLE[w.length] || []).push(w);
 }
+// le parole segrete: quelle scelte a mano qui sopra più le parole molto comuni del dizionario italiano dei giochi
+// di parole (giochi2/paroliere-dati.js) che hanno anche il plurale (così restano soprattutto nomi e aggettivi).
+// Si prepara la prima volta che serve. Le parole ammesse come tentativo sono tutte quelle del dizionario.
+const D = require('../giochi2/paroliere-dati');
+let segrete = null;
+function SEGRETE(l) {
+  if (!segrete) {
+    segrete = {};
+    for (const k of Object.keys(PAROLE)) segrete[k] = [...PAROLE[k]];
+    const plurale = (w) => {
+      const r = w.slice(0, -1), u = w.slice(-1);
+      return u === 'o' ? [r + 'i'] : u === 'a' ? [r + 'e', r + 'he'] : [];
+    };
+    for (const w of D.decodifica(D.COMUNI[0])) {
+      if (w.length < 4 || w.length > 8 || !D.esiste(w) || !plurale(w).some(D.esiste)) continue;
+      if (/(are|ere|ire|ndo|amo|ava|eva|iva|rlo|rla|sse|sso)$/.test(w) || segrete[w.length].includes(w)) continue;
+      segrete[w.length].push(w);
+    }
+  }
+  return segrete[l];
+}
+const nelDizionario = (w) => PAROLE[w.length]?.includes(w) || D.esiste(w);
 const TENTATIVI = 6;
 const normalizza = (t) => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z]/g, '');
 
@@ -70,12 +92,21 @@ class Wordle {
     this.lunghezza = PAROLE[lung] ? lung : [4, 5, 6, 7, 8][Math.floor(Math.random() * 5)];
     this.soloDizionario = opzioni.controllo === 'dizionario';
     this.difficile = opzioni.modo === 'difficile';
-    const elenco = PAROLE[this.lunghezza];
+    const elenco = SEGRETE(this.lunghezza);
     this.segreta = elenco[Math.floor(Math.random() * elenco.length)];
     this.righe = Array.from({ length: n }, () => []); // { parola, esito }
     this.fatto = new Array(n).fill(null);               // null = gioca ancora, { vinto, tentativi, ms }
     this.inizio = ora();
     this.pausaBoss = n === 1; // da soli: con le dispense aperte la partita aspetta
+    // nella sfida chi ha finito conosce la soluzione: i suoi messaggi li leggono solo gli altri che hanno finito
+    // (con leggiChat il server chiude anche la chat globale per chi è al tavolo)
+    if (n > 1) {
+      this.leggiChat = (p) => {
+        if (this.finita || !(this.fatto[p])) return {};
+        const finiti = Array.from({ length: this.n }, (_, i) => i).filter((i) => i === p || this.fatto[i]);
+        return { soloPer: finiti, privato: '🤐 Hai finito: finché la sfida non è chiusa ti leggono solo gli altri che hanno finito' };
+      };
+    }
     this.turno = null;
     this.inAttesa = false;
     this.finita = false;
@@ -91,7 +122,7 @@ class Wordle {
   parolaDaControllare(p, a) {
     if (this.finita || this.fatto[p] || this.soloDizionario || !a || a.tipo !== 'prova') return null;
     const w = normalizza(a.parola);
-    if (w.length !== this.lunghezza || PAROLE[this.lunghezza].includes(w)) return null;
+    if (w.length !== this.lunghezza || nelDizionario(w)) return null;
     if (this.difficile && controllaDifficile(w, this.righe[p])) return null; // la mossa sarà rifiutata comunque
     return w;
   }
@@ -103,7 +134,7 @@ class Wordle {
     const w = normalizza(a.parola);
     if (w.length !== this.lunghezza) return { errore: `La parola deve avere ${this.lunghezza} lettere` };
     if (this.difficile) { const e = controllaDifficile(w, this.righe[p]); if (e) return { errore: e }; }
-    if (this.soloDizionario && !PAROLE[this.lunghezza].includes(w)) return { errore: 'Questa parola non è nel dizionario del gioco' };
+    if (this.soloDizionario && !nelDizionario(w)) return { errore: 'Questa parola non è nel dizionario del sito' };
     const esito = valuta(w, this.segreta);
     this.righe[p].push({ parola: w, esito });
     const vinto = w === this.segreta;
@@ -160,7 +191,7 @@ class Wordle {
 function compatibile(w, righe) { return righe.every((r) => valuta(r.parola, w).join('') === r.esito.join('')); }
 function bot(g, posto, livello) {
   const righe = g.righe[posto];
-  const elenco = PAROLE[g.lunghezza];
+  const elenco = SEGRETE(g.lunghezza);
   const possibili = elenco.filter((w) => compatibile(w, righe));
   if (livello === 'facile' && Math.random() < 0.45) {
     const altre = elenco.filter((w) => !righe.some((r) => r.parola === w) && !(g.difficile && controllaDifficile(w, righe)));
@@ -188,13 +219,13 @@ module.exports = {
     opzioni: [
       { id: 'lunghezza', nome: 'Lunghezza', valori: ['caso', 4, 5, 6, 7, 8], etichette: ['A caso (4-8)', '4 lettere', '5 lettere', '6 lettere', '7 lettere', '8 lettere'], predefinito: 5 },
       { id: 'modo', nome: 'Modalità', valori: ['normale', 'difficile'], etichette: ['Normale', 'Difficile: gli indizi trovati vanno usati'], predefinito: 'normale' },
-      { id: 'controllo', nome: 'Parole ammesse', valori: ['libero', 'dizionario'], etichette: ['Parole vere (controllate da fantasIA)', 'Solo parole del dizionario del gioco'], predefinito: 'libero' },
+      { id: 'controllo', nome: 'Parole ammesse', valori: ['libero', 'dizionario'], etichette: ['Parole vere (controllate da fantasIA)', 'Solo parole del dizionario italiano del sito'], predefinito: 'libero' },
     ],
     regole: [
       'Devi indovinare una parola italiana segreta in 6 tentativi. La lunghezza (da 4 a 8 lettere, oppure a caso) si sceglie prima di iniziare ed è mostrata dalle caselle.',
       'Scrivi una parola della lunghezza giusta (con la tastiera del computer o quella sullo schermo) e premi Invio. Gli accenti non contano.',
       'Ogni lettera si colora: verde se è nella parola e al posto giusto, ocra se è nella parola ma in un altro posto, grigia se non c\'è. Le lettere doppie contano: se la parola segreta ha una sola A, solo una A del tuo tentativo si colora.',
-      'Con l\'opzione "Solo parole del dizionario" i tentativi devono essere parole dell\'elenco del gioco. Con "Parole vere" puoi scrivere qualsiasi parola italiana: fantasIA, l\'intelligenza artificiale del sito, controlla che esista davvero (parole inventate o lettere a caso non sono accettate e il tentativo non si perde).',
+      'Con l\'opzione "Solo parole del dizionario" i tentativi devono essere parole del dizionario italiano del sito (lo stesso del Paroliere, con plurali e voci dei verbi). Con "Parole vere" puoi scrivere qualsiasi parola italiana: fantasIA, l\'intelligenza artificiale del sito, controlla che esista davvero (parole inventate o lettere a caso non sono accettate e il tentativo non si perde).',
       'Modalità difficile: gli indizi vanno sempre usati. Una lettera verde deve restare al suo posto nei tentativi successivi e una lettera ocra deve comparire di nuovo (da qualche parte). Un tentativo che non li rispetta viene rifiutato senza perderlo.',
       'Da soli: provi a trovarla nel minor numero di tentativi. C\'è anche la Sfida del giorno: la stessa parola per tutti, con la classifica di oggi (dalla home).',
       'Scontro (da 2 giocatori in su): tutti cercano la stessa parola, ognuno per conto suo e nello stesso momento. Non vedi le lettere degli altri, solo quanti tentativi hanno fatto e, quando hai finito anche tu, i loro colori. Vince chi la indovina con meno tentativi; a parità vince chi ci è arrivato prima. Punti: 7 meno i tentativi usati.',
@@ -204,5 +235,5 @@ module.exports = {
   },
   crea: (o) => new Wordle(o),
   bot,
-  _test: { controllaDifficile, valuta, PAROLE, normalizza },
+  _test: { controllaDifficile, valuta, PAROLE, SEGRETE, normalizza },
 };

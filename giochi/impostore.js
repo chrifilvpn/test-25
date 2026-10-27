@@ -21,6 +21,17 @@ const indovinata = (tentativo, parola) => {
   return t === w || (w.length >= 5 && distanza(t, w) <= 1);
 };
 
+// l'indizio contiene la parola segreta? Le parole corte (tè, ape, uva, bar…) si cercano solo come parole intere,
+// altrimenti "bevanda fumante" conterrebbe "te"; le altre anche dentro le parole ("gattino" per "gatto" no, "supergatto" sì)
+function diceLaParola(testo, parola) {
+  const w = normalizza(parola);
+  const pezzi = String(testo || '').split(/[\s'’.,;:!?"()-]+/).map(normalizza).filter(Boolean);
+  if (pezzi.includes(w)) return true;
+  if (w.length <= 3) return false;
+  return normalizza(testo).includes(w);
+}
+
+const MAX_SPAREGGI = 2; // dopo 2 spareggi un altro pareggio fa vincere l'impostore
 const PAUSA_VERDETTO = 8500; // la rivelazione dell'accusato
 const PAUSA_FINALE = 9000;   // la rivelazione finale prima dei risultati
 
@@ -29,6 +40,7 @@ class Impostore {
     this.id = 'impostore';
     this.n = n;
     this.giri = Number(opzioni.giri) === 3 ? 3 : 2;
+    this.aiuto = opzioni.aiuto === 'categoria'; // versione facile: l'impostore conosce la categoria
     const cat = PAROLE[opzioni.categoria] ? opzioni.categoria : 'tutte';
     const categorie = cat === 'tutte' ? Object.keys(PAROLE) : [cat];
     this.categoria = categorie[Math.floor(Math.random() * categorie.length)];
@@ -111,7 +123,7 @@ class Impostore {
       // chi conosce la parola non può dirla (l'impostore invece non viene controllato: non deve scoprire nulla)
       if (p !== this.impostore) {
         const w = normalizza(this.parola);
-        if (normalizza(testo).includes(w) || testo.split(/[\s']+/).some((x) => normalizza(x) === w)) return { errore: 'Non puoi dire la parola segreta!' };
+        if (diceLaParola(testo, this.parola)) return { errore: 'Non puoi dire la parola segreta!' };
       }
       this.indizi.push({ giro: this.giro, posto: p, testo });
       this.parlati.add(p);
@@ -152,6 +164,13 @@ class Impostore {
     const primi = conteggio.map((c, i) => (c === max ? i : -1)).filter((i) => i >= 0 && !this.fuori[i]);
     const pareggio = max === 0 || primi.length > 1;
     this.storicoVoti.push({ voti: [...this.voti], conteggio, pareggio });
+    if (pareggio && this.spareggi >= MAX_SPAREGGI) {
+      // troppi pareggi di fila: l'impostore non è stato trovato e vince lui (niente giri all'infinito)
+      this.esito = 'pareggio';
+      this.annuncia(null, 'Ancora pareggio: l\'impostore resta nascosto!', '', true);
+      this.vaiAlFinale();
+      return;
+    }
     if (pareggio) {
       // pareggio: un altro giro di indizi e si rivota
       this.spareggi++;
@@ -194,7 +213,7 @@ class Impostore {
     this.pausaMs = PAUSA_FINALE;
   }
 
-  vinceImpostore() { return this.esito === 'innocente' || this.esito === 'scoperto-indovina' || this.esito === 'resta'; }
+  vinceImpostore() { return this.esito === 'innocente' || this.esito === 'scoperto-indovina' || this.esito === 'resta' || this.esito === 'pareggio'; }
 
   // chi è assente o sulle dispense: salta l'indizio, si astiene dal voto, e l'impostore perde il tentativo
   salta(p) {
@@ -263,7 +282,7 @@ class Impostore {
       gioco: this.id, n: this.n, fase: this.fase, turno: this.turno, inAttesa: this.inAttesa, pausaMs: this.pausaMs,
       sonoImpostore,
       parola: sonoImpostore && !svelato ? null : this.parola,
-      categoria: sonoImpostore && !svelato ? null : PAROLE[this.categoria].nome,
+      categoria: sonoImpostore && !svelato && !this.aiuto ? null : PAROLE[this.categoria].nome,
       giro: this.giro, giriTotali: this.giriTotali, giriBase: this.giri, spareggi: this.spareggi,
       indizi: this.indizi, fuori: this.fuori,
       haVotato: this.voti.map((v) => v !== undefined),
@@ -295,6 +314,7 @@ module.exports = {
     opzioni: [
       { id: 'categoria', nome: 'Parole', valori: opzioniCategorie, etichette: ['Tutte le categorie', ...Object.values(PAROLE).map((c) => c.nome)], predefinito: 'tutte' },
       { id: 'giri', nome: 'Giri di indizi', valori: [2, 3], etichette: ['2 giri', '3 giri'], predefinito: 2 },
+      { id: 'aiuto', nome: 'Aiuto all\'impostore', valori: ['nessuno', 'categoria'], etichette: ['Nessun aiuto', 'Conosce la categoria'], predefinito: 'nessuno' },
     ],
     regole: [
       'Si gioca solo tra persone, da 3 a 10. All\'inizio il sito sceglie a caso una parola dal dizionario e la mostra a tutti tranne a uno: l\'impostore. L\'impostore sa di esserlo, ma non riceve nessuna parola e nessun aiuto.',
@@ -302,12 +322,13 @@ module.exports = {
       'Chi conosce la parola deve far capire agli altri che la conosce, senza renderla troppo facile all\'impostore. Non si può scrivere la parola segreta. L\'impostore deve bluffare: ascolta gli indizi e ne inventa uno credibile.',
       'Non c\'è nessun timer: prendetevi il tempo che serve. Per discutere, accusare e difendersi usate la chat.',
       'Finiti i giri si vota tutti insieme, in segreto: ognuno sceglie chi secondo lui è l\'impostore (non si può votare sé stessi). Finché non hanno votato tutti si può cambiare voto. Poi i voti vengono mostrati.',
-      'Se due o più giocatori hanno lo stesso numero di voti è pareggio: si fa un altro giro di indizi e si vota di nuovo.',
+      'Se due o più giocatori hanno lo stesso numero di voti è pareggio: si fa un altro giro di indizi e si vota di nuovo. Dopo due spareggi, un altro pareggio fa vincere l\'impostore.',
+      'Con l\'opzione «Conosce la categoria» l\'impostore sa di che categoria è la parola (es. Animali): è più facile bluffare.',
       'Il più votato viene rivelato. Se era innocente, vince l\'impostore. Se era davvero l\'impostore, ha un\'ultima possibilità: scrivere la parola segreta. Se la indovina vince lui (accenti e maiuscole non contano, e con parole di almeno 5 lettere si perdona un errore di battitura); altrimenti vincono tutti gli altri.',
       'Alla fine c\'è la grande rivelazione: chi era l\'impostore e qual era la parola.',
       'Chi è assente o sulle dispense per 25 secondi salta l\'indizio o si astiene dal voto. Se l\'impostore lascia la partita vincono gli altri; se restano meno di 3 giocatori vince l\'impostore.',
     ],
   },
   crea: (o) => new Impostore(o),
-  _test: { normalizza, indovinata },
+  _test: { normalizza, indovinata, diceLaParola },
 };

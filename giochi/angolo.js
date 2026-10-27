@@ -91,7 +91,9 @@ class Angolo {
     this.fase = 'fine';
     const max = Math.max(...this.punti);
     const vincitori = this.punti.map((x, i) => (x === max ? i : -1)).filter((i) => i >= 0);
-    this.risultato = { fazioni: this.punti.map((x, i) => ({ posti: [i], punti: x })), etichetta: 'punti', pareggio: this.n > 1 && vincitori.length > 1, vincitori };
+    // in parità (come negli altri giochi del sito) nessuno vince: è un pareggio
+    const pari = this.n > 1 && vincitori.length > 1;
+    this.risultato = { fazioni: this.punti.map((x, i) => ({ posti: [i], punti: x })), etichetta: 'punti', pareggio: pari, vincitori: pari ? [] : vincitori };
     return { ok: true };
   }
 
@@ -141,7 +143,7 @@ module.exports = {
       'Quando hanno risposto tutti si scopre la misura vera e si vedono le risposte di tutti.',
       'Punti: 100 meno 2,5 punti per ogni grado di errore (mai sotto zero); se sei esatto al grado prendi 150 punti.',
       'Si gioca 5 o 10 round, con angoli da 0° a 360° oppure da 0° a 180°. Vince chi ha più punti alla fine.',
-      'Chi è assente o sulle dispense per 25 secondi salta il round.',
+      'Chi è assente o sulle dispense per un minuto e mezzo salta il round.',
       'Il computer facile sbaglia anche di 30-40 gradi, il medio di una decina, il difficile di pochi gradi.',
     ],
   },

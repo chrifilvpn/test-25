@@ -15,6 +15,7 @@ class Impiccato {
     this.maxErrori = [6, 8, 10].includes(Number(opzioni.errori)) ? Number(opzioni.errori) : 6;
     this.giri = Number(opzioni.giri) === 2 ? 2 : 1;
     this.totaleRound = n * this.giri;
+    this.unaATesta = opzioni.turni === 'una'; // una lettera a testa: anche se è giusta il turno passa
     this.round = 0;
     this.primo = primo;
     this.punti = new Array(n).fill(0);
@@ -36,6 +37,8 @@ class Impiccato {
     let boia = (this.primo + this.round) % this.n;
     let giri = 0;
     while (this.fuori[boia] && giri++ < this.n) { this.round++; boia = (this.primo + this.round) % this.n; }
+    // saltando chi è uscito si possono finire i giri: allora la partita è finita (niente giro in più)
+    if (this.round >= this.totaleRound) { this.chiudi(); return; }
     this.boia = boia;
     this.fase = 'scelta';
     this.parola = null;
@@ -91,6 +94,11 @@ class Impiccato {
       if (quante) {
         this.punti[p] += quante;
         if (this.scoperta()) { this.punti[p] += PUNTI_COMPLETA; return this.fineRound('indovinata', p); }
+        if (this.unaATesta) {
+          this.annuncia(p, `trova la ${l.toUpperCase()} (${quante})`, `c'è la ${l.toUpperCase()}!`);
+          this.turno = this.prossimo(p);
+          return { ok: true };
+        }
         this.annuncia(p, `trova la ${l.toUpperCase()} (${quante})`, `c'è la ${l.toUpperCase()}! Tocca ancora a te`);
         return { ok: true }; // lettera giusta: si continua
       }
@@ -178,7 +186,7 @@ class Impiccato {
       fazioni: this.punti.map((x, i) => ({ posti: [i], punti: x })),
       etichetta: 'punti',
       pareggio: top.length > 1,
-      vincitori: top,
+      vincitori: top.length > 1 ? [] : top, // in parità nessuno vince (come negli altri giochi)
     };
     return { ok: true };
   }
@@ -212,11 +220,13 @@ module.exports = {
     opzioni: [
       { id: 'errori', nome: 'Errori concessi', valori: [6, 8, 10], etichette: ['6 (normale)', '8 (facile)', '10 (facilissimo)'], predefinito: 6 },
       { id: 'giri', nome: 'Parole a testa', valori: [1, 2], etichette: ['1 parola a testa', '2 parole a testa'], predefinito: 1 },
+      { id: 'turni', nome: 'Turni', valori: ['continua', 'una'], etichette: ['Lettera giusta: tocca ancora a te', 'Una lettera a testa'], predefinito: 'continua' },
     ],
     regole: [
       'Si gioca solo tra persone, da 2 a 8. A ogni giro un giocatore sceglie una parola segreta e gli altri cercano di indovinarla. La partita dura un giro per ogni giocatore (o due, se scelto).',
       'Chi sceglie la parola la scrive nel riquadro: una sola parola, da 3 a 20 lettere. Accenti e maiuscole non contano (perché = perche). Deve essere una parola italiana vera: fantasIA, l\'intelligenza artificiale del sito, la controlla prima di accettarla.',
       'Gli altri giocano a turno. Al tuo turno clicchi una lettera (o la scrivi sulla tastiera). Se c\'è, compare in tutte le sue posizioni, prendi 1 punto per ogni volta che compare e tocca ancora a te. Se non c\'è, si disegna un pezzo dell\'omino e il turno passa.',
+      'Con l\'opzione "Una lettera a testa" il turno passa sempre dopo una lettera, anche se è giusta: così nessuno scopre da solo quasi tutta la parola.',
       'Puoi anche provare a indovinare la parola intera: se è giusta prendi 5 punti di bonus in più; se è sbagliata conta come un errore.',
       `Chi scopre l'ultima lettera o indovina la parola prende ${PUNTI_COMPLETA} punti. Se l'omino viene impiccato (6 errori, oppure 8 o 10 se scelto), ${PUNTI_BOIA} punti vanno a chi ha scelto la parola.`,
       'Alla fine vince chi ha più punti.',

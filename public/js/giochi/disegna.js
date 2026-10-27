@@ -72,9 +72,17 @@
     return `<span class="dg-parola nascosta" aria-label="Parola di ${n} lettere">${p.suggerimento.map((x) => (x === ' ' ? '<i class="spazio"></i>' : `<i>${x === '_' ? '' : esc(x)}</i>`)).join('')}</span><small>${p.lunghezze.join(' + ')} lettere</small>`;
   }
 
+  // il server manda tutto il disegno solo la prima volta (o quando cambia la versione), poi solo i tratti nuovi
+  // (segmentiNuovi): qui si tiene l'elenco completo, anche quando il tavolo non è sullo schermo
+  let archivio = [];
   const tavolo = {
     libero: true,
     senzaFila: true,
+    ricevi(p) {
+      if (!Array.isArray(p.segmenti)) return;
+      if (p.segmentiNuovi) { const ci = new Set(archivio.map((x) => x.id)); archivio = archivio.concat(p.segmenti.filter((x) => !ci.has(x.id))); } else archivio = p.segmenti;
+      p.segmenti = archivio;
+    },
     reset(ctx) {
       ctxA = ctx;
       const p = ctx.partita;
