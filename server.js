@@ -5,6 +5,7 @@ const express = require('express');
 const { Server } = require('socket.io');
 const { GIOCHI, pulisciOpzioni } = require('./giochi');
 const TRUCCO = require('./giochi/trucco');
+const PENSATORE = require('./giochi/pensatore'); // il computer che pensa in un thread a parte (giochi con meta.pensaLento)
 
 const PORTA = process.env.PORT || 3000;
 const ATTESA_BOT_MS = Number(process.env.ATTESA_BOT_MS) || 900; // pausa "di riflessione" del computer
@@ -57,6 +58,34 @@ console.log(fantasia.attiva ? '[fantasIA] accesa (100 domande al giorno per tutt
 // trucco segreto: la parola sta solo su Render (TRUCCO_PAROLA), mai nel codice; senza, il trucco è spento
 console.log(TRUCCO.attivo() ? '[trucco] acceso' : '[trucco] spento: su Render manca TRUCCO_PAROLA');
 if (process.env.GUARDIA !== 'attiva') console.log('[guardia] modalità prova: i ban vengono solo scritti nel log (GUARDIA=attiva per applicarli)');
+// fotocamera magica: programma e modelli di MediaPipe (~21 MB) compressi una volta sola (in memoria) e tenuti dal
+// browser per una settimana: la prima volta si scaricano ~12 MB, dalla seconda la fotocamera si accende quasi subito
+const MEDIAPIPE = path.join(__dirname, 'node_modules', '@mediapipe', 'tasks-vision');
+const compressi = new Map();
+function serviPesante(file, tipo) {
+  return (q, r, next) => {
+    fs.stat(file, (e, st) => {
+      if (e) return next();
+      const etag = `"${st.size.toString(36)}-${Math.round(st.mtimeMs).toString(36)}"`;
+      r.set({ 'Cache-Control': 'public, max-age=604800', ETag: etag, Vary: 'Accept-Encoding' }).type(tipo);
+      if (q.headers['if-none-match'] === etag) return r.status(304).end();
+      if (!/\bgzip\b/.test(q.headers['accept-encoding'] || '')) return r.sendFile(file, { etag: false, lastModified: false, cacheControl: false });
+      let z = compressi.get(file);
+      if (!z || z.etag !== etag) {
+        z = { etag, dati: new Promise((ok, ko) => fs.readFile(file, (e2, b) => (e2 ? ko(e2) : require('zlib').gzip(b, { level: 6 }, (e3, g) => (e3 ? ko(e3) : ok(g)))))) };
+        compressi.set(file, z);
+      }
+      z.dati.then((g) => r.set({ 'Content-Encoding': 'gzip', 'Content-Length': g.length }).end(g)).catch(() => { compressi.delete(file); next(); });
+    });
+  };
+}
+app.get('/modelli/:file', (q, r, next) => (/^(mani|viso)\.task$/.test(q.params.file) ? serviPesante(path.join(__dirname, 'public', 'modelli', q.params.file), 'application/octet-stream')(q, r, next) : next()));
+app.get('/js/mediapipe/vision_bundle.mjs', serviPesante(path.join(MEDIAPIPE, 'vision_bundle.mjs'), 'application/javascript'));
+app.get('/js/mediapipe/wasm/:file', (q, r, next) => {
+  const f = q.params.file;
+  if (!/^vision_wasm_(nosimd_)?internal\.(js|wasm)$/.test(f)) return next();
+  serviPesante(path.join(MEDIAPIPE, 'wasm', f), f.endsWith('.wasm') ? 'application/wasm' : 'application/javascript')(q, r, next);
+});
 app.use(express.static(path.join(__dirname, 'public')));
 app.get('/js/scala-regole.js', (_q, r) => r.sendFile(path.join(__dirname, 'giochi', 'scala-regole.js')));
 app.get('/js/navale-regole.js', (_q, r) => r.sendFile(path.join(__dirname, 'giochi', 'navale-regole.js')));
@@ -67,13 +96,7 @@ app.get('/js/tigerball-livelli.js', (_q, r) => r.sendFile(path.join(__dirname, '
 app.get('/js/isolation-mappa.js', (_q, r) => r.sendFile(path.join(__dirname, 'giochi3', 'isolation', 'mappa.js')));
 app.get('/js/three.module.min.js', (_q, r) => r.type('application/javascript').sendFile(path.join(__dirname, 'node_modules', 'three', 'build', 'three.module.min.js')));
 // fotocamera magica: MediaPipe (mani e viso) dalla dipendenza npm, niente CDN; i modelli stanno in public/modelli
-const MEDIAPIPE = path.join(__dirname, 'node_modules', '@mediapipe', 'tasks-vision');
-app.get('/js/mediapipe/vision_bundle.mjs', (_q, r) => r.type('application/javascript').sendFile(path.join(MEDIAPIPE, 'vision_bundle.mjs')));
-app.get('/js/mediapipe/wasm/:file', (q, r, next) => {
-  const f = q.params.file;
-  if (!/^vision_wasm_(nosimd_)?internal\.(js|wasm)$/.test(f)) return next();
-  r.type(f.endsWith('.wasm') ? 'application/wasm' : 'application/javascript').sendFile(path.join(MEDIAPIPE, 'wasm', f));
-});
+// (serviti compressi più sopra, prima dei file statici)
 // giochi nuovi: tutti i file di public/js/giochi2 e giochi3 (e i loro stili) in un colpo solo, così aggiungere un
 // gioco non richiede di toccare index.html
 function unisciCartella(cartella, est) {
@@ -112,7 +135,21 @@ function nomeBot(s) {
 const creaBot = (s, livello) => ({ id: `bot-${Math.random().toString(36).slice(2)}`, nome: nomeBot(s), bot: livello, connesso: true, fiche: FICHE_INIZIALI });
 // giochi senza computer (meta.soloPersone): chi manca salta il turno invece di essere sostituito
 const senzaBot = (s) => !!GIOCHI[s.gioco].meta.soloPersone;
-const umani = (s) => s.posti.filter((g) => g && (!g.bot || g.inSala));
+const umani = (s) => s.posti.filter((g) => g && !g.locale && (!g.bot || g.inSala));
+
+// PASSA IL TELEFONO (giochi con meta.passaTelefono, opzione telefono = 'si'): chi apre il tavolo gioca con gli amici
+// sullo stesso dispositivo. I posti vuoti diventano "posti locali" (locale = id di chi ha aperto il tavolo): il suo
+// browser riceve anche le viste di quei posti e manda le mosse con { per: posto }. Sono presenti quando lo è lui.
+const telefonoAttivo = (s) => !!(GIOCHI[s.gioco] && GIOCHI[s.gioco].meta.passaTelefono && s.opzioni && s.opzioni.telefono === 'si');
+function sincronizzaLocali(s) {
+  for (const x of s.posti) {
+    if (!x || !x.locale) continue;
+    const h = s.posti.find((y) => y && !y.locale && y.id === x.locale);
+    x.connesso = !!(h && h.connesso); x.nascosto = !!(h && h.nascosto); x.nascostoDal = h ? h.nascostoDal : 0; x.uscito = !h || !!h.uscito;
+  }
+}
+// tornati in sala (o cambiato gioco) i posti locali si liberano: alla prossima partita si riscrivono i nomi
+function togliLocali(s) { s.posti.forEach((x, i) => { if (x && x.locale) s.posti[i] = null; }); }
 // Giochi di collaborazione (meta.pausaBoss): se qualcuno è sulla pagina delle dispense, la partita si ferma per tutti
 // (non chi si è scollegato o è uscito dal tavolo mentre era sulle dispense: altrimenti si restava fermi per sempre).
 // Una partita può decidere da sé (es. Block Blast: in pausa da soli e in collaborazione, non nella sfida).
@@ -137,6 +174,8 @@ function messaggioSistema(s, testo) {
 }
 
 function invia(s) {
+  if (!s.partita && s.posti.some((x) => x && x.locale)) togliLocali(s);
+  sincronizzaLocali(s);
   if (s.votoFine && s.votoFine.partita !== s.partita) { clearTimeout(s.timerVoto); s.votoFine = null; }
   inviaSussurri(s);
   s.posti.forEach((g, posto) => {
@@ -157,10 +196,23 @@ function invia(s) {
       sfida: s.sfida && s.sfida.gioco === s.gioco ? { data: s.sfida.data, prova: !!s.sfida.prova } : null,
       torneo: tornei.vistaTorneo(s), serata: tornei.vistaSerata(s),
       partita: s.partita ? vistaLeggera(s, g.socketId, s.partita.vista(posto)) : null,
+      // passa il telefono: le viste dei posti locali di questo browser e chi di loro deve agire
+      locali: s.partita && !g.locale ? vistePerLocali(s, g.id) : null,
       chat: s.chat.filter((m) => !m.spett && (!m.per || m.per.includes(posto))).slice(-40), // m.per: messaggio visibile solo ad alcuni (es. i fantasmi di Chi è l'Alieno)
     });
   });
   inviaSpettatori(s);
+}
+
+function vistePerLocali(s, id) {
+  const miei = s.posti.map((x, i) => (x && x.locale === id ? i : -1)).filter((i) => i >= 0);
+  if (!miei.length) return null;
+  const g = s.partita;
+  const viste = {};
+  for (const i of miei) viste[i] = g.vista(i);
+  let attesi = [];
+  try { attesi = !g.finita && g.turno == null && g.attesi && !g.inAttesa ? g.attesi() : []; } catch (e) { attesi = []; }
+  return { posti: miei, viste, attesi };
 }
 
 // VISTE LEGGERE: un gioco con alleggerisci(vista, memo) può togliere dalla vista quello che quel browser ha già
@@ -289,6 +341,7 @@ function gestisciTick(s) {
 }
 
 function pianifica(s) {
+  sincronizzaLocali(s);
   clearTimeout(s.timer);
   clearTimeout(s.timerTempo);
   const g = s.partita;
@@ -373,14 +426,36 @@ function pianifica(s) {
 function mossaComputer(s, posto, livello) {
   const g = s.partita;
   const mod = GIOCHI[s.gioco];
-  let r;
-  try { r = g.azione(posto, mod.bot(g, posto, livello)); } catch (e) { r = { errore: e.message }; }
-  if (r && r.errore) {
-    console.warn(`[${s.gioco}] mossa del computer rifiutata: ${r.errore}`);
-    try { r = g.azione(posto, mod.bot(g, posto, 'facile')); } catch (e) { r = { errore: e.message }; }
-    if (r && r.errore && g.sblocca) g.sblocca(posto);
+  // giochi dove il computer pensa a lungo: la ricerca va nel thread a parte, così gli altri tavoli non si fermano
+  if (mod.meta.pensaLento && livello !== 'facile' && !process.env.TEST_VELOCE) {
+    if (s.pensando && s.pensando.partita === g) return; // ci sta già pensando
+    const versione = s.mosseFatte || 0;
+    s.pensando = { partita: g, posto };
+    const crea = { n: g.n, primo: 0, opzioni: s.opzioni, bot: s.posti.map((x) => (x && x.bot) || null) };
+    PENSATORE.pensa(s.gioco, g, posto, livello, crea).then((mossa) => {
+      if (s.pensando && s.pensando.partita === g) s.pensando = null;
+      // nel frattempo la partita è cambiata (annulla, fine del tempo, rivincita): si ricomincia da capo
+      if (s.partita !== g || g.finita || g.turno !== posto || (s.mosseFatte || 0) !== versione || !stanze.has(s.codice)) { if (s.partita === g && !g.finita) aggiorna(s); return; }
+      gioca(mossa);
+    }, () => {
+      if (s.pensando && s.pensando.partita === g) s.pensando = null;
+      if (s.partita !== g || g.finita || g.turno !== posto || (s.mosseFatte || 0) !== versione) return;
+      gioca(null);
+    });
+    return;
   }
-  aggiorna(s);
+  gioca(null);
+  function gioca(pronta) {
+    let r;
+    try { r = g.azione(posto, pronta || mod.bot(g, posto, livello)); } catch (e) { r = { errore: e.message }; }
+    if (r && r.errore) {
+      console.warn(`[${s.gioco}] mossa del computer rifiutata: ${r.errore}`);
+      try { r = g.azione(posto, mod.bot(g, posto, 'facile')); } catch (e) { r = { errore: e.message }; }
+      if (r && r.errore && g.sblocca) g.sblocca(posto);
+    }
+    s.mosseFatte = (s.mosseFatte || 0) + 1;
+    aggiorna(s);
+  }
 }
 
 // Spiegazione dei comandi: compare con !comandi e nelle regole di ogni gioco.
@@ -390,7 +465,7 @@ const AIUTO_COMANDI = {
   '!restart': 'propone di ricominciare la partita da capo (se qualcosa è andato storto): decide la maggioranza del tavolo',
   '!fantasia': 'seguito da una domanda (per esempio !fantasia chi ha inventato il computer?): risponde fantasIA, la mini IA del sito. Una domanda ogni 20 secondi, al massimo 100 al giorno per tutto il sito',
   '!revive': 'in Draghi e Segrete riporta in vita i personaggi morti, con tutti i punti ferita e le stesse cose che avevano',
-  '!foto': 'accende (o spegne) la Fotocamera magica solo per te: ti vedi in una finestrella da spostare dove vuoi e i gatti reagiscono ai tuoi gesti',
+  '!foto': 'accende (o spegne) la Fotocamera magica solo per te: ti vedi in una finestrella da spostare dove vuoi e i gatti reagiscono ai tuoi gesti (!foto prova mostra i numeri dei gesti)',
   '!comandi': 'mostra questo elenco',
   // il 67 non si elenca: è un easter egg che si scopre giocando
 };
@@ -464,6 +539,7 @@ function videoPapi(s, posto) {
   }
   s.esecuzioneFino = ora + PAPI_MS;
   s.esecuzioneTipo = 'papi';
+  s.papiChiusi = new Set(); // chi ha già chiuso il video con la ✕: quando l'hanno chiuso tutti, il gioco riparte
   messaggioSistema(s, `🚗 ${g.nome} ha chiamato Enrico Papi`);
   io.to(s.codice).emit('papi', { nome: g.nome, durata: PAPI_MS });
   aggiorna(s);
@@ -1041,10 +1117,19 @@ io.on('connection', (socket) => {
     if (e) { errore(e); aggiorna(s); }
   });
 
-  socket.on('inizia', () => {
+  socket.on('inizia', (dati) => {
     const s = stanza;
     if (!s || s.partita || !sonoHost()) return;
     tornei.annulla(s);
+    // passa il telefono: i posti vuoti li prendono gli amici seduti accanto a chi ha aperto il tavolo
+    if (telefonoAttivo(s)) {
+      const nomi = (dati && Array.isArray(dati.nomi)) ? dati.nomi : [];
+      s.posti.forEach((g, i) => {
+        if (g) return;
+        const scelto = pulisciNome(nomi[i] || '') || `Giocatore ${i + 1}`;
+        s.posti[i] = { id: `${mioId}#${i}`, locale: mioId, nome: nomeLibero(s, scelto, i), socketId: null, connesso: true, bot: null, fiche: FICHE_INIZIALI };
+      });
+    }
     // giochi dove i posti vuoti diventano compagni del computer (Draghi e Segrete): li prende il computer da solo
     if (GIOCHI[s.gioco].meta.postiLiberiAlComputer && !senzaBot(s)) s.posti.forEach((g, i) => { if (!g) s.posti[i] = creaBot(s, 'medio'); });
     if (s.posti.some((g) => !g)) return errore('Riempi tutti i posti, anche con il computer');
@@ -1056,8 +1141,15 @@ io.on('connection', (socket) => {
   // ---- partita ----
   socket.on('azione', async (azione) => {
     const s = stanza;
-    const i = mioPosto();
+    let i = mioPosto();
+    const ioStesso = i;
     if (!s || !s.partita || i === -1) return;
+    // passa il telefono: la mossa di un amico sullo stesso dispositivo
+    if (azione && Number.isInteger(azione.per) && azione.per !== i) {
+      const x = s.posti[azione.per];
+      if (!x || !x.locale || x.locale !== mioId) return errore('Quel posto non è su questo dispositivo');
+      i = azione.per;
+    }
     if (inEsecuzione(s)) return errore('Esecuzione pubblica in corso: aspetta un attimo 🌋');
     // giochi di parole: prima di accettare la mossa fantasIA controlla che la parola esista davvero
     // (se l'IA è spenta o non risponde, la parola si accetta; vedi fantasia.js)
@@ -1069,11 +1161,12 @@ io.on('connection', (socket) => {
       socket.data.controlloParola = true;
       let esiste = null;
       try { esiste = await fantasia.parolaEsiste(daControllare); } finally { socket.data.controlloParola = false; }
-      if (stanza !== s || s.partita !== g || mioPosto() !== i || g.finita) return;
+      if (stanza !== s || s.partita !== g || mioPosto() !== ioStesso || g.finita) return;
       if (esiste === false) return errore(`🧚 «${daControllare}» non sembra una parola italiana: provane un'altra`);
       if (inEsecuzione(s)) return errore('Esecuzione pubblica in corso: aspetta un attimo 🌋');
     }
     const r = s.partita.azione(i, azione || {});
+    if (!r.errore) s.mosseFatte = (s.mosseFatte || 0) + 1;
     if (r.errore) return errore(r.errore);
     if (r.silenzioso) return; // la mossa non cambia niente di quello che vedono gli altri (es. una lettera in Nomi, cose, città)
     aggiorna(s);
@@ -1110,6 +1203,8 @@ io.on('connection', (socket) => {
     if (!mod.meta.giocatori.includes(s.posti.length)) return errore(`${mod.meta.nome} si gioca in ${mod.meta.giocatori.join(', ')}`);
     ripristinaInSala(s);
     s.posti.forEach((g, i) => { if (g && ((g.bot && g.sostituto) || g.uscito)) s.posti[i] = null; });
+    // con gli amici sullo stesso dispositivo si continua solo se anche il nuovo gioco si passa il telefono
+    if (!(mod.meta.passaTelefono && opzioni && opzioni.telefono === 'si')) togliLocali(s);
     if (mod.meta.soloPersone && s.posti.some((g) => g && g.bot)) {
       s.partita = null; s.gioco = gioco; s.opzioni = pulisciOpzioni(gioco, opzioni);
       messaggioSistema(s, `${mod.meta.nome} si gioca solo con altre persone: togli i computer dal tavolo`);
@@ -1250,6 +1345,17 @@ io.on('connection', (socket) => {
   });
 
   // Boss Key: il giocatore è sulla pagina delle dispense (o è tornato)
+  // ENRICO PAPI: la ✕ chiude il video per chi la preme; quando l'hanno chiuso tutte le persone che lo stanno vedendo
+  // (non i computer, non chi è sulle dispense o scollegato) il gioco riparte subito, senza aspettare la fine
+  socket.on('papiChiuso', () => {
+    const s = stanza;
+    const i = mioPosto();
+    if (!s || i === -1 || s.esecuzioneTipo !== 'papi' || !inEsecuzione(s) || !s.papiChiusi) return;
+    s.papiChiusi.add(i);
+    const guardano = s.posti.map((g, j) => (g && !g.bot && presente(g) && !g.nascosto ? j : -1)).filter((j) => j >= 0);
+    if (guardano.every((j) => s.papiChiusi.has(j))) { s.esecuzioneFino = Date.now(); s.papiChiusi = null; aggiorna(s); }
+  });
+
   socket.on('boss', (attivo) => {
     const s = stanza;
     const i = mioPosto();

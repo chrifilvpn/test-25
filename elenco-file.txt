@@ -69,6 +69,7 @@ giochi/paintball.js
 giochi/palloncini.js
 giochi/pallone.js
 giochi/parole-impostore.js
+giochi/pensatore.js
 giochi/peppa.js
 giochi/piattaforme.js
 giochi/pioggia.js
@@ -203,6 +204,7 @@ giochi3/draghi/mappe.js
 giochi3/draghi/master.js
 giochi3/draghi/mostri.js
 giochi3/draghi/regole.js
+giochi3/draghi/salva.js
 giochi3/draghi/stazione.js
 giochi3/draghi/tempo-reale.js
 giochi3/forza3d.js
@@ -579,6 +581,7 @@ test/giochi3/hex.js
 test/giochi3/hockey.js
 test/giochi3/isolation.js
 test/giochi3/luci.js
+test/giochi3/migliorie-azione.js
 test/giochi3/navale.js
 test/giochi3/nurikabe.js
 test/giochi3/picross.js

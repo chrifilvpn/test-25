@@ -266,6 +266,7 @@ function bot(g, p, livello) {
 module.exports = {
   meta: {
     id: 'forza4',
+    pensaLento: true, // il computer difficile pensa a lungo: lo fa in un thread a parte (giochi/pensatore.js)
     nome: 'Forza 4',
     tipo: 'tabellone',
     giocatori: [2],

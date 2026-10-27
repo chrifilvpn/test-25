@@ -79,15 +79,17 @@ window.Esecuzione = (() => {
     setTimeout(() => el.remove(), durata);
   }
   // ENRICO PAPI: il video a tutto schermo per tutti (sulle dispense no; col suono spento parte muto)
-  function papi({ nome, durata = 6600 }) {
+  function papi({ nome, durata = 6600, chiuso }) {
     if (window.Boss && Boss.attivo) return;
     document.querySelector('.ex-papi')?.remove();
     const el = document.createElement('div');
     el.className = 'ex-papi';
     el.setAttribute('role', 'alert');
-    el.innerHTML = `<video playsinline preload="auto"><source src="/video/enrico-papi.webm" type="video/webm"><source src="/video/enrico-papi.mp4" type="video/mp4"></video><p>🚗 ${esc(nome || '')} ha chiamato Enrico Papi</p>`;
+    el.innerHTML = `<video playsinline preload="auto"><source src="/video/enrico-papi.webm" type="video/webm"><source src="/video/enrico-papi.mp4" type="video/mp4"></video><p>🚗 ${esc(nome || '')} ha chiamato Enrico Papi</p><button type="button" class="ex-papi-chiudi" aria-label="Chiudi il video" title="Chiudi">✕</button>`;
     document.body.append(el);
     const v = el.querySelector('video');
+    // la X in alto a destra chiude il video per te; al tavolo il gioco riparte quando l'hanno chiuso tutti
+    el.querySelector('.ex-papi-chiudi').addEventListener('click', () => { v.pause(); togli(); if (chiuso) chiuso(); });
     v.muted = muto();
     // senza un clic recente il browser può bloccare l'audio: allora si riprova muto
     v.play().catch(() => { v.muted = true; v.play().catch(() => {}); });

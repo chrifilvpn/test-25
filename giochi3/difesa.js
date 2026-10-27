@@ -227,9 +227,11 @@ class Difesa extends Arena {
   // la regola della mappa (e l'evento in corso): quanto vedono le torrette, quanto corrono i mostri
   raggioX() { const e = this.M.evento; return (this.M.raggio || 1) * (this.evOn && e.raggio ? e.raggio : 1); }
   velX() { const e = this.M.evento; return (this.M.vel || 1) * (this.evOn && e.vel ? e.vel : 1); }
-  // un mostro nuovo sulla strada v alla distanza s, con la vita dell'ondata
+  // un mostro nuovo sulla strada v alla distanza s, con la vita dell'ondata: +17% a ondata fino alla 10, poi +8% (con
+  // +17% sempre, all'ondata 20 i mostri avevano 23 volte la vita della prima e 15-20 ondate erano quasi impossibili)
   nuovoMostro(tipo, v, s) {
-    const d = MOSTRI[tipo], vita = d.vita * DIFF[this.diff].vita * Math.pow(1.17, Math.max(0, this.k - 1));
+    const k = Math.max(0, this.k - 1), d = MOSTRI[tipo];
+    const vita = d.vita * DIFF[this.diff].vita * Math.pow(1.17, Math.min(k, 9)) * Math.pow(1.08, Math.max(0, k - 9));
     const m = { id: ++this.nId, tipo, v, s: Math.max(0, s), vita, max: vita, lento: 0, t: 0 };
     this.mostri.push(m);
     return m;

@@ -91,7 +91,7 @@
     const p = ctx.partita;
     return `<div class="dr-gruppo"><h3 class="dr-titoletto">La compagnia</h3>${p.pg.map((pg, i) => (pg ? cartaPg(ctx, pg, i) : '')).join('')}
       <div class="dr-info-tav"><span>${esc(AMBIENTI[p.ambientazione] || '')}</span>${p.pazza ? '<span title="Il master fa ridere">🤪 pazza</span>' : ''}<span>${{ normale: 'Normale', storia: 'Storia', mortale: 'Mortale' }[p.difficolta]}</span>${p.dm != null ? `<span title="Il master è una persona${p.dmAuto ? ' (adesso lascia raccontare l\'IA)' : ''}">🎩 master: ${esc(nomeDm(ctx))}${p.dmAuto ? ' 🤖' : ''}</span>` : p.iaAttiva ? '<span title="Il master è un\'intelligenza artificiale">🧠 master IA</span>' : '<span title="Manca la chiave dell\'IA: racconta il master di riserva">📕 master di riserva</span>'}</div>
-      ${comanda(ctx) && !p.finita ? '<button type="button" class="dr-link dr-chiudi-camp" data-az="dr-termina">Chiudi la campagna</button>' : ''}</div>`;
+      ${puoSalvare(ctx) ? '<button type="button" class="dr-link dr-chiudi-camp" data-az="dr-salva">💾 Salva la campagna</button>' : ''}${comanda(ctx) && !p.finita ? '<button type="button" class="dr-link dr-chiudi-camp" data-az="dr-termina">Chiudi la campagna</button>' : ''}</div>`;
   }
 
   // ---------- il racconto ----------
@@ -198,8 +198,40 @@
   }
   function diario(ctx) {
     const p = ctx.partita;
-    return `<h4 class="dr-sez-tit">📖 Diario della campagna</h4><div class="dr-diario">${p.diario ? formatta(p.diario, p) : '<p class="dr-vuoto">Il master lo scrive mentre giocate: è la memoria della campagna.</p>'}</div>`;
+    return `<h4 class="dr-sez-tit">📖 Diario della campagna</h4><div class="dr-diario">${p.diario ? formatta(p.diario, p) : '<p class="dr-vuoto">Il master lo scrive mentre giocate: è la memoria della campagna.</p>'}</div>${puoSalvare(ctx) ? '<div class="dr-salva"><button type="button" class="dr-bt" data-az="dr-salva">💾 Scarica la campagna</button><small class="dr-nota">Un file da tenere: per continuare un altro giorno, chi apre il tavolo lo riprende con «📂 Riprendi una campagna salvata» prima di cominciare.</small></div>' : ''}`;
   }
+
+  // ---------- 💾 salvare e 📂 riprendere la campagna (giochi3/draghi/salva.js) ----------
+  const puoSalvare = (ctx) => { const p = ctx.partita; return !ctx.stato.spettatore && !p.finita && p.fase !== 'creazione' && !p.reale; };
+  let ultimoCtx = null, ultimoSalvato = null;
+  // il server ha preparato il file chiesto con 💾: il browser lo scarica (una volta sola)
+  function scaricaSalvataggio(ctx) {
+    const s = ctx.partita.salvataggio;
+    if (!s || ultimoSalvato === s.ora) return;
+    ultimoSalvato = s.ora;
+    setTimeout(() => {
+      try {
+        const url = URL.createObjectURL(new Blob([JSON.stringify(s.dati)], { type: 'application/json' }));
+        const a = document.createElement('a'); a.href = url; a.download = s.nome; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+        ctx.avviso('💾 Campagna scaricata: tienila per riprenderla');
+      } catch (e) { ctx.avviso('Non riesco a scaricare il file'); }
+    }, 0);
+  }
+  // 📂: il file scelto va al server (al massimo 100 kB, come ogni messaggio)
+  document.addEventListener('change', (e) => {
+    const el = e.target;
+    if (!el || !el.matches || !el.matches('#panno input[data-dr-file]') || !el.files || !el.files[0] || !ultimoCtx) return;
+    const ctx = ultimoCtx, f = el.files[0];
+    el.value = '';
+    if (f.size > 98000) { ctx.avviso('Il file è troppo grande: non è una campagna di Draghi e Segrete'); return; }
+    f.text().then((t) => {
+      let dati = null;
+      try { dati = JSON.parse(t); } catch (err) { dati = null; }
+      if (!dati || dati.formato !== 'draghi-e-segrete') { ctx.avviso('Questo non è un file di Draghi e Segrete'); return; }
+      ctx.invia({ tipo: 'riprendi', dati });
+    }).catch(() => ctx.avviso('Non riesco a leggere il file'));
+  });
   function lato(ctx, schede) {
     const ui = ctx.ui;
     if (!schede.some((s) => s[0] === ui.drLato)) ui.drLato = schede[0][0];
@@ -256,7 +288,8 @@
     const spiega = p.dm == null && p.modalita !== 'reale' && p.n > 1 && sonoHost(ctx) ? '<p class="dr-nota">🎩 Volete un master in carne e ossa? Tocca il cappello accanto a chi lo farà: non crea il personaggio e l\'IA gli fa da consigliere.</p>' : '';
     const idea = comanda(ctx)
       ? `<div class="dr-idea"><h4>💡 Idea per la campagna</h4><textarea data-tieni="idea" rows="4" maxlength="2000" placeholder="Facoltativa: un tema, un cattivo, un luogo… Es.: «Una città portuale dove spariscono i bambini e il culto della Marea Nera…». Vuota: inventa tutto il master.">${esc(ctx.ui.t_idea != null ? ctx.ui.t_idea : p.idea || '')}</textarea><button type="button" class="dr-bt" data-az="dr-idea">${p.idea ? '✓ Idea salvata · aggiorna' : 'Salva l\'idea'}</button></div>
-        <button type="button" class="dr-bt dr-bt-oro dr-bt-grande dr-inizia" data-az="dr-inizia">⚔️ Inizia l'avventura</button><small class="dr-nota">Chi non ha finito il personaggio lo completa il computer.</small>`
+        <button type="button" class="dr-bt dr-bt-oro dr-bt-grande dr-inizia" data-az="dr-inizia">⚔️ Inizia l'avventura</button><small class="dr-nota">Chi non ha finito il personaggio lo completa il computer.</small>
+        ${p.modalita !== 'reale' && !ctx.stato.spettatore ? '<div class="dr-riprendi"><label class="dr-bt">📂 Riprendi una campagna salvata<input type="file" accept=".json,application/json" data-dr-file hidden></label><small class="dr-nota">Il file scaricato con 💾: i personaggi salvati prendono i posti in ordine, i posti in più ne creano uno nuovo.</small></div>' : ''}`
       : `${p.idea ? `<div class="dr-idea"><h4>💡 L'idea della campagna</h4><p>${esc(p.idea)}</p></div>` : ''}<p class="dr-nota">L'avventura comincia quando ${esc(ctx.nome(p.host))} preme «Inizia» (o quando tutti hanno il personaggio).</p>`;
     return `<div class="dr-cr-compagnia"><h4>La compagnia</h4><ul>${chi}</ul>${spiega}${idea}</div>`;
   }
@@ -284,6 +317,8 @@
     },
     panno(ctx) {
       ctx = locale(ctx);
+      ultimoCtx = ctx.base || ctx;
+      if (ctx.partita && ctx.partita.salvataggio) scaricaSalvataggio(ctx);
       const tenda = sipario(ctx);
       if (tenda) return `<div class="dr dr-fase-sipario dr-amb-${esc(ctx.partita.ambientazione || 'classica')}">${tenda}</div>`;
       const p = ctx.partita, ui = ctx.ui, tel = telefono();
@@ -295,7 +330,9 @@
       if (p.fase === 'creazione' && DM().sonoDm(ctx)) return `<div class="dr dr-dm dr-fase-pronti ${scena}">${DM().creazione(ctx, latoCreazione(ctx))}${scheda1}</div>`;
       if (p.fase === 'creazione') {
         if (mioPg(ctx) || ctx.stato.spettatore) return `<div class="dr dr-fase-pronti ${scena}">${mioPg(ctx) ? pronto(ctx) : latoCreazione(ctx)}${scheda1}</div>`;
-        return `<div class="dr dr-fase-crea ${scena}">${CR().html(ctx, latoCreazione(ctx))}${scheda1}</div>`;
+        // sul telefono la colonna della compagnia (con 📂) non si vede durante la creazione: una riga in cima
+        const barra = comanda(ctx) && p.modalita !== 'reale' && !ctx.stato.spettatore ? '<label class="dr-riprendi-barra">📂 Avete una campagna salvata? <u>Riprendila</u><input type="file" accept=".json,application/json" data-dr-file hidden></label>' : '';
+        return `<div class="dr dr-fase-crea ${scena}">${barra}${CR().html(ctx, latoCreazione(ctx))}${scheda1}</div>`;
       }
       if (p.reale && (p.fase === 'reale' || p.fase === 'caduti')) return `${IN().realeHtml(ctx)}${scheda1}`;
       if (DM().sonoDm(ctx)) return DM().panno(ctx, scena);
@@ -413,7 +450,8 @@
         case 'dr-note': ctx.invia({ tipo: 'note', testo: String(ui.t_note != null ? ui.t_note : '') }); return ctx.avviso('Appunti salvati');
         case 'dr-armatura': return ctx.invia({ tipo: 'equip', armatura: id || null });
         case 'dr-scudo': { const pg = mioPg(ctx); return ctx.invia({ tipo: 'equip', scudo: !(pg && pg.scudo) }); }
-        case 'dr-termina': if (window.confirm('Chiudere la campagna per tutti? Non si può riprendere.')) return ctx.invia({ tipo: 'termina' }); return undefined;
+        case 'dr-salva': return ctx.invia({ tipo: 'salva' });
+        case 'dr-termina': if (window.confirm('Chiudere la campagna per tutti? Se non l\'avete salvata (💾) non si può riprendere.')) return ctx.invia({ tipo: 'termina' }); return undefined;
         default: return undefined;
       }
     },

@@ -39,14 +39,14 @@ const POTENZIAMENTI = {
 };
 // la campagna: la tribù nemica, le sue unità (quante di ognuna, in proporzione) e le unità che hai tu
 const LIVELLI = [
-  { nome: 'La nazione degli Swordwrath', scena: 'prato', mix: { spada: 1 }, mie: 2, oro: 0.8 },
-  { nome: 'Gli Archidonis del bosco', scena: 'bosco', mix: { arciere: 2, spada: 2 }, mie: 3, oro: 0.85 },
-  { nome: 'Gli Speartos delle colline', scena: 'colline', mix: { lanciere: 2, arciere: 1, spada: 2 }, mie: 4, oro: 0.9 },
-  { nome: 'I Magikill del deserto', scena: 'deserto', mix: { mago: 1, lanciere: 1, arciere: 2, spada: 1 }, mie: 5, oro: 0.95 },
-  { nome: 'I Giant delle nevi', scena: 'neve', mix: { gigante: 1, spada: 3, arciere: 2 }, mie: 6, oro: 1 },
-  { nome: 'L\'orda del Chaos', scena: 'palude', mix: { strisciante: 4, morto: 2, cavaliere: 1 }, mie: 6, oro: 1.05, caos: true },
-  { nome: 'L\'Order ribelle', scena: 'tramonto', mix: { spada: 2, arciere: 2, lanciere: 2, mago: 1, gigante: 1 }, mie: 6, oro: 1.1 },
-  { nome: 'Medusa, regina del Chaos', scena: 'notte', mix: { strisciante: 3, morto: 2, cavaliere: 2, medusa: 1 }, mie: 6, oro: 1.15, caos: true, guardia: 'medusa' },
+  { nome: 'La nazione degli Swordwrath', vinta: 'sconfitta', scena: 'prato', mix: { spada: 1 }, mie: 2, oro: 0.8 },
+  { nome: 'Gli Archidonis del bosco', vinta: 'sconfitti', scena: 'bosco', mix: { arciere: 2, spada: 2 }, mie: 3, oro: 0.85 },
+  { nome: 'Gli Speartos delle colline', vinta: 'sconfitti', scena: 'colline', mix: { lanciere: 2, arciere: 1, spada: 2 }, mie: 4, oro: 0.9 },
+  { nome: 'I Magikill del deserto', vinta: 'sconfitti', scena: 'deserto', mix: { mago: 1, lanciere: 1, arciere: 2, spada: 1 }, mie: 5, oro: 0.95 },
+  { nome: 'I Giant delle nevi', vinta: 'sconfitti', scena: 'neve', mix: { gigante: 1, spada: 3, arciere: 2 }, mie: 6, oro: 1 },
+  { nome: 'L\'orda del Chaos', vinta: 'sconfitta', scena: 'palude', mix: { strisciante: 4, morto: 2, cavaliere: 1 }, mie: 6, oro: 0.8, caos: true },
+  { nome: 'L\'Order ribelle', vinta: 'sconfitto', scena: 'tramonto', mix: { spada: 2, arciere: 2, lanciere: 2, mago: 1, gigante: 1 }, mie: 6, oro: 0.8 },
+  { nome: 'Medusa, regina del Chaos', vinta: 'sconfitta', scena: 'notte', mix: { strisciante: 3, morto: 2, cavaliere: 2, medusa: 1 }, mie: 6, oro: 0.75, caos: true, guardia: 'medusa' },
 ];
 const NOTTI = [5, 10, 20];
 const TORNEO = [3, 4, 5, 7, 8]; // Crown of Inamorta: le cinque nazioni da battere, una per round
@@ -69,10 +69,9 @@ class StickWar extends Arena {
     this.livello = Math.max(1, Math.min(LIVELLI.length, Number(op.livello) || 1));
     this.diff = DIFF[op.difficolta] ? op.difficolta : 'medio';
     this.notti = NOTTI.includes(Number(op.notti)) ? Number(op.notti) : 5;
-    // in sfida i posti pari sono l'Ordine (a sinistra), i dispari l'esercito di destra; negli altri modi le persone
-    // stanno tutte a sinistra con l'esercito in comune e i computer del tavolo guidano la tribù nemica
-    const umani = this.bot.some((b) => !b);
-    this.lati = Array.from({ length: this.n }, (_, p) => (this.modo === 'sfida' ? p % 2 : umani && this.bot[p] ? 1 : 0));
+    // in sfida i posti pari sono l'Ordine (a sinistra), i dispari l'esercito di destra; negli altri modi stanno tutti a
+    // sinistra con l'esercito in comune (anche i computer del tavolo: la tribù nemica la guida già il gioco)
+    this.lati = Array.from({ length: this.n }, (_, p) => (this.modo === 'sfida' ? p % 2 : 0));
     this.menti = {};
     this.avvia();
   }
@@ -96,7 +95,8 @@ class StickWar extends Arena {
       for (let k = 0; k < 2; k++) this.nasce(e.lato, 'minatore', 60 + k * 30);
       this.nasce(e.lato, e.tipi.includes('spada') ? 'spada' : 'strisciante', 120);
     }
-    if (this.contro() && lv.guardia) this.nasce(1, lv.guardia, 200);
+    // la guardia (Medusa) resta a difendere la sua statua: se partisse all'attacco subito, la partita finirebbe in due minuti
+    if (this.contro() && lv.guardia) this.nasce(1, lv.guardia, 200).guardia = true;
     this.comando = new Array(this.n).fill(null); // l'unità comandata a mano da ogni giocatore
     this.dito = new Array(this.n).fill(0); // la direzione dai pulsanti sul telefono
     this.colpo = new Array(this.n).fill(0);
@@ -147,6 +147,8 @@ class StickWar extends Arena {
     if (a.tipo === 'colpisci') { this.colpo[p]++; return { ok: true }; }
     return { errore: 'Mossa non valida' };
   }
+  // chi esce lascia il soldato che comandava (se no resterebbe fermo in campo)
+  esce(p) { super.esce(p); if (this.comando) { this.lascia(p); this.dito[p] = 0; this.cambiato = true; } }
   lascia(p) { const u = this.u.find((x) => x.id === this.comando[p]); if (u) u.chi = -1; this.comando[p] = null; }
   addestra(lato, tipo) {
     const e = this.eserciti[lato], d = UNITA[tipo];
@@ -258,7 +260,7 @@ class StickWar extends Arena {
     if (u.tipo === 'minatore') return this.lavora(u, d, dt);
     const e = this.eserciti[u.lato];
     // i non morti attaccano sempre; il computer degli eserciti usa i suoi ordini
-    const ordine = this.modo === 'nonmorti' && u.lato === 1 ? 'attacco' : e.ordine;
+    const ordine = this.modo === 'nonmorti' && u.lato === 1 ? 'attacco' : u.guardia ? 'difesa' : e.ordine;
     const fLinea = ordine === 'difesa' ? 260 : ordine === 'tieni' ? L * 0.38 : null;
     const bersaglio = this.bersaglio(u, d, ordine, fLinea);
     if (bersaglio) {
@@ -390,12 +392,13 @@ class StickWar extends Arena {
     else if (this.modo === 'nonmorti') r.titolo = this.vinto === 0 ? `Statua salva: ${this.notti} notti superate! 🌅` : `La statua è caduta alla notte ${this.notte} di ${this.notti} 🧟`;
     else {
       const lv = LIVELLI[this.livello - 1];
-      r.titolo = this.vinto === 0 ? `Livello ${this.livello} vinto: ${lv.nome} sconfitta! 🏆` : `La tua statua è caduta (livello ${this.livello}: ${lv.nome})`;
+      r.titolo = this.vinto === 0 ? `Livello ${this.livello} vinto: ${lv.nome} ${lv.vinta}! 🏆` : `La tua statua è caduta (livello ${this.livello}: ${lv.nome})`;
     }
   }
 
   // ---- il computer: miniere, esercito secondo la sua tribù, ordini secondo le forze in campo ----
-  valore(lato) { return this.u.filter((u) => u.lato === lato && u.tipo !== 'minatore').reduce((s, u) => s + UNITA[u.tipo].costo * (u.vita / u.max), 0); }
+  // (la guardia conta solo per chi la deve affrontare: non parte all'attacco)
+  valore(lato, guardia = true) { return this.u.filter((u) => u.lato === lato && u.tipo !== 'minatore' && (guardia || !u.guardia)).reduce((s, u) => s + UNITA[u.tipo].costo * (u.vita / u.max), 0); }
   gioca(lato, liv) {
     const e = this.eserciti[lato], B = DIFF[liv] || DIFF.medio, m = this.menti[lato] || (this.menti[lato] = { pausa: 1, scelta: null });
     m.pausa -= this.tickMs / 1000;
@@ -425,7 +428,7 @@ class StickWar extends Arena {
       else if (m.scelta && liv === 'facile' && Math.random() < 0.3) m.scelta = null;
     }
     // ordini: all'attacco quando si è più forti, in difesa quando si è più deboli
-    const mio = this.valore(lato), loro = this.valore(1 - lato), pieno = this.pop(lato) >= POP - 3;
+    const mio = this.valore(lato, false), loro = this.valore(1 - lato), pieno = this.pop(lato) >= POP - 3;
     if (e.ordine !== 'attacco' && (pieno || (mio > 900 && mio > loro * B.attacco) || (mio > 600 && this.eserciti[1 - lato].statua < this.eserciti[1 - lato].max * 0.3))) e.ordine = 'attacco';
     else if (e.ordine === 'attacco' && mio < loro * 0.75 && !pieno) e.ordine = minacciato ? 'difesa' : 'tieni';
     else if (e.ordine === 'difesa' && mio > 500 && !minacciato && liv !== 'facile') e.ordine = 'tieni';
@@ -492,7 +495,7 @@ module.exports = {
       'Tre ordini per tutto l\'esercito: 🛡️ Difesa (davanti alla statua), ✋ Tieni la linea (a metà del proprio campo) e ⚔️ Attacco (avanti fino alla statua nemica). In formazione gli Spearton stanno davanti e Archidon e Magikill dietro.',
       'Clicca (o tocca) un tuo soldato per comandarlo a mano: si muove con A/D o le frecce e colpisce con lo spazio (sul telefono con i pulsanti). Comandato va più veloce e fa il 50% di danni in più. "Lascia" lo rimette con gli altri.',
       'Potenziamenti nell\'armeria (valgono per la partita): picconi d\'oro (+50% oro), armi affilate (+25% danni), armature (+25% vita) e statua di pietra (+1500 vita).',
-      'Campagna classica: 8 livelli contro nazioni diverse (Swordwrath, Archidonis, Speartos, Magikill, Giant, l\'orda del Chaos con Crawler, Dead e Juggerknight, l\'Order ribelle e Medusa), ognuna col suo paesaggio; a ogni livello hai un\'unità in più. Torneo Crown of Inamorta: 5 battaglie di fila con tutte le unità, alla prima sconfitta sei fuori. In più giocatori l\'esercito è in comune e i computer del tavolo guidano i nemici. Sfida: uno contro uno (posti pari a sinistra, dispari a destra). Endless Deads: di giorno ti prepari, di notte arrivano i non morti, sempre di più.',
+      'Campagna classica: 8 livelli contro nazioni diverse (Swordwrath, Archidonis, Speartos, Magikill, Giant, l\'orda del Chaos con Crawler, Dead e Juggerknight, l\'Order ribelle e Medusa), ognuna col suo paesaggio; a ogni livello hai un\'unità in più. Torneo Crown of Inamorta: 5 battaglie di fila con tutte le unità, alla prima sconfitta sei fuori. In più giocatori l\'esercito è in comune (anche coi computer del tavolo). Sfida: uno contro uno (posti pari a sinistra, dispari a destra). Endless Deads: di giorno ti prepari, di notte arrivano i non morti, sempre di più.',
       'Il computer facile ha meno oro e attacca tardi; il medio bilancia miniere ed esercito; il difficile ha più oro, compra i potenziamenti e risponde a quello che schieri tu.',
     ],
   },

@@ -153,3 +153,52 @@ const { GIOCHI } = require('../../giochi');
   }
   console.log(`✓ Quiz: ${viste.size} domande, nessuna doppia`);
 }
+
+// ---- Chi è l'impostore con due impostori ----
+{
+  const M = GIOCHI.impostore;
+  assert.strictEqual(M.crea({ n: 5, opzioni: { impostori: 2 } }).impostori.length, 1, 'con meno di 6 giocatori un impostore solo');
+  const nuova = () => {
+    const g = M.crea({ n: 6, opzioni: { impostori: 2, giri: 2 } });
+    g.impostori = [1, 4]; g.parola = 'gatto'; g.apre = 0; g.turno = 0;
+    for (let k = 0; k < 12; k++) g.azione(g.turno, { tipo: 'indizio', testo: `indizio ${k}` });
+    assert.strictEqual(g.fase, 'voto');
+    return g;
+  };
+  // tutti votano "chi" (e lui vota un altro)
+  const vota = (g, chi) => { for (const i of g.inGioco()) g.azione(i, { tipo: 'vota', posto: i === chi ? g.inGioco().find((x) => x !== chi) : chi }); };
+  const g = nuova();
+  assert.ok(g.vista(1).sonoImpostore && g.vista(4).sonoImpostore && g.vista(1).impostore === 1, 'ognuno sa solo di sé');
+  vota(g, 1);
+  assert.strictEqual(g.accusato, 1);
+  g.avanza();
+  assert.ok(g.fase === 'ultima' && g.turno === 1);
+  assert.ok(g.azione(4, { tipo: 'indovina', parola: 'cane' }).errore, 'tenta solo quello scoperto');
+  g.azione(1, { tipo: 'indovina', parola: 'cane' });
+  assert.ok(g.fase === 'indizi' && g.scoperti.has(1) && !g.finita, 'primo scoperto: si cerca l\'altro');
+  assert.ok(g.azione(0, { tipo: 'vota', posto: 1 }).errore);
+  for (let k = 0; k < 5; k++) g.azione(g.turno, { tipo: 'indizio', testo: `altro ${k}` });
+  assert.strictEqual(g.fase, 'voto');
+  assert.ok(!g.inGioco().includes(1), 'lo scoperto non vota più');
+  vota(g, 4);
+  g.avanza();
+  g.azione(4, { tipo: 'indovina', parola: 'topo' });
+  assert.strictEqual(g.esito, 'scoperto');
+  g.avanza();
+  assert.ok(g.finita && !g.risultato.vincitori.includes(1) && !g.risultato.vincitori.includes(4) && g.risultato.vincitori.length === 4, 'scoperti tutti e due: vincono gli altri');
+  // il secondo indovina la parola: vincono tutti e due gli impostori
+  const h = nuova();
+  vota(h, 4); h.avanza();
+  h.azione(4, { tipo: 'indovina', parola: 'gatto' });
+  h.avanza();
+  assert.deepStrictEqual(h.risultato.vincitori.sort(), [1, 4], 'vincono entrambi gli impostori');
+  // un innocente accusato: vincono gli impostori
+  const k = nuova();
+  vota(k, 2); k.avanza(); k.avanza();
+  assert.deepStrictEqual(k.risultato.vincitori.sort(), [1, 4]);
+  // uno scappa: si continua con l'altro
+  const f = nuova();
+  f.esce(1);
+  assert.ok(!f.finita && f.fase === 'voto');
+  console.log('✓ Impostore con due impostori: si cercano tutti e due, vincono insieme, chi scappa');
+}

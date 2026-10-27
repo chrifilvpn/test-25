@@ -125,7 +125,7 @@
   socket.on('prof', () => Boss.attiva({ subito: true }));
   // esecuzione pubblica (qualcuno ha scritto 67 in chat): il nome finisce nel vulcano
   // "enrico papi" in chat: parte il video per tutti
-  socket.on('papi', (d) => { if (window.Esecuzione) Esecuzione.papi(d || {}); });
+  socket.on('papi', (d) => { if (window.Esecuzione) Esecuzione.papi({ ...(d || {}), chiuso: () => { if (!(d && d.globale)) socket.emit('papiChiuso'); } }); });
   socket.on('esecuzione', (d) => { if (window.Esecuzione) Esecuzione.avvia({ ...d, sonoIo: d.sonoIo !== undefined ? d.sonoIo : !!(stato && d.posto === stato.mioPosto) }); });
   // giochi in tempo reale: lo stato leggero arriva a ogni tick
   socket.on('tick', (d) => { const T = stato && stato.partita && Tavoli[stato.partita.gioco]; if (T && T.tick) T.tick(ctx, d); });
@@ -197,7 +197,7 @@
     recenti = [id, ...recenti.filter((x) => x !== id)].slice(0, 8);
     mem.set('recenti', JSON.stringify(recenti));
   }
-  const CATEGORIE = [['', 'Tutti'], ['pref', '⭐ Preferiti'], ['recenti', '🕑 Recenti'], ['carte', '🃏 Carte'], ['casino', '🎰 Casinò'], ['strategia', '♟️ Strategia'], ['parole', '🔤 Parole e quiz'], ['azione', '⚡ Azione'], ['squid', '🦑 Squid Game']];
+  const CATEGORIE = [['', 'Tutti'], ['pref', '⭐ Preferiti'], ['recenti', '🕑 Recenti'], ['carte', '🃏 Carte'], ['casino', '🎰 Casinò'], ['strategia', '♟️ Strategia'], ['rompicapo', '🧩 Rompicapo'], ['parole', '🔤 Parole e quiz'], ['azione', '⚡ Azione'], ['squid', '🦑 Squid Game']];
   function disegnaCategorie() {
     $('#filtro-cat').innerHTML = CATEGORIE.map(([k, t]) => `<button type="button" data-cat="${k}" aria-pressed="${filtro.cat === k}">${t}${k === 'pref' && preferiti.size ? ` <small>${preferiti.size}</small>` : ''}</button>`).join('');
   }
@@ -599,9 +599,44 @@
     const firma = s.partita ? `${s.codice}:${s.gioco}:${s.partita.gioco}` : null;
     if (firma !== firmaPartita) { ui = {}; firmaPartita = firma; if (s.partita && !s.spettatore) segnaRecente(s.partita.gioco); }
     if (s.partita && !s.partita.finita && ui._fineDal) { ui._fineDal = null; ui._fineSubito = false; ui._record = null; } // rivincita: si riparte
+    applicaTelefono(s);
     disegnaTutto();
     gestisciChat();
     disegnaVoto();
+  });
+
+  // =================== PASSA IL TELEFONO ===================
+  // con l'opzione «Un solo dispositivo» il server manda anche le viste dei posti degli amici seduti qui (stato.locali):
+  // si mostra lo schermo di chi deve giocare, dopo il sipario «Passa il telefono a…» (così nessuno sbircia)
+  let tel = null; // { codice, attivo, coperto }
+  function applicaTelefono(s, auto = true) {
+    if (!s.locali || !s.partita || s.spettatore) { tel = null; $('#tel-sipario').hidden = true; $('#tel-barra').hidden = true; return; }
+    if (s._mio == null) { s._mio = s.mioPosto; s._mia = s.partita; } // la vista del mio posto, come l'ha mandata il server
+    const mio = s._mio;
+    const vista = (k) => (k === mio ? s._mia : s.locali.viste[k]);
+    const tutti = [mio, ...s.locali.posti];
+    const deve = (k) => { const v = vista(k); return !!v && !v.finita && !v.inAttesa && (v.turno === k || (v.turno == null && s.locali.attesi.includes(k))); };
+    if (!tel || tel.codice !== s.codice || !tutti.includes(tel.attivo)) tel = { codice: s.codice, attivo: tutti.find(deve) ?? mio, coperto: true };
+    // chi aveva lo schermo ha finito: il telefono passa da solo a chi deve giocare
+    if (auto && !deve(tel.attivo)) { const k = tutti.find(deve); if (k !== undefined) { tel.attivo = k; tel.coperto = true; ui = {}; } }
+    if (vista(tel.attivo).finita) tel.coperto = false;
+    s.partita = vista(tel.attivo);
+    s.mioPosto = tel.attivo;
+    const nome = (k) => esc((s.giocatori[k] && s.giocatori[k].nome) || '?');
+    $('#tel-sipario').hidden = !tel.coperto;
+    $('#tel-sipario').innerHTML = `<div class="tel-scheda"><p class="tel-icona">📱</p><h2>Passa il telefono a <b>${nome(tel.attivo)}</b></h2>
+      <p>Gli altri non guardano lo schermo!</p><button type="button" class="bottone primario" data-tel-mostra>Sono ${nome(tel.attivo)}: mostra</button></div>`;
+    $('#tel-barra').hidden = false;
+    $('#tel-barra').innerHTML = `<span>📱 Schermo di <b>${nome(tel.attivo)}</b> · passa a:</span>${tutti.filter((k) => k !== tel.attivo).map((k) => `<button type="button" class="bottone mini-bt" data-tel-passa="${k}">${nome(k)}${deve(k) ? ' ⏳' : ''}</button>`).join('')}`;
+  }
+  document.addEventListener('click', (e) => {
+    if (!tel || !stato) return;
+    if (e.target.closest('[data-tel-mostra]')) { tel.coperto = false; $('#tel-sipario').hidden = true; return; }
+    const b = e.target.closest('[data-tel-passa]');
+    if (!b) return;
+    tel.attivo = Number(b.dataset.telPassa); tel.coperto = true; ui = {};
+    applicaTelefono(stato, false);
+    disegnaTutto();
   });
 
   // =================== AMMIRAGLIATO (amministratore) ===================
@@ -775,6 +810,8 @@
     }
 
     const scambi = stato.scambi || [];
+    // mentre si scrive il nome di un amico la lista non si ridisegna (si perderebbe il cursore)
+    if (document.activeElement && document.activeElement.dataset && document.activeElement.dataset.telNome != null) return disegnaFineSala(m);
     $('#lista-posti').innerHTML = stato.giocatori.map((g, i) => {
       const io = i === stato.mioPosto && !stato.spettatore;
       if (stato.spettatore) {
@@ -782,6 +819,9 @@
           : `<li class="vuoto"><span>Posto libero</span><span class="posto-az"><button class="bottone mini-bt" data-prendi="${i}">Siediti qui</button></span></li>`;
       }
       const coppia = giocaInCoppia() ? `<span class="squadra">coppia ${i % 2 === 0 ? 'A' : 'B'}</span>` : squadraSala(m, i);
+      if (!g && stato.sonoHost && m.passaTelefono && stato.opzioni.telefono === 'si') {
+        return `<li class="vuoto"><span>📱 <input class="tel-nome" data-tel-nome="${i}" maxlength="18" placeholder="Nome di chi gioca qui" value="${esc(nomiTelefono[i] || '')}"></span>${coppia}</li>`;
+      }
       if (!g) {
         return `<li class="vuoto"><span>Posto libero</span>${coppia}
           <span class="posto-az">
@@ -800,11 +840,17 @@
         </span></li>`;
     }).join('');
 
+    disegnaFineSala(m);
+  }
+  function disegnaFineSala(m) {
     const liberi = stato.giocatori.filter((g) => !g).length;
+    const telefono = m.passaTelefono && stato.opzioni.telefono === 'si';
     disegnaSalaExtra(m, liberi);
     $('#inizia').hidden = !stato.sonoHost;
-    $('#inizia').disabled = liberi > 0 && !m.postiLiberiAlComputer;
-    $('#nota-attesa').textContent = liberi && m.postiLiberiAlComputer
+    $('#inizia').disabled = liberi > 0 && !m.postiLiberiAlComputer && !telefono;
+    $('#nota-attesa').textContent = liberi && telefono
+      ? `📱 Un solo dispositivo: scrivi i nomi di chi gioca con te in ${liberi === 1 ? 'questo posto' : `questi ${liberi} posti`} (ci si passerà il telefono), oppure aspetta altri amici con il loro telefono.`
+      : liberi && m.postiLiberiAlComputer
       ? `${liberi === 1 ? 'C\'è un posto libero' : `Ci sono ${liberi} posti liberi`}: se iniziate così ${liberi === 1 ? 'diventa un compagno' : 'diventano compagni'} del computer.`
       : liberi
       ? `${liberi === 1 ? 'Manca un giocatore' : `Mancano ${liberi} giocatori`}. ${stato.sonoHost ? (m.soloPersone ? 'Aspetta che arrivino gli amici: in questo gioco non si usa il computer.' : 'Aspetta gli amici o metti il computer nei posti liberi.') : ''}`
@@ -933,7 +979,15 @@
     for (const s of $$('#sala-opzioni [data-opz]')) opzioni[s.dataset.opz] = valoreOpz(s);
     socket.emit('impostaGioco', { gioco: stato.gioco, opzioni });
   });
-  $('#inizia').addEventListener('click', () => socket.emit('inizia'));
+  // i nomi degli amici sullo stesso dispositivo (si ricordano nel browser per la prossima partita)
+  const nomiTelefono = (() => { try { return JSON.parse(mem.get('nomiTelefono', '{}')) || {}; } catch { return {}; } })();
+  document.addEventListener('input', (e) => {
+    const k = e.target.dataset && e.target.dataset.telNome;
+    if (k == null) return;
+    nomiTelefono[k] = e.target.value;
+    mem.set('nomiTelefono', JSON.stringify(nomiTelefono));
+  });
+  $('#inizia').addEventListener('click', () => socket.emit('inizia', { nomi: stato ? stato.giocatori.map((g, i) => (g ? null : nomiTelefono[i] || null)) : [] }));
   $('#esci-attesa').addEventListener('click', esci);
   $('#copia-link').addEventListener('click', async () => {
     const link = `${location.origin}${location.pathname}?tavolo=${stato.codice}`;
@@ -957,7 +1011,8 @@
     get ui() { return ui; },
     nome: nomeDi,
     slot,
-    invia(azione) { if (!stato.spettatore) socket.emit('azione', azione); },
+    // passa il telefono: la mossa è di chi ha lo schermo in questo momento
+    invia(azione) { if (!stato.spettatore) socket.emit('azione', stato._mio != null && stato.mioPosto !== stato._mio ? { ...azione, per: stato.mioPosto } : azione); },
     chat(testo) { socket.emit('chat', testo); }, // per i pulsanti che mandano un comando (es. !ricarica)
     emetti(evento, dati) { socket.emit(evento, dati); },
     ridisegna() { disegnaGioco(); },

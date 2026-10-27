@@ -8,7 +8,8 @@
 //   prove       il master ha chiesto prove o tiri salvezza: ognuno tira i suoi dadi, poi il master racconta l'esito
 //   combattimento  la mappa tattica a turni (combattimento.js); alla fine esperienza e livelli, e si torna al racconto
 // Al tavolo con gli amici uno può fare il master al posto dell'IA (dm.js): l'IA gli fa da consigliere.
-// Niente salvataggi: la campagna vive finché il tavolo è aperto. I file delle regole sono in giochi3/draghi/.
+// La campagna vive finché il tavolo è aperto, ma si può scaricare e riprendere da un file (salva.js). I file delle
+// regole sono in giochi3/draghi/.
 const R = require('./draghi/regole');
 const B = require('./draghi/base');
 const { CLASSI } = require('./draghi/classi');
@@ -22,6 +23,7 @@ const H = require('./draghi/horror');
 const INC = require('./draghi/incubo');
 const { TempoReale } = require('./draghi/tempo-reale');
 const DM = require('./draghi/dm');
+const SALVA = require('./draghi/salva');
 
 const AMBIENTAZIONI = ['classica', 'oscura', 'pirati', 'citta', 'selvaggia'];
 const ATTESA_DICHIARAZIONI = 150000; // dopo la prima azione scritta, al massimo 2 minuti e mezzo per gli altri
@@ -201,6 +203,9 @@ class Draghi {
       return { ok: true };
     }
     if (a.tipo.startsWith('dm-')) return this.azioneDm(p, a);
+    // 💾 scarica la campagna (chiunque, quando vuole) e 📂 riprendila da un file (salva.js)
+    if (a.tipo === 'salva') return this.azioneSalva(p);
+    if (a.tipo === 'riprendi') return this.azioneRiprendi(p, a.dati);
     if (p === this.dm && this.fase === 'creazione' && !['idea', 'inizia'].includes(a.tipo)) return { errore: 'Sei il master: non hai un personaggio' };
     if (a.tipo === 'note') { const pg = this.pg[p]; if (!pg) return { errore: 'Prima crea il personaggio' }; pg.note = String(a.testo || '').slice(0, 3000); return { ok: true }; }
     if (this.fase === 'creazione') return this.azioneCreazione(p, a);
@@ -238,7 +243,7 @@ class Draghi {
       if (this.cp) this.dopoCreazioneIncubo(r.pg, a.casuale || this.bot[p] ? { ...s, nome: a.scelte && a.scelte.nome } : s);
       this.pg[p] = r.pg;
       this.annuncia(p, `ha creato ${r.pg.nome}, ${B.STIRPI[r.pg.stirpe].nome.toLowerCase()} ${CLASSI[r.pg.classe].nome.toLowerCase()}`, `${r.pg.nome} è pront${ao(r.pg)} all'avventura!`);
-      if (this.tuttiPronti()) this.iniziaAvventura();
+      if (this.tuttiPronti() && !this.inRipresa) this.iniziaAvventura();
       return { ok: true };
     }
     if (a.tipo === 'suggerisci') {
@@ -704,6 +709,7 @@ class Draghi {
       catalogo: this.fase === 'creazione' ? catalogo(this.cp ? this.cp.id : null) : null,
       incantesimi: this.fase !== 'creazione' ? infoIncantesimi(this.pg) : null,
       pronti: this.pg.map(Boolean), nomiArmature: NOMI_ARMATURE,
+      salvataggio: this.vistaSalvataggio(p),
       turno: null, inAttesa: false, finita: this.finita, risultato: this.risultato, evento: this.evento,
     };
   }
@@ -712,6 +718,7 @@ class Draghi {
 // i metodi delle ambientazioni horror a turni (con i getter: per questo non Object.assign)
 Object.defineProperties(Draghi.prototype, Object.getOwnPropertyDescriptors(INC.metodi));
 Object.defineProperties(Draghi.prototype, Object.getOwnPropertyDescriptors(DM.metodi));
+Object.defineProperties(Draghi.prototype, Object.getOwnPropertyDescriptors(SALVA.metodi));
 
 const NOMI_ARMATURE = Object.fromEntries(Object.entries(B.ARMATURE).map(([k, v]) => [k, v.nome]));
 
@@ -790,7 +797,7 @@ module.exports = {
       'Quando l\'esito è incerto il master chiede una PROVA (d20 + abilità contro una difficoltà) o un TIRO SALVEZZA: ognuno tira i suoi dadi con il pulsante. L\'ispirazione dà vantaggio. I conti li fa il gioco, sempre secondo le regole.',
       'COMBATTIMENTO: si passa alla mappa tattica a quadretti (1,5 metri). Iniziativa, poi a turno: movimento, un\'azione (attacco, incantesimo, scatto, disimpegno, schivata, aiuto, nascondersi, pozione…), un\'azione bonus e una reazione. Vantaggio e svantaggio, copertura, attacchi di opportunità, critici, condizioni, concentrazione, aree degli incantesimi: tutto come nelle regole. A 0 punti ferita si cade e si tira contro la morte.',
       'Dopo le battaglie e le missioni si guadagnano punti esperienza e si sale di livello (fino al 20°): più punti ferita, nuovi privilegi e incantesimi.',
-      'La campagna dura finché il tavolo è aperto (non si salva). Chi ha aperto il tavolo può chiuderla quando vuole.',
+      'La campagna dura finché il tavolo è aperto, ma con 💾 (nel Diario) chiunque scarica un file della campagna: per continuare un altro giorno, chi apre un tavolo nuovo (a turni) lo riprende con 📂 prima di cominciare. Chi ha aperto il tavolo può chiudere la campagna quando vuole.',
       'MASTER IN CARNE E OSSA (al tavolo con gli amici, a turni): prima di cominciare chi ha aperto il tavolo tocca il 🎩 accanto a un giocatore, che farà il master al posto dell\'IA (non crea il personaggio). Il master ha la sua schermata: legge cosa fanno i giocatori, racconta, chiede prove e tiri salvezza, fa partire i combattimenti (i nemici li muove il gioco), dà oggetti, oro ed esperienza e giudica le azioni libere; vede la mappa completa, il bestiario e i segreti dell\'ambientazione. L\'IA è il suo consigliere (le chiede regole, idee, nomi, CD), gli scrive una bozza da modificare, risponde al posto suo quando vuole o fa tutto in automatico. Se il master si assenta, risponde l\'IA.',
       'MORTE PERMANENTE: chi muore resta morto. Ma scrivendo !revive in chat (in tutte le modalità) i morti tornano in vita con tutti i punti ferita e le stesse cose che avevano.',
       'AMBIENTAZIONI HORROR (dal menu Ambientazione): la stazione Sevastopol di Alien: Isolation, la base sottomarina PATHOS-II di SOMA, il manicomio Mount Massive di Outlast (senza armi da fuoco: videocamera e batterie). Solo umani, con classi a tema (addetto alla sicurezza, ingegnere, medico, tecnico informatico, sommozzatore, giornalista…). La mappa è fatta di settori collegati da porte, ascensori, tram e condotti; alcune porte si aprono solo con l\'oggetto giusto. Gli obiettivi si fanno uno dopo l\'altro fino al finale.',

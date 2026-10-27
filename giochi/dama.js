@@ -260,6 +260,7 @@ function bot(g, p, livello) {
 module.exports = {
   meta: {
     id: 'dama',
+    pensaLento: true, // il computer difficile pensa a lungo: lo fa in un thread a parte (giochi/pensatore.js)
     nome: 'Dama',
     tipo: 'tabellone',
     giocatori: [2],
