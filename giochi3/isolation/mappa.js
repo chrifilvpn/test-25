@@ -3,7 +3,7 @@
 // nel browser si carica da /js/isolation-mappa.js e si trova in window.IsolationMappa.
 // Unità: il decimetro (un quadretto è 25 dm = 2,5 m, il soffitto è a 32 dm). La griglia è COLS × RIGHE quadretti.
 (function (radice) {
-  const T = 25, COLS = 48, RIGHE = 33, SOFFITTO = 32;
+  const T = 25, COLS = 48, RIGHE = 43, SOFFITTO = 32;
 
   // le stanze (interni, estremi compresi) con lo stile che decide arredi, luci e musica nel browser
   const STANZE = [
@@ -15,33 +15,45 @@
     { id: 'alloggi', nome: 'Habitation · Mensa', x0: 17, y0: 21, x1: 29, y1: 30, stile: 'alloggi', luce: 0.35 },
     { id: 'manutenzione', nome: 'Manutenzione · Gemini', x0: 33, y0: 21, x1: 38, y1: 30, stile: 'manutenzione', luce: 0.12 },
     { id: 'attracco', nome: 'Attracco del Torrens', x0: 41, y0: 11, x1: 46, y1: 20, stile: 'attracco', luce: 0.5 },
+    // i settori in basso: la sicurezza (la tessera d'accesso), i laboratori Lorenz (il fusibile) e il nido
+    { id: 'sicurezza', nome: 'Sicurezza · Ufficio del Marshal', x0: 2, y0: 34, x1: 13, y1: 40, stile: 'sicurezza', luce: 0.4 },
+    { id: 'lorenz', nome: 'Lorenz Systech · Laboratori', x0: 18, y0: 34, x1: 31, y1: 40, stile: 'laboratorio', luce: 0.42 },
+    { id: 'nido', nome: 'Il Nido · Reattore primario', x0: 35, y0: 33, x1: 45, y1: 40, stile: 'nido', luce: 0.06 },
   ];
   // i corridoi (rettangoli scavati); dove toccano una stanza c'è una porta
   const CORRIDOI = [
     [12, 15, 40, 16], // il corridoio principale (largo due)
     [6, 9, 6, 11], [23, 10, 24, 14], [39, 10, 39, 14], [7, 20, 7, 22], [23, 17, 24, 20], [35, 17, 35, 20],
     [13, 5, 16, 5], [31, 6, 33, 6], [14, 28, 16, 28], [30, 24, 32, 24],
+    [7, 32, 7, 33], [24, 31, 24, 33], [36, 31, 36, 32], [14, 37, 17, 37], [32, 37, 34, 37],
   ];
   // porte bloccate finché non tornano tutti e tre i generatori (l'uscita verso il Torrens)
   const BLOCCATE = ['40,15', '40,16'];
   // gli oggetti: L armadietto, T scrivania o letto (ci si passa sotto solo accucciati), m terminale, c cassa,
   // G generatore, V grata del condotto, b batteria, f carburante, r razzo di segnalazione, S partenza, E uscita,
-  // P botole dei passaggi di servizio per le persone (a coppie: si entra in una e si esce dall'altra)
+  // P botole dei passaggi di servizio per le persone (a coppie: si entra in una e si esce dall'altra),
+  // J dove partono i Working Joe, U le uova dei facehugger, k la tessera d'accesso, z il fusibile
   const OGGETTI = {
     L: [[2, 13], [2, 18], [11, 13], [4, 12], [9, 19], [2, 2], [2, 8], [12, 2], [9, 8], [17, 2], [30, 2], [17, 9], [30, 9], [34, 9], [44, 2], [44, 9],
-      [2, 31], [13, 31], [13, 23], [17, 21], [29, 30], [17, 30], [29, 21], [33, 30], [38, 30], [41, 11], [46, 20]],
+      [2, 31], [13, 31], [13, 23], [17, 21], [29, 30], [17, 30], [29, 21], [33, 30], [38, 30], [41, 11], [46, 20],
+      [2, 34], [13, 34], [2, 40], [18, 34], [31, 34], [18, 40]],
     T: [[5, 15], [6, 15], [7, 15], [4, 3], [6, 3], [8, 3], [10, 3], [20, 4], [21, 4], [26, 4], [27, 4], [20, 7], [21, 7], [26, 7], [27, 7],
-      [37, 4], [38, 4], [41, 7], [42, 7], [20, 24], [21, 24], [22, 24], [25, 24], [26, 24], [27, 24], [20, 27], [21, 27], [25, 27], [26, 27], [4, 25], [5, 25]],
-    m: [[12, 6], [24, 2], [25, 2], [36, 2], [38, 2], [40, 2], [2, 16], [8, 31], [46, 12]],
-    c: [[10, 26], [11, 26], [10, 29], [34, 23], [37, 25], [34, 27], [28, 15], [31, 16], [19, 15]],
+      [37, 4], [38, 4], [41, 7], [42, 7], [20, 24], [21, 24], [22, 24], [25, 24], [26, 24], [27, 24], [20, 27], [21, 27], [25, 27], [26, 27], [4, 25], [5, 25],
+      [5, 36], [6, 36], [9, 36], [10, 36], [21, 37], [22, 37], [27, 37], [28, 37]],
+    m: [[12, 6], [24, 2], [25, 2], [36, 2], [38, 2], [40, 2], [2, 16], [8, 31], [46, 12], [4, 34], [25, 34], [31, 39]],
+    c: [[10, 26], [11, 26], [10, 29], [34, 23], [37, 25], [34, 27], [28, 15], [31, 16], [19, 15], [19, 40], [29, 40], [37, 34], [45, 39], [12, 40]],
     G: [[7, 6], [7, 28], [40, 5]],
-    V: [[9, 17], [4, 7], [24, 6], [35, 5], [11, 24], [23, 29], [36, 28], [16, 16], [33, 15], [43, 18]],
-    b: [[10, 5], [29, 8], [43, 4], [19, 29], [37, 22], [3, 12], [22, 2], [34, 2], [25, 30], [13, 24], [27, 29], [8, 23]],
-    f: [[12, 30], [38, 23], [30, 3], [2, 19], [27, 9], [39, 12], [33, 21], [18, 28]],
-    r: [[3, 17], [28, 22], [35, 8], [11, 2], [23, 7], [41, 9], [6, 31], [36, 30]],
+    V: [[9, 17], [4, 7], [24, 6], [35, 5], [11, 24], [23, 29], [36, 28], [16, 16], [33, 15], [43, 18], [8, 39], [25, 38], [40, 34]],
+    b: [[10, 5], [29, 8], [43, 4], [19, 29], [37, 22], [3, 12], [22, 2], [34, 2], [25, 30], [13, 24], [27, 29], [8, 23], [3, 38], [30, 35]],
+    f: [[12, 30], [38, 23], [30, 3], [2, 19], [27, 9], [39, 12], [33, 21], [18, 28], [44, 34], [20, 38]],
+    r: [[3, 17], [28, 22], [35, 8], [11, 2], [23, 7], [41, 9], [6, 31], [36, 30], [42, 40], [11, 35]],
     S: [[4, 14], [4, 17], [5, 13], [5, 18], [8, 14], [8, 17], [9, 13], [9, 18]],
     E: [[45, 14], [46, 14], [45, 15], [46, 15], [45, 16], [46, 16], [45, 17], [46, 17]],
-    P: [[11, 7], [18, 5], [10, 18], [3, 28], [43, 7], [37, 29], [28, 26], [29, 6]],
+    P: [[11, 7], [18, 5], [10, 18], [3, 28], [43, 7], [37, 29], [28, 26], [29, 6], [4, 40], [27, 35]],
+    J: [[8, 38], [21, 35], [29, 36], [24, 5], [27, 25], [40, 7]],
+    U: [[38, 36], [40, 38], [42, 35], [43, 38], [37, 39], [35, 25], [36, 23]],
+    k: [[11, 38]],
+    z: [[24, 40]],
   };
   // dove ci si nasconde: armadietti e casse grandi
   const NASCONDIGLI = OGGETTI.L.concat(OGGETTI.c);

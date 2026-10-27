@@ -212,6 +212,7 @@ giochi3/hex.js
 giochi3/hockey.js
 giochi3/isolation.js
 giochi3/isolation/alieno.js
+giochi3/isolation/creature.js
 giochi3/isolation/mappa.js
 giochi3/luci.js
 giochi3/navale-dati.js
@@ -486,6 +487,7 @@ public/js/giochi3/wavelength.css
 public/js/giochi3/wavelength.js
 public/js/giochi3/xiangqi.css
 public/js/giochi3/xiangqi.js
+public/js/isolation/creature.js
 public/js/isolation/motore.js
 public/js/isolation/texture.js
 public/js/isolation/xenomorfo.js
