@@ -2917,7 +2917,7 @@ fissa('PONTE FRAGILE');
     assert.ok(g.azione(0, { tipo: 'riflesso' }).ok && g.azione(0, { tipo: 'riflesso' }).errore, 'un riflesso per round');
     assert.ok([0, 1].includes(g.vista(0).indizio) && g.vista(1).indizio === null, 'l\'indizio lo vede solo chi l\'ha chiesto');
     // la spinta: non subito, solo verso chi è sulla stessa riga davanti al vetro sconosciuto, poi si ricarica piano
-    const s = M.crea({ n: 3, opzioni: { lunghezza: 'corto', round: 1 } });
+    const s = M.crea({ n: 3, opzioni: { lunghezza: 'lungo', tempo: 'largo', round: 1 } }); // 162 s: c'è tempo per la ricarica
     assert.ok(/ricarica/.test(s.azione(0, { tipo: 'spingi', chi: 1 }).errore), 'all\'inizio la spinta non è pronta');
     ora += SPINTA_PRIMA;
     assert.ok(s.vista(0).spintaFra === 0, 'la spinta è pronta dopo un po\'');
