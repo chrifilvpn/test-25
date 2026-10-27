@@ -11,7 +11,7 @@
     const p = ctx.partita, ui = ctx.ui;
     if (p.sonoImpostore) {
       return `<section class="ip-ruolo impostore" aria-label="Il tuo ruolo">${LENTE}
-        <div><h3>Sei l'impostore</h3><p>Non conosci la parola. Ascolta gli indizi degli altri e inventane uno credibile.</p></div></section>`;
+        <div><h3>Sei l'impostore${p.categoria ? ` <small>${esc(p.categoria)}</small>` : ''}</h3><p>Non conosci la parola${p.categoria ? ', ma sai la categoria' : ''}. Ascolta gli indizi degli altri e inventane uno credibile.</p></div></section>`;
     }
     const vedi = !!ui.vediParola;
     return `<section class="ip-ruolo" aria-label="La tua parola">${BUSTA}
@@ -104,6 +104,7 @@
       scoperto: p.tentativo ? `Ha provato con «${esc(p.tentativo)}»: sbagliato!` : 'Non ha provato a indovinare.',
       fuga: 'Ha lasciato la partita.',
       resta: 'Siete rimasti in pochi: l\'impostore non si può più trovare.',
+      pareggio: 'Troppi pareggi: l\'impostore è rimasto nascosto.',
     }[p.esito] || '';
     return `<div class="ip-finale ${p.vinceImpostore === sonoIo ? 'verde' : 'rosso'}" style="${ritardo(ctx.ui, 'finale')}">
       <p class="ip-f1">L'impostore era…</p>
@@ -128,7 +129,13 @@
       const giro = p.fase === 'indizi' ? `<p class="ip-giro">${p.giro > p.giriBase ? `Spareggio: giro in più ${p.giro - p.giriBase}` : `Giro ${p.giro} di ${p.giriBase}`} · poi si vota</p>` : '';
       return `<div class="ip ip-fase-${p.fase}">${testa}${giro}${centro}</div>`;
     },
-    reset(ctx) { window.NuoviTesto && window.NuoviTesto(ctx); },
+    reset(ctx) {
+      window.NuoviTesto && window.NuoviTesto(ctx);
+      // l'indizio scritto resta finché il server non lo accetta (se viene rifiutato non si riscrive da capo)
+      const p = ctx.partita, ui = ctx.ui, miei = p.indizi.filter((d) => d.posto === ctx.mio).length;
+      if (ui._mieiIndizi !== undefined && miei > ui._mieiIndizi) ui.t_indizio = '';
+      ui._mieiIndizi = miei;
+    },
     dopo(ctx) {
       // rimette il cursore nella casella se si stava scrivendo
       const k = ctx.ui.fuoco;
@@ -163,14 +170,14 @@
       if (az === 'indizio') {
         const t = (ui.t_indizio || '').trim();
         if (!t) return ctx.avviso('Scrivi prima l\'indizio');
-        ui.t_indizio = ''; ui.fuoco = null;
+        ui.fuoco = null;
         return ctx.invia({ tipo: 'indizio', testo: t });
       }
       if (az === 'vota') return ctx.invia({ tipo: 'vota', posto: Number(el.dataset.posto) });
       if (az === 'indovina') {
         const t = (ui.t_tentativo || '').trim();
         if (!t) return ctx.avviso('Scrivi la parola');
-        ui.t_tentativo = ''; ui.fuoco = null;
+        ui.fuoco = null;
         return ctx.invia({ tipo: 'indovina', parola: t });
       }
     },

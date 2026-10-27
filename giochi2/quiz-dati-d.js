@@ -13,7 +13,6 @@ Sant'Agata è la patrona di quale città?|Catania|Palermo|Siracusa|Enna|2
 In quale città si trova la grande Reggia voluta da Carlo di Borbone, con oltre mille stanze?|Caserta|Venaria Reale|Monza|Colorno|1
 Dove si trova la Valle dei Templi?|Agrigento|Siracusa|Trapani|Taormina|1
 Quale vulcano sorge vicino a Catania?|Etna|Vesuvio|Stromboli|Vulcano|1
-Qual è la regione italiana più piccola?|Valle d'Aosta|Molise|Liguria|Umbria|1
 Quale di queste regioni non è bagnata dal mare?|Umbria|Marche|Abruzzo|Molise|1
 In quale zona d'Italia si mangia tipicamente la piadina?|Romagna|Sicilia|Liguria|Trentino|1
 Gli arancini (o arancine) sono tipici di quale regione?|Sicilia|Calabria|Campania|Puglia|1
@@ -74,7 +73,6 @@ Come si chiama il teatro dell'opera di Napoli, il più antico d'Europa ancora at
 Come si chiama il teatro dell'opera di Venezia?|La Fenice|Il San Carlo|Il Regio|Il Petruzzelli|1
 Come si chiama il vento freddo da nord-est che soffia forte a Trieste?|Bora|Scirocco|Maestrale|Libeccio|1
 Come si chiama il vento caldo che arriva in Italia dall'Africa?|Scirocco|Bora|Tramontana|Grecale|1
-Quale fiume attraversa Roma?|Tevere|Arno|Aniene|Po|1
 Quale città toscana è famosa per le sue torri medievali, tra le colline?|San Gimignano|Livorno|Grosseto|Prato|1
 Su quale lago si affaccia Bellagio?|Lago di Como|Lago Maggiore|Lago di Garda|Lago d'Iseo|2
 In quale regione si trovano le Langhe, famose per vini e tartufi?|Piemonte|Toscana|Umbria|Marche|2
@@ -216,7 +214,6 @@ Da che cosa producono il miele le api?|Dal nettare dei fiori|Dalla linfa degli a
 Quale vitamina produce la nostra pelle quando prende il sole?|Vitamina D|Vitamina C|Vitamina A|Vitamina B12|2
 `,
   geografia: `
-Quale stretto separa la Sicilia dalla Calabria?|Stretto di Messina|Stretto di Gibilterra|Bocche di Bonifacio|Canale d'Otranto|1
 Come si chiama il braccio di mare tra la Sardegna e la Corsica?|Bocche di Bonifacio|Stretto di Messina|Canale di Sicilia|Canale d'Otranto|2
 In quale mare sfocia il Danubio?|Mar Nero|Mar Baltico|Mare del Nord|Mar Mediterraneo|2
 Quante stelle ci sono sulla bandiera dell'Unione europea?|12|27|15|10|1

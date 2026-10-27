@@ -1,6 +1,6 @@
 // CHI È L'ALIENO: un equipaggio di astronauti su una base spaziale; uno o più di loro sono Alieni che si sono presi un
 // corpo umano e non si distinguono dagli altri. L'equipaggio vince finendo i compiti o espellendo tutti gli Alieni;
-// gli Alieni vincono quando sono tanti quanti gli umani vivi. Solo persone (niente computer), da 4 a 10.
+// gli Alieni vincono quando sono tanti quanti gli umani vivi. Da 4 a 10; i posti vuoti li può prendere il computer (alieno-bot.js).
 // Mappa a tile (40 px), stanze collegate da corridoi che si diramano, con due scorciatoie. Ognuno vede solo intorno
 // a sé e i muri fermano lo sguardo: il server manda a ognuno solo quello che vede.
 const { Arena } = require('./arena');
@@ -262,6 +262,12 @@ class Alieno extends Arena {
     if (this.fase2 === 'discussione' || this.fase2 === 'voto') { this.sentiAccuse(p, testo); return {}; }
     if (this.fase2 === 'fine') return {};
     return { nascondi: true, privato: '🤫 Fuori dalle riunioni non si parla: premi il pulsante in Sala comune o segnala un corpo' };
+  }
+  // le reazioni rapide (emoji) seguono le regole della chat: i vivi solo nelle riunioni, i fantasmi mai (arriverebbero a tutti)
+  puoReagire(p) {
+    if (this.finita || this.fase !== 'gioco' || this.fase2 === 'fine') return true;
+    const e = this.e[p];
+    return !!(e && e.vivo && (this.fase2 === 'discussione' || this.fase2 === 'voto'));
   }
   // i computer leggono la chat delle riunioni: chi viene nominato da una persona diventa più sospetto
   sentiAccuse(p, testo) {
