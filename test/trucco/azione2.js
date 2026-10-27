@@ -67,16 +67,18 @@ try {
   // ---- ponte fragile: il suggerimento dice i vetri buoni da qui alla fine ----
   {
     const g = crea('ponte', 3);
-    assert.strictEqual(g.turno, 0);
+    assert.strictEqual(g.turno, null);
+    g.stato[1] = 'caduto';
     T.arma(g, 1);
-    assert.strictEqual(g.suggerimentoWin(1), null, 'ponte: niente suggerimento se non tocca a te');
+    assert.strictEqual(g.suggerimentoWin(1), null, 'ponte: niente suggerimento a chi non è più sul ponte');
     T.arma(g, 0);
     T.controllaSuggerimenti(g);
     const s = T.prendiSussurri(g).find((m) => m.posto === 0);
     assert.ok(s && s.testo.endsWith(g.sicuro.map((l) => (l ? 'D' : 'S')).join(' ')), 'ponte: la strada giusta');
     assert.ok(!T.armato(g, 0) && T.armato(g, 1));
-    // seguendola si arriva dall'altra parte
-    for (const l of g.sicuro) { const r = g.azione(0, { tipo: 'salta', lato: l }); assert.ok(r.ok); if (g.inAttesa) break; }
+    // seguendola si arriva dall'altra parte (aspettando l'equilibrio dopo ogni salto)
+    const vero = Date.now; let ora = vero(); Date.now = () => ora;
+    try { for (const l of g.sicuro) { ora += 1000; const r = g.azione(0, { tipo: 'salta', lato: l }); assert.ok(r.ok, r.errore); } } finally { Date.now = vero; }
     assert.strictEqual(g.stato[0], 'salvo');
   }
   // ---- biglie: chi scommette sa quante biglie ha in pugno l'altro ----
