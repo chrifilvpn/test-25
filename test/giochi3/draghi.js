@@ -191,6 +191,29 @@ const { R, B, CLASSI, INCANTESIMI, MOSTRI, MAP, Combattimento, MASTER } = G._tes
     const s = MASTER.leggiRisposta('Solo testo, niente JSON.');
     assert.ok(s.narrazione.includes('Solo testo') && Array.isArray(s.eventi));
     assert.ok(MASTER.istruzioni({ ambientazione: 'oscura', difficolta: 'mortale', lunghezza: 'lunghe', regoleBrevi: '' }).includes('nessun limite'));
+    // risposta interrotta a metà: si tiene il racconto, senza le chiavi del JSON
+    const t = MASTER.leggiRisposta('{"narrazione": "La porta si apre. Dentro, un \\"respiro\\".", "prove": [{"chi": "tutti", "tipo": "perce');
+    assert.strictEqual(t.narrazione, 'La porta si apre. Dentro, un "respiro".');
+    assert.ok(!/narrazione|prove/.test(MASTER.leggiRisposta('{"narrazione": "Il vento ulula tra le rovine e qualcosa si muove nel buio. Poi un ').narrazione));
+    assert.strictEqual(MASTER.masterRiserva({ pazza: true, inizio: true }).eventi[0].titolo, 'Le mutande perdute');
+  }
+  // ---------- gli eventi del master: a chi vanno ----------
+  {
+    const g = G.crea({ n: 3, bot: [null, 'medio', 'medio'], opzioni: {} });
+    g.chiave = '';
+    g.azione(0, { tipo: 'crea', casuale: true, scelte: { nome: 'Aldo' } });
+    g.azione(0, { tipo: 'inizia' });
+    const oro = g.pg.map((p) => p.oro);
+    // un personaggio non giocante con un nome simile, o un evento senza nome, non uccidono nessuno
+    g.applicaEventi([{ tipo: 'morte', chi: 'Aldo il fabbro' }, { tipo: 'morte' }, { tipo: 'morte', chi: 'tutti' }, { tipo: 'ispirazione' }]);
+    assert.ok(g.pg.every((p) => !p.morto && !p.ispirazione), 'morte e ispirazione solo col nome giusto');
+    // l'oro: niente resti persi, un nome sconosciuto va al gruppo, un tetto ai regali enormi
+    g.applicaEventi([{ tipo: 'oro', chi: 'gruppo', quantita: 50 }, { tipo: 'oro', chi: 'Pippo', quantita: 10 }]);
+    assert.strictEqual(g.pg.reduce((s, p, i) => s + p.oro - oro[i], 0), 60);
+    g.applicaEventi([{ tipo: 'oro', chi: 'Aldo', quantita: 1000000 }, { tipo: 'px', quantita: 100000 }]);
+    assert.ok(g.pg[0].oro - oro[0] < 1000 && g.pg.every((p) => p.livello === 2), 'tetti a oro ed esperienza');
+    g.applicaEventi([{ tipo: 'morte', chi: 'Aldo' }]);
+    assert.ok(g.pg[0].morto && !g.pg[1].morto);
   }
   // ---------- una campagna con un finto Gemini ----------
   {
