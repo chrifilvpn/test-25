@@ -215,6 +215,37 @@ const { R, B, CLASSI, INCANTESIMI, MOSTRI, MAP, Combattimento, MASTER } = G._tes
     g.applicaEventi([{ tipo: 'morte', chi: 'Aldo' }]);
     assert.ok(g.pg[0].morto && !g.pg[1].morto);
   }
+  // ---------- 💾 salvare e 📂 riprendere una campagna ----------
+  {
+    const g = G.crea({ n: 3, bot: [null, 'medio', 'medio'], opzioni: { ambientazione: 'pirati', pazza: true, difficolta: 'mortale' } });
+    g.chiave = '';
+    assert.ok(g.azione(0, { tipo: 'salva' }).errore, 'prima di cominciare non si salva');
+    g.azione(0, { tipo: 'crea', casuale: true, scelte: { nome: 'Aldo' } }); g.azione(0, { tipo: 'inizia' });
+    for (let k = 0; k < 5; k++) await new Promise((r) => setImmediate(r));
+    g.controllaTempo();
+    for (let k = 0; k < 200; k++) g.scrivi('master', 'Il vento soffia sul porto. '.repeat(70)); // un racconto lunghissimo
+    g.applicaEventi([{ tipo: 'png', nome: 'Mastro Gufo', descrizione: 'Il locandiere', atteggiamento: 'amico' }, { tipo: 'missione', titolo: 'Il tesoro', descrizione: 'Trovarlo' }, { tipo: 'oro', chi: 'Aldo', quantita: 77 }]);
+    g.diario = 'Siamo arrivati al porto.';
+    assert.ok(g.azione(2, { tipo: 'salva' }).ok);
+    const s = g.vista(2).salvataggio;
+    assert.ok(s && /^draghi-fantasy-.*\.json$/.test(s.nome) && !g.vista(0).salvataggio);
+    assert.ok(Buffer.byteLength(JSON.stringify({ tipo: 'riprendi', dati: s.dati })) < 100000 && s.dati.racconto.length > 5, 'il racconto si accorcia per stare nei 100 kB');
+    const file = JSON.parse(JSON.stringify(s.dati));
+    // tavolo troppo piccolo, file sbagliato, chi non ha aperto il tavolo
+    assert.ok(/almeno 3 posti/.test(G.crea({ n: 2, bot: [null, 'medio'], opzioni: {} }).azione(0, { tipo: 'riprendi', dati: file }).errore));
+    const h = G.crea({ n: 4, bot: [null, null, 'medio', 'medio'], opzioni: {} }); h.chiave = '';
+    assert.ok(h.azione(0, { tipo: 'riprendi', dati: { formato: 'altro' } }).errore);
+    assert.ok(h.azione(1, { tipo: 'riprendi', dati: file }).errore);
+    assert.ok(h.azione(0, { tipo: 'riprendi', dati: file }).ok);
+    assert.ok(h.fase === 'avventura' && h.ambientazione === 'pirati' && h.pazza && h.difficolta === 'mortale');
+    assert.strictEqual(h.pg[0].nome, 'Aldo'); assert.strictEqual(h.pg[0].oro, g.pg[0].oro); assert.strictEqual(h.pg[0].uid, 'pg0');
+    assert.ok(h.pg[3] && h.pg[3].uid === 'pg3', 'il posto in più crea un personaggio');
+    assert.ok(h.png.some((x) => x.nome === 'Mastro Gufo') && h.missioni.some((x) => x.titolo === 'Il tesoro') && h.diario === g.diario);
+    assert.deepStrictEqual(h.mondo.luoghi.map((l) => l.nome), g.mondo.luoghi.map((l) => l.nome)); assert.strictEqual(h.posizione, g.posizione);
+    assert.ok(/Campagna ripresa/.test(h.racconto[h.racconto.length - 1].testo));
+    assert.ok(h.azione(0, { tipo: 'riprendi', dati: file }).errore, 'solo prima di cominciare');
+    assert.ok(!h.azione(0, { tipo: 'dichiara', testo: 'Torno alla locanda' }).errore, 'si continua a giocare');
+  }
   // ---------- una campagna con un finto Gemini ----------
   {
     const risposte = [
