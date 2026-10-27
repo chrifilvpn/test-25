@@ -103,6 +103,14 @@ const fronte = (giu) => { const k = Array.from({ length: 478 }, () => ({ x: 0.5,
 R = G.creaRabbia();
 for (let i = 0; i < 60; i++) assert.ok(!R.aggiungi(calmoOcchiali, fronte(0)), 'punti, calmo: no');
 assert.ok(R.aggiungi({ ...calmoOcchiali, eyeSquintLeft: 0.3, eyeSquintRight: 0.3 }, fronte(0.02)), 'sopracciglia giù e vicine (dai punti) e occhi stretti: sì');
+// rughe tra le sopracciglia: pelle liscia → poco; righe verticali → molto di più
+const pelle = (righe) => { const w = 40, h = 24, px = new Uint8Array(w * h * 4);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const c = righe && x % 6 < 2 ? 140 : 200; px.set([c, c - 30, c - 50, 255], (y * w + x) * 4); }
+  return [px, w, h]; };
+assert.ok(G.misuraRughe(...pelle(true)) > G.misuraRughe(...pelle(false)) * 3, 'le rughe si vedono');
+R = G.creaRabbia();
+for (let i = 0; i < 60; i++) assert.ok(!R.aggiungi(calmoOcchiali, null, G.misuraRughe(...pelle(false)) + 0.01), 'fronte liscia: no');
+assert.ok(R.aggiungi({ ...calmoOcchiali, eyeSquintLeft: 0.3, eyeSquintRight: 0.3 }, null, G.misuraRughe(...pelle(true))), 'rughe tra le sopracciglia e occhi stretti: sì');
 
 // dito alzato anche un po' storto (mano girata di lato)
 const storta = mano(0.5, 0.7, [1]); storta[6] = { x: 0.5, y: 0.56 }; storta[7] = { x: 0.53, y: 0.52 }; storta[8] = { x: 0.56, y: 0.49 };

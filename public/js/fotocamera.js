@@ -314,7 +314,7 @@ window.Fotocamera = (() => {
       const aperte = !!puntiViso && (G.labbra(puntiViso, v.videoWidth || 640, v.videoHeight || 480) > 0.07 || ((espressioni && espressioni.jawOpen) || 0) > 0.08);
       uscite.lingua = dritta && lingua.aggiungi(...boccaDi(v, puntiViso), espressioni, aperte);
       uscite.occhiolino = dritta && occhio.aggiungi(espressioni, puntiViso);
-      uscite.arrabbiato = dritta && rabbia.aggiungi(espressioni, puntiViso);
+      uscite.arrabbiato = dritta && rabbia.aggiungi(espressioni, puntiViso, G.misuraRughe(...fronteDi(v, puntiViso)));
       uscite.socchiusi = dritta && socchiusi.aggiungi(espressioni);
       uscite.triste = dritta && tristezza.aggiungi(espressioni);
     }
@@ -454,6 +454,21 @@ window.Fotocamera = (() => {
     x.drawImage(v, x0 * vw, y0 * vh, sw * vw, sh * vh, 0, 0, R, R);
     const kk = k.map((p) => ({ x: (p.x - x0) / sw, y: (p.y - y0) / sh }));
     return [x.getImageData(0, 0, R, R).data, R, R, kk];
+  }
+
+  // il pezzo di pelle tra le sopracciglia (dove vengono le rughe aggrottando): tra gli inizi delle sopracciglia (55 e
+  // 285), da poco sopra fino all'attaccatura del naso (168), portato a 40×24
+  function fronteDi(v, k) {
+    const c = fronteDi.c || (fronteDi.c = document.createElement('canvas'));
+    if (c.width !== 40) { c.width = 40; c.height = 24; }
+    const x = c.getContext('2d', { willReadFrequently: true });
+    const vw = v.videoWidth || 640, vh = v.videoHeight || 480;
+    const x0 = Math.min(k[55].x, k[285].x), x1 = Math.max(k[55].x, k[285].x);
+    const y1 = k[168].y, y0 = Math.min(k[55].y, k[285].y) - (x1 - x0) * 0.25 * (vw / vh);
+    const sw = (x1 - x0) * vw, sh = (y1 - y0) * vh;
+    if (sw < 4 || sh < 3 || x0 < 0 || y0 < 0 || x1 > 1 || y1 > 1) return [null, 0, 0];
+    x.drawImage(v, x0 * vw, y0 * vh, sw, sh, 0, 0, 40, 24);
+    return [x.getImageData(0, 0, 40, 24).data, 40, 24];
   }
 
   function grigiDi(v) {

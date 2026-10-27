@@ -248,13 +248,15 @@
   // non ne ha bisogno, gli altri segni della faccia arrabbiata rispetto alla faccia calma di chi guarda: occhi
   // stretti, naso arricciato, labbra serrate, angoli della bocca giù e, dai punti del viso, sopracciglia più vicine
   // agli occhi (55-159, 285-386) e più vicine tra loro (55-285 rispetto agli angoli interni degli occhi 133-362).
-  // aggiungi(espressioni, puntiViso?) → true se arrabbiato.
+  // In più le rughe in mezzo alle sopracciglia (quelle verticali che vengono aggrottando): rughe è il numero di
+  // misuraRughe sul pezzo di pelle tra le sopracciglia, e conta quanto è più alto di quello della faccia calma.
+  // aggiungi(espressioni, puntiViso?, rughe?) → true se arrabbiato.
   function creaRabbia({ scarto = 0.22, minimo = 0.3, lento = 0.03, scarto2 = 0.25 } = {}) {
     let riposo = null, prova = '', fila = 0;
-    let riposo2 = null, occhiSu = null, vicine = null; // seconda strada: punteggio e misure della faccia calma
+    let riposo2 = null, occhiSu = null, vicine = null, liscia = null; // seconda strada: punteggio e misure della faccia calma
     const d = (k, a, b) => Math.hypot(k[a].x - k[b].x, k[a].y - k[b].y);
     return {
-      aggiungi(e, k) {
+      aggiungi(e, k, rughe = null) {
         if (!e) return false;
         const v = (n) => e[n] || 0, media = (n) => (v(n + 'Left') + v(n + 'Right')) / 2;
         const giu = media('browDown') + 0.5 * media('noseSneer');
@@ -273,17 +275,20 @@
         }
         // gli occhi stretti da soli non bastano (anche socchiudendoli o con il sole in faccia si stringono): serve almeno
         // un altro segno, naso, bocca o sopracciglia
-        const altri = 0.8 * media('noseSneer') + 0.6 * media('mouthPress') + 0.4 * media('mouthFrown') + punti;
+        let pieghe = 0;
+        if (rughe != null) { if (liscia == null) liscia = rughe; pieghe = Math.min(1, Math.max(0, rughe / (liscia || 0.0001) - 1)); }
+        const altri = 0.8 * media('noseSneer') + 0.6 * media('mouthPress') + 0.4 * media('mouthFrown') + punti + 0.6 * pieghe;
         const segni = media('eyeSquint') + altri;
         if (riposo2 == null) riposo2 = Math.min(segni, 0.3);
         const seconda = segni - riposo2 > scarto2 && altri > 0.15;
         let arrabbiato = (prima || seconda) && sorriso < 0.3;
         if (arrabbiato && ++fila > FILA_MAX) { riposo = giu; riposo2 = segni; if (misure) { occhiSu = misure.su; vicine = misure.tra; } fila = 0; arrabbiato = false; } else if (!arrabbiato) fila = 0;
-        prova = `sopracciglia ${giu.toFixed(2)} (serve ${Math.max(minimo, riposo + scarto).toFixed(2)}) · altri segni ${segni.toFixed(2)} (serve ${(riposo2 + scarto2).toFixed(2)})`;
+        prova = `sopracciglia ${giu.toFixed(2)} (serve ${Math.max(minimo, riposo + scarto).toFixed(2)}) · altri segni ${segni.toFixed(2)} (serve ${(riposo2 + scarto2).toFixed(2)}, rughe +${Math.round(pieghe * 100)}%)`;
         if (giu < riposo) riposo += (giu - riposo) * 0.1;
         else if (!arrabbiato && giu < riposo + scarto / 2) riposo += (giu - riposo) * lento; // il riposo segue solo la faccia calma
         if (segni < riposo2) riposo2 += (segni - riposo2) * 0.1;
         else if (!arrabbiato && segni < riposo2 + scarto2 / 2) riposo2 += (segni - riposo2) * lento;
+        if (rughe != null && !arrabbiato) liscia += (rughe - liscia) * (rughe < liscia ? 0.1 : 0.02); // la fronte calma
         if (misure && !arrabbiato) { // la faccia calma: le misure seguono piano (più in fretta verso sopracciglia alte)
           occhiSu += (misure.su - occhiSu) * (misure.su > occhiSu ? 0.1 : 0.02);
           vicine += (misure.tra - vicine) * (misure.tra > vicine ? 0.1 : 0.02);
@@ -293,6 +298,20 @@
       get riposo() { return riposo; },
       get prova() { return prova; },
     };
+  }
+
+  // rughe tra le sopracciglia: quanto cambia la luce da un pixel a quello accanto, in orizzontale (le rughe di quando
+  // aggrotti sono righe verticali), rispetto a quanto è chiara la pelle. px: pixel RGBA del pezzo di fronte w × h.
+  function misuraRughe(px, w, h) {
+    if (!px || w < 3 || h < 2) return null;
+    let salti = 0, luce = 0, n = 0;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w - 1; x++) {
+        const i = (y * w + x) * 4, a = px[i] + px[i + 1] + px[i + 2], b = px[i + 4] + px[i + 5] + px[i + 6];
+        salti += Math.abs(a - b); luce += a; n++;
+      }
+    }
+    return n ? salti / (luce / 3 + 30) : null;
   }
 
   // testa girata di lato: il naso (punto 1) rispetto ai lati del viso (234 e 454). Dritta ≈ 0,5; girata molto → gli
@@ -315,7 +334,7 @@
     return i;
   }
 
-  const api = { ditoAlzato, crea67, movimento, creaRabbia, tristezza, triste, creaTristezza, boccaAperta, misuraLingua, linguaFuori, creaLingua, occhiSocchiusi, creaSocchiusi, occhiolino, creaOcchiolino, girata, testaGirata, facciaPiuGrande, labbra };
+  const api = { ditoAlzato, crea67, movimento, creaRabbia, tristezza, triste, creaTristezza, boccaAperta, misuraLingua, linguaFuori, creaLingua, occhiSocchiusi, creaSocchiusi, occhiolino, creaOcchiolino, girata, testaGirata, facciaPiuGrande, labbra, misuraRughe };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else radice.FotocameraGesti = api;
 })(typeof window !== 'undefined' ? window : globalThis);
