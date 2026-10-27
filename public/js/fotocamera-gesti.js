@@ -68,13 +68,14 @@
   const triste = (e, soglia = 0.3) => tristezza(e) > soglia;
   // la faccia triste che impara chi guarda: c'è chi ha la bocca un po' all'ingiù anche da calmo
   function creaTristezza({ scarto = 0.18, minimo = 0.25 } = {}) {
-    let riposo = null, prova = '';
+    let riposo = null, prova = '', fila = 0;
     return {
       aggiungi(e) {
         if (!e) return false;
         const t = tristezza(e);
         if (riposo == null) riposo = Math.min(t, minimo);
-        const si = t > minimo && t - riposo > scarto;
+        let si = t > minimo && t - riposo > scarto;
+        if (si && ++fila > FILA_MAX) { riposo = t; fila = 0; si = false; } else if (!si) fila = 0;
         prova = `${t.toFixed(2)} (serve ${Math.max(minimo, riposo + scarto).toFixed(2)})`;
         if (t < riposo) riposo += (t - riposo) * 0.1;
         else if (!si && t < riposo + scarto / 2) riposo += (t - riposo) * 0.02;
@@ -102,13 +103,14 @@
   // gli occhi socchiusi che imparano chi guarda: chi ha gli occhi a mandorla (o gli occhiali) li ha sempre "mezzi
   // chiusi" per MediaPipe; si impara quanto, e conta solo stringerli di più
   function creaSocchiusi() {
-    let riposo = null, prova = '';
+    let riposo = null, prova = '', fila = 0;
     return {
       aggiungi(e) {
         if (!e) return false;
         const m = ((e.eyeBlinkLeft || 0) + (e.eyeBlinkRight || 0)) / 2;
         if (riposo == null) riposo = Math.min(m, 0.3);
-        const si = occhiSocchiusi(e, riposo);
+        let si = occhiSocchiusi(e, riposo);
+        if (si && ++fila > FILA_MAX) { riposo = m; fila = 0; si = false; } else if (!si) fila = 0;
         prova = `${m.toFixed(2)} (serve ${Math.max(0.3, riposo + 0.2).toFixed(2)}–0.85)`;
         if (m < riposo) riposo += (m - riposo) * 0.1;
         else if (!si && m < riposo + 0.15) riposo += (m - riposo) * 0.02;
@@ -134,6 +136,16 @@
     }
     return n ? somma / n : 0;
   }
+  // un gesto che resterebbe acceso più di tanti controlli di fila (~10 secondi) è un falso allarme: si impara come
+  // faccia normale e il gatto se ne va (se no resta lì per sempre e non ti vedi più)
+  const FILA_MAX = 150;
+  // labbra aperte: distanza tra le labbra di dentro (13-14) rispetto alla larghezza della bocca (61-291), in pixel
+  // (vw × vh: misure del video, perché i punti vanno da 0 a 1 in tutte e due le direzioni)
+  function labbra(k, vw = 640, vh = 480) {
+    if (!k || k.length < 292) return 0;
+    const larga = Math.hypot((k[291].x - k[61].x) * vw, (k[291].y - k[61].y) * vh);
+    return larga > 0 ? Math.hypot((k[13].x - k[14].x) * vw, (k[13].y - k[14].y) * vh) / larga : 0;
+  }
   // misuraLingua: quanto è lunga la parte rossa sotto il labbro, rispetto all'altezza del viso (null se non si può dire)
   function misuraLingua(px, w, h, k) {
     if (!px || !k || k.length < 426) return null;
@@ -154,18 +166,24 @@
   // la lingua che impara chi guarda: rossetto, barba o luce cambiano quanto rosso c'è sotto il labbro anche a bocca
   // chiusa. Si tiene il valore di riposo (scende subito, sale piano e solo con la faccia normale) e scatta quando la
   // parte rossa è lunga almeno "scarto" più del solito. aggiungi(px, w, h, k, e) → true con la lingua fuori.
+  // aperte: le labbra sono aperte (con la lingua fuori non possono stare chiuse). Senza, la lingua non conta: così
+  // labbra, mento o ombre più rossi delle guance non fanno scattare il gatto da soli.
+  // Il riposo parte dalla prima misura (la faccia com'è a bocca chiusa) e se il gatto resterebbe acceso più di
+  // FILA_MAX controlli di fila (~10 secondi) è quasi sicuramente un falso allarme: quella diventa la faccia normale.
   function creaLingua({ scarto = 0.045, minimo = 0.08 } = {}) {
-    let riposo = null, prova = '';
+    let riposo = null, prova = '', fila = 0;
     return {
-      aggiungi(px, w, h, k, e) {
+      aggiungi(px, w, h, k, e, aperte = true) {
         if (e && (e.tongueOut || 0) > 0.15) return true;
         const m = misuraLingua(px, w, h, k);
         if (m == null) return false;
-        if (riposo == null) riposo = Math.min(m, minimo); // se si parte con la lingua fuori, il riposo non resta alto
-        const fuori = m > minimo && m - riposo > scarto;
-        prova = `${m.toFixed(3)} (serve ${Math.max(minimo, riposo + scarto).toFixed(3)})`;
+        if (riposo == null) riposo = m;
+        let fuori = aperte && m > minimo && m - riposo > scarto;
+        prova = `${m.toFixed(3)} (serve ${Math.max(minimo, riposo + scarto).toFixed(3)}, labbra ${aperte ? 'aperte' : 'chiuse'})`;
+        if (fuori && ++fila > FILA_MAX) { riposo = m; fila = 0; fuori = false; } else if (!fuori) fila = 0;
         if (m < riposo) riposo += (m - riposo) * 0.2;
         else if (!fuori && m < riposo + scarto / 2) riposo += (m - riposo) * 0.02;
+        else if (!aperte) riposo += (m - riposo) * 0.05; // a bocca chiusa quello che si vede è la faccia normale
         return fuori;
       },
       get riposo() { return riposo; },
@@ -187,23 +205,35 @@
   const uno = (a, b) => Math.max(a, b) > 0.55 && Math.min(a, b) < 0.35 && Math.abs(a - b) > 0.3;
   function creaOcchiolino() {
     let rs = null, rd = null, prova = ''; // apertura di riposo (occhi aperti) di sinistro e destro
+    // os, od: quanto MediaPipe vede "chiuso" ogni occhio a faccia normale (c'è chi ha un occhio sempre un po' più
+    // chiuso): si impara se l'occhiolino resterebbe acceso troppo a lungo, e poi si toglie
+    let os = 0, od = 0, fila = 0;
+    const calcola = (e, k) => {
+      const s = Math.max(0, (e.eyeBlinkLeft || 0) - os), d = Math.max(0, (e.eyeBlinkRight || 0) - od);
+      prova = `MediaPipe ${s.toFixed(2)} / ${d.toFixed(2)}`;
+      if (uno(s, d) && Math.min(s, d) < 0.3 && Math.abs(s - d) > 0.35) return true; // occhiolino netto per MediaPipe
+      if (!k || k.length < 387) return false;
+      const as = apertura(k, 159, 145, 33, 133), ad = apertura(k, 386, 374, 362, 263);
+      if (s < 0.3 && d < 0.3) { // occhi aperti per MediaPipe: si impara (più in fretta verso l'occhio più aperto)
+        rs = rs == null ? as : rs + (as - rs) * (as > rs ? 0.1 : 0.02);
+        rd = rd == null ? ad : rd + (ad - rd) * (ad > rd ? 0.1 : 0.02);
+      }
+      if (rs == null || rd == null) return false;
+      const chiuso = (a, r) => Math.min(1, Math.max(0, (1 - a / r) / 0.65));
+      const cs = (s + chiuso(as, rs)) / 2, cd = (d + chiuso(ad, rd)) / 2;
+      prova += `, insieme ${cs.toFixed(2)} / ${cd.toFixed(2)} (serve uno >0.55 e l'altro <0.35)`;
+      return uno(cs, cd);
+    };
     return {
       aggiungi(e, k) {
         if (!e) return false;
-        const s = e.eyeBlinkLeft || 0, d = e.eyeBlinkRight || 0;
-        prova = `MediaPipe ${s.toFixed(2)} / ${d.toFixed(2)}`;
-        if (occhiolino(e)) return true;
-        if (!k || k.length < 387) return false;
-        const as = apertura(k, 159, 145, 33, 133), ad = apertura(k, 386, 374, 362, 263);
-        if (s < 0.3 && d < 0.3) { // occhi aperti per MediaPipe: si impara (più in fretta verso l'occhio più aperto)
-          rs = rs == null ? as : rs + (as - rs) * (as > rs ? 0.1 : 0.02);
-          rd = rd == null ? ad : rd + (ad - rd) * (ad > rd ? 0.1 : 0.02);
-        }
-        if (rs == null || rd == null) return false;
-        const chiuso = (a, r) => Math.min(1, Math.max(0, (1 - a / r) / 0.65));
-        const cs = (s + chiuso(as, rs)) / 2, cd = (d + chiuso(ad, rd)) / 2;
-        prova += `, insieme ${cs.toFixed(2)} / ${cd.toFixed(2)} (serve uno >0.55 e l'altro <0.35)`;
-        return uno(cs, cd);
+        let si = calcola(e, k);
+        if (si && ++fila > FILA_MAX) { // falso allarme: questa è la faccia normale
+          os = e.eyeBlinkLeft || 0; od = e.eyeBlinkRight || 0; fila = 0;
+          if (k && k.length >= 387) { rs = apertura(k, 159, 145, 33, 133); rd = apertura(k, 386, 374, 362, 263); }
+          si = false;
+        } else if (!si) fila = 0;
+        return si;
       },
       get riposo() { return rs == null ? null : [rs, rd]; },
       get prova() { return prova; },
@@ -214,7 +244,7 @@
   // possono far sembrare le sopracciglia sempre un po' giù: si impara piano piano il valore di riposo di chi guarda e
   // conta solo quanto si aggrotta in più. Restituisce un oggetto con aggiungi(espressioni) → true se arrabbiato.
   function creaRabbia({ scarto = 0.22, minimo = 0.3, lento = 0.03 } = {}) {
-    let riposo = null, prova = '';
+    let riposo = null, prova = '', fila = 0;
     return {
       aggiungi(e) {
         if (!e) return false;
@@ -223,7 +253,8 @@
         const sorriso = (v('mouthSmileLeft') + v('mouthSmileRight')) / 2;
         // se all'inizio sei già accigliato il riposo non parte troppo alto (scende poi in fretta sulla faccia calma)
         if (riposo == null) riposo = Math.min(giu, minimo);
-        const arrabbiato = giu - riposo > scarto && giu > minimo && sorriso < 0.3;
+        let arrabbiato = giu - riposo > scarto && giu > minimo && sorriso < 0.3;
+        if (arrabbiato && ++fila > FILA_MAX) { riposo = giu; fila = 0; arrabbiato = false; } else if (!arrabbiato) fila = 0;
         prova = `${giu.toFixed(2)} (serve ${Math.max(minimo, riposo + scarto).toFixed(2)})`;
         if (giu < riposo) riposo += (giu - riposo) * 0.1;
         else if (!arrabbiato && giu < riposo + scarto / 2) riposo += (giu - riposo) * lento; // il riposo segue solo la faccia calma
@@ -254,7 +285,7 @@
     return i;
   }
 
-  const api = { ditoAlzato, crea67, movimento, creaRabbia, tristezza, triste, creaTristezza, boccaAperta, misuraLingua, linguaFuori, creaLingua, occhiSocchiusi, creaSocchiusi, occhiolino, creaOcchiolino, girata, testaGirata, facciaPiuGrande };
+  const api = { ditoAlzato, crea67, movimento, creaRabbia, tristezza, triste, creaTristezza, boccaAperta, misuraLingua, linguaFuori, creaLingua, occhiSocchiusi, creaSocchiusi, occhiolino, creaOcchiolino, girata, testaGirata, facciaPiuGrande, labbra };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else radice.FotocameraGesti = api;
 })(typeof window !== 'undefined' ? window : globalThis);

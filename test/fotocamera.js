@@ -133,8 +133,33 @@ assert.ok(!G.boccaAperta({ jawOpen: 0.05 }, 0.45, labbra), 'ma serve un po\' di 
 let L = G.creaLingua();
 for (let i = 0; i < 60; i++) assert.ok(!L.aggiungi(...viso(50, 56), {}), 'rossetto a bocca chiusa: no');
 assert.ok(L.aggiungi(...viso(50, 66), {}), 'con la lingua fuori: sì');
+// si parte con la lingua fuori: quella sembra la faccia normale, ma appena chiudi la bocca il riposo scende e la
+// volta dopo il gatto arriva
 L = G.creaLingua();
-assert.ok(L.aggiungi(...viso(50, 66), {}), 'anche se si parte già con la lingua fuori');
+assert.ok(!L.aggiungi(...viso(50, 66), {}), 'la prima misura è la faccia normale');
+for (let i = 0; i < 20; i++) L.aggiungi(...viso(50, 53), {}, false);
+assert.ok(L.aggiungi(...viso(50, 66), {}), 'chiusa la bocca e rifatta la linguaccia: sì');
+// IL CASO DEL 27/10: tanto rosso sotto il labbro anche senza lingua (luce, mento, ombre). A labbra chiuse non scatta
+// mai; e anche se scattasse, dopo ~10 secondi di fila si spegne da solo (prima restava acceso per sempre)
+L = G.creaLingua();
+L.aggiungi(...viso(50, 53), {});
+for (let i = 0; i < 300; i++) assert.ok(!L.aggiungi(...viso(50, 66), {}, false), 'labbra chiuse: niente lingua');
+L = G.creaLingua();
+L.aggiungi(...viso(50, 53), {});
+let accesi = 0;
+for (let i = 0; i < 300; i++) if (L.aggiungi(...viso(50, 66), {})) accesi++;
+assert.ok(accesi > 100 && accesi < 160, `un gatto acceso di fila si spegne da solo (${accesi})`);
+assert.ok(!L.aggiungi(...viso(50, 66), {}), 'e non torna finché non cambia qualcosa');
+// lo stesso per occhiolino (un occhio sempre un po' più chiuso per MediaPipe), arrabbiato, socchiusi e triste
+const mai = (crea, e, k) => { const x = crea(); let n = 0; for (let i = 0; i < 400; i++) if (x.aggiungi(e, k)) n++; return n; };
+assert.ok(mai(G.creaOcchiolino, { eyeBlinkLeft: 0.7, eyeBlinkRight: 0.1 }) <= 160, 'occhiolino finto: si spegne');
+assert.ok(mai(G.creaSocchiusi, { eyeBlinkLeft: 0.6, eyeBlinkRight: 0.6 }) <= 160, 'socchiusi finto: si spegne');
+assert.ok(mai(G.creaTristezza, { mouthFrownLeft: 0.8, mouthFrownRight: 0.8 }) <= 160, 'triste finto: si spegne');
+const R2 = G.creaRabbia(); R2.aggiungi({}); let nr = 0;
+for (let i = 0; i < 400; i++) if (R2.aggiungi({ browDownLeft: 0.9, browDownRight: 0.9 })) nr++;
+assert.ok(nr > 100 && nr <= 160, `arrabbiato acceso di fila si spegne da solo (${nr})`);
+// labbra aperte o chiuse (in pixel)
+assert.ok(G.labbra(labbra) > 0.3 && G.labbra(labbra.map((p, i) => (i === 14 ? labbra[13] : p))) === 0, 'labbra aperte/chiuse');
 
 // testa girata: i gesti del viso non contano
 const dritto = Array.from({ length: 478 }, () => ({ x: 0.5, y: 0.5 }));

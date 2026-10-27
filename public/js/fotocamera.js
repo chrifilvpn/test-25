@@ -315,7 +315,9 @@ window.Fotocamera = (() => {
     if (nuovoViso) {
       const dritta = !!puntiViso && !G.testaGirata(puntiViso);
       uscite.aperta = G.boccaAperta(espressioni, 0.45, puntiViso);
-      uscite.lingua = dritta && lingua.aggiungi(...boccaDi(v, puntiViso), espressioni);
+      // la lingua solo con le labbra aperte (o la mascella un po' giù): a bocca chiusa non può essere fuori
+      const aperte = !!puntiViso && (G.labbra(puntiViso, v.videoWidth || 640, v.videoHeight || 480) > 0.07 || ((espressioni && espressioni.jawOpen) || 0) > 0.08);
+      uscite.lingua = dritta && lingua.aggiungi(...boccaDi(v, puntiViso), espressioni, aperte);
       uscite.occhiolino = dritta && occhio.aggiungi(espressioni, puntiViso);
       uscite.arrabbiato = dritta && rabbia.aggiungi(espressioni);
       uscite.socchiusi = dritta && socchiusi.aggiungi(espressioni);
