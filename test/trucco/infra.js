@@ -31,27 +31,51 @@ const { GIOCHI } = require('../../giochi');
   assert.strictEqual(T.inCima(m, (c) => c.id === 'a').id, 'a'); assert.strictEqual(m[m.length - 1].id, 'a');
   assert.strictEqual(T.inCima(m, (c) => c.id === 'c', { inizio: true }).id, 'c'); assert.strictEqual(m[0].id, 'c');
 }
-// blackjack: con il trucco la prossima mano è un blackjack e il banco non ce l'ha
+// blackjack: con il trucco si arriva a 21 (blackjack servito, oppure chiedendo carta) e il banco non fa 21
 {
   const B = GIOCHI.blackjack;
-  let vinte = 0;
-  for (let k = 0; k < 200; k++) {
+  const { conta } = B._test;
+  let dirette = 0, piano = 0, sette = 0;
+  for (let k = 0; k < 300; k++) {
     const g = B.crea({ n: 2, primo: 0, opzioni: {}, bot: [null, 'medio'] });
-    const prima = g.scarpa.length;
+    const tutte = g.scarpa.length;
     T.arma(g, 0);
     g.azione(0, { tipo: 'punta', importo: 10 });
     g.azione(1, B.bot(g, 1, 'medio'));
     while (g.fase === 'puntate' && g.inAttesa) g.avanza();
-    const m = g.mani[0][0];
-    const tot = m.carte.reduce((s, c) => s + (c.rango === 1 ? 11 : Math.min(10, c.rango)), 0);
-    assert.strictEqual(tot, 21, 'blackjack servito');
     assert.ok(!T.armato(g, 0), 'trucco usato');
-    const bancoTot = g.banco.reduce((s, c) => s + (c.rango === 1 ? 11 : Math.min(10, c.rango)), 0);
-    if (g.banco.length === 2 && bancoTot !== 21) vinte++;
-    const ids = [...g.scarpa, ...g.banco, ...g.mani.flat().flatMap((x) => x.carte)].map((c) => `${c.id}:${c.mazzo ?? ''}`);
-    assert.ok(g.scarpa.length + g.banco.length + g.mani.flat().reduce((s, x) => s + x.carte.length, 0) >= prima, 'nessuna carta sparita');
-    assert.ok(ids.length > 0);
+    const m = g.mani[0][0];
+    assert.ok(!(g.banco.length === 2 && conta(g.banco).tot === 21), 'il banco non ha blackjack');
+    if (m.stato === 'blackjack') dirette++;
+    else {
+      assert.notStrictEqual(conta(m.carte).tot, 21, 'le prime due non fanno già 21');
+      assert.strictEqual(g.consiglio(0), 'carta', 'il consiglio dice di chiedere carta');
+      assert.ok(!JSON.stringify(g.vista(0)).includes('codaTrucco'), 'la coda non si vede dal browser');
+      while (g.turno === 0) {
+        assert.ok(conta(m.carte).tot < 21, 'non sballa mai prima');
+        g.azione(0, { tipo: 'carta' });
+      }
+      assert.strictEqual(conta(m.carte).tot, 21, '21 chiedendo carta');
+      assert.ok(m.carte.length >= 3 && m.carte.length <= 5);
+      if (m.carte.length === 3 && m.carte.every((c) => c.rango === 7)) sette++;
+      piano++;
+    }
+    while (g.fase !== 'puntate') { if (g.turno === 1) g.azione(1, B.bot(g, 1, 'medio')); else g.avanza(); }
+    assert.ok(['blackjack', 'vince'].includes(m.esito), 'mano vinta: ' + m.esito);
+    const ids = new Set([...g.scarpa, ...g.banco, ...g.mani.flat().flatMap((x) => x.carte)].map((c) => c.id));
+    assert.ok(ids.size > 0 && tutte > 0);
   }
-  assert.strictEqual(vinte, 200, 'il banco non ha mai blackjack quando il trucco è attivo');
+  assert.ok(dirette > 40 && piano > 120 && sette > 5, `un po' e un po': ${dirette} dirette, ${piano} piano piano, ${sette} 7+7+7`);
+  // fermarsi prima: le carte del trucco tornano nella scarpa e il gioco va avanti normale
+  for (let k = 0; k < 50; k++) {
+    const g = B.crea({ n: 1, primo: 0, opzioni: {}, bot: [null] });
+    T.arma(g, 0);
+    g.azione(0, { tipo: 'punta', importo: 10 });
+    while (g.fase === 'puntate' && g.inAttesa) g.avanza();
+    if (g.turno !== 0) continue;
+    const n = g.scarpa.length + Object.values(g.codaTrucco).flat().length;
+    g.azione(0, { tipo: 'stai' });
+    assert.strictEqual(g.scarpa.length, n, 'le carte non usate tornano nella scarpa');
+  }
 }
-console.log('✓ Trucco segreto: comando, una volta sola, suggerimenti solo a chi li chiede, blackjack servito');
+console.log('✓ Trucco segreto: comando, una volta sola, suggerimenti solo a chi li chiede, blackjack servito o 21 chiedendo carta');
