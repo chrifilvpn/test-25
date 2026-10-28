@@ -14,7 +14,7 @@ window.Fotocamera = (() => {
   const ric = { mani: null, viso: null };
   let ultimoGiro = 0, ultimaFoto = 0, turno = 0, intervallo = 66, tempoMedio = 0, misure = 0;
   let conti = {}, volte = {}, gestoPrima = null, espressioni = null, puntiViso = null, trovate = [];
-  let avvisoFino = 0, visoVistoA = 0, maniVisteA = 0, visoMaiVisto = true, provaCPU = 0, accesaA = 0, luce = 128, base = '', prova = false, provaA = 0;
+  let avvisoFino = 0, visoVistoA = 0, maniVisteA = 0, visoMaiVisto = true, provaCPU = 0, accesaA = 0, visoProvato = 0, cambio = {}, luce = 128, base = '', prova = false, provaA = 0;
   const NESSUNA = { dito: false, lingua: false, aperta: false, occhiolino: false, arrabbiato: false, socchiusi: false, triste: false };
   let uscite = { ...NESSUNA }; // l'ultimo risultato di ogni gesto (con mani e viso a turno resta quello di prima)
   // le espressioni che imparano la faccia normale di chi guarda (si riparte da capo con 🎯 o spegnendo)
@@ -164,9 +164,9 @@ window.Fotocamera = (() => {
     base = '';
     caricaModelli().then(() => {
       if (flusso !== f) return;
-      base = messaggioBase(); stato(base); visoVistoA = maniVisteA = accesaA = performance.now(); // gli 8 secondi contano da qui
+      base = messaggioBase(); stato(base); visoVistoA = maniVisteA = accesaA = performance.now(); visoProvato = 0; // gli 8 secondi contano da qui
     });
-    ultimaFoto = 0; misure = 0; tempoMedio = 0; visoVistoA = maniVisteA = accesaA = performance.now(); visoMaiVisto = true;
+    ultimaFoto = 0; misure = 0; tempoMedio = 0; visoVistoA = maniVisteA = accesaA = performance.now(); visoMaiVisto = true; visoProvato = 0;
     cancelAnimationFrame(giro);
     giro = requestAnimationFrame(passo);
   }
@@ -242,9 +242,9 @@ window.Fotocamera = (() => {
   }
   // delegati: con cosa ripartire (di solito il processore); senza errori (prova) si torna indietro se va male
   function sostituisci(nome, r, delegati = ['CPU']) {
-    ric[nome] = null;
+    ric[nome] = null; cambio[nome] = true;
     try { r.lavoro.close(); } catch { /* niente */ }
-    const fine = () => { if (flusso && base) { base = messaggioBase(); stato(base); } };
+    const fine = () => { cambio[nome] = false; if (flusso && base) { base = messaggioBase(); stato(base); } };
     if (delegati[0] === r.delegate) { console.warn(`[fotocamera] ${nome}: troppi errori, spento`); fine(); return; }
     console.warn(`[fotocamera] ${nome}: riparto con ${delegati[0] === 'CPU' ? 'il processore' : 'la scheda grafica'}`);
     r.rifai(delegati).then((n) => { ric[nome] = n; }).catch(() => {}).finally(fine);
@@ -281,7 +281,7 @@ window.Fotocamera = (() => {
       const r = ric.viso;
       try {
         const x = r.lavoro.detectForVideo(v, ora), facce = x.faceLandmarks || [], i = G.facciaPiuGrande(facce);
-        r.errori = 0; nuovoViso = true;
+        r.errori = 0; nuovoViso = true; visoProvato++;
         if (i >= 0) {
           espressioni = {}; puntiViso = facce[i]; visoVistoA = ora; visoMaiVisto = false;
           for (const c of ((x.faceBlendshapes || [])[i] || {}).categories || []) espressioni[c.categoryName] = c.score;
@@ -290,9 +290,11 @@ window.Fotocamera = (() => {
       // con la scheda grafica alcuni telefoni non danno errori ma non trovano mai niente: se in 8 secondi con la
       // luce buona non si è mai vista una faccia, si prova col processore. Se neanche col processore se ne vede una
       // in altri 8 secondi (semplicemente non c'era nessuno davanti), si torna alla scheda grafica, che è più veloce.
-      if (ric.viso && visoMaiVisto && luce > 60 && ora - accesaA > 8000) {
-        if (ric.viso.delegate === 'GPU' && !provaCPU) { provaCPU = 1; accesaA = ora; sostituisci('viso', ric.viso); }
-        else if (ric.viso.delegate === 'CPU' && provaCPU === 1) { provaCPU = 2; sostituisci('viso', ric.viso, ['GPU', 'CPU']); }
+      // Servono anche 30 controlli finiti: i primi con la scheda grafica possono bloccare tutto per qualche secondo
+      // (si prepara) e quel tempo non è stato un vero cercare la faccia.
+      if (ric.viso && visoMaiVisto && luce > 60 && ora - accesaA > 8000 && visoProvato > 30) {
+        if (ric.viso.delegate === 'GPU' && !provaCPU) { provaCPU = 1; accesaA = ora; visoProvato = 0; sostituisci('viso', ric.viso); }
+        else if (ric.viso.delegate === 'CPU' && provaCPU === 1) { provaCPU = 2; visoProvato = 0; sostituisci('viso', ric.viso, ['GPU', 'CPU']); }
       }
       if (!visoMaiVisto && provaCPU === 1) provaCPU = 2; // col processore la faccia si vede: si resta così
     }
@@ -334,7 +336,7 @@ window.Fotocamera = (() => {
     $('#fcam .fcam-schermo').classList.toggle('fcam-con-gatto', !!gesto);
     if (base && !scatta.conto && ora > avvisoFino) {
       stato(gesto ? NOMI[gesto]
-        : ric.viso && ora - visoVistoA > 1500 ? (luce < 45 ? '💡 C\'è poca luce: non vedo la tua faccia' : '🙂 Non vedo la tua faccia: mettiti dritto davanti alla fotocamera')
+        : (ric.viso || cambio.viso) && ora - visoVistoA > 1500 ? (luce < 45 ? '💡 C\'è poca luce: non vedo la tua faccia' : '🙂 Non vedo la tua faccia: mettiti dritto davanti alla fotocamera')
           : puntiViso && G.testaGirata(puntiViso) ? '↩️ Gira la faccia verso la fotocamera'
             : luce < 45 ? '💡 Poca luce: i gesti si riconoscono peggio' : base);
     }

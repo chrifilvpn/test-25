@@ -226,6 +226,8 @@ assert.ok(/function comando\(testo\)[\s\S]*\^!foto\( prova\)\?\$/.test(js), '!fo
 assert.ok(/if \(flusso \|\| accensione\) return;/.test(js), 'una sola accensione alla volta');
 assert.ok(/addEventListener\('ended'/.test(js), 'si accorge se la fotocamera si stacca');
 assert.ok(/Promise\.allSettled/.test(js) && /rifai/.test(js), 'mani e viso caricati insieme, ognuno per conto suo, e ripartono col processore');
+assert.ok(/visoProvato > 30/.test(js), 'il passaggio al processore aspetta controlli veri del viso (non solo il tempo in cui la scheda grafica si prepara)');
+assert.ok(/cambio\.viso/.test(js), 'mentre il viso riparte la riga in basso continua a dire che la faccia non si vede');
 // niente gatto soldato: se non fai niente vedi solo te stesso
 assert.ok(!/soldato|fermo/.test(js.match(/const GATTI = \{([^}]*)\}/)[1]), 'niente gatto da fermo');
 const srv = fs.readFileSync(path.join(__dirname, '../server.js'), 'utf8');
