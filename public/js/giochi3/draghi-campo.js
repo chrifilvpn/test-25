@@ -4,6 +4,8 @@
 // percorso, le aree degli incantesimi e le animazioni degli eventi (passi, colpi, numeri dei danni, esplosioni).
 // Si sposta trascinando, si ingrandisce con la rotella o i pulsanti. A fianco: il pannello del turno con attacchi,
 // incantesimi, azioni e privilegi di classe. I conti (movimento, aree, gittate) sono gli stessi del server.
+// Il master umano che muove i nemici usa la stessa mappa: al turno di un nemico «il suo personaggio» è quel nemico
+// (dmInfo.mano, dm.js) e le mosse partono come dm-cb; con 🖐️ Sposta mette i nemici dove vuole, in qualsiasi momento.
 (() => {
   const { esc, suono } = window.Nuovi;
   const M = () => window.DraghiMappe, A = () => window.DraghiArte;
@@ -20,9 +22,14 @@
 
   function st(ctx) { const ui = ctx.ui; if (!ui.cb) ui.cb = { modo: 'muovi', sel: null, bersagli: [], hover: null, cam: { k: 1, ox: 0, oy: 0, fit: true }, evVisto: null, anim: [], posAnim: {}, chiave: null }; return ui.cb; }
   const cbDi = (ctx) => ctx.partita.combattimento;
-  const io = (ctx) => { const cb = cbDi(ctx); return cb && cb.creature.find((c) => c.id === ctx.partita.mioId); };
-  const pgDi = (ctx, id) => ctx.partita.pg.find((x) => x && x.uid === id);
-  const mioTurno = (ctx) => { const cb = cbDi(ctx); return !!(cb && !cb.finito && cb.attivo && cb.attivo === ctx.partita.mioId && !ctx.stato.spettatore); };
+  // il nemico che il master sta muovendo adesso (solo al master, solo al turno di quel nemico)
+  const mano = (ctx) => { const I = ctx.partita.dmInfo; return I && I.mano && !ctx.stato.spettatore ? I.mano : null; };
+  const mioIdDi = (ctx) => ctx.partita.mioId || (mano(ctx) ? mano(ctx).id : null);
+  const io = (ctx) => { const cb = cbDi(ctx), id = mioIdDi(ctx); return cb && id ? cb.creature.find((c) => c.id === id) : null; };
+  const pgDi = (ctx, id) => ctx.partita.pg.find((x) => x && x.uid === id) || (mano(ctx) && mano(ctx).id === id ? mano(ctx) : null);
+  const mioTurno = (ctx) => { const cb = cbDi(ctx), id = mioIdDi(ctx); return !!(cb && !cb.finito && cb.attivo && id && cb.attivo === id && !ctx.stato.spettatore); };
+  // le mosse: quelle del master per il nemico partono come dm-cb (stesse regole, controllate dal server)
+  const manda = (ctx, a) => ctx.invia(mano(ctx) ? { ...a, tipo: 'dm-cb', mossa: a.tipo } : a);
 
   // ---------- conti come nel server ----------
   function raggiungibili(cb, c) {
@@ -182,7 +189,9 @@
 
   // ---------- il tocco su una casella ----------
   function tocca(ctx, c) {
-    const cb = cbDi(ctx); if (!cb || !mioTurno(ctx)) return;
+    const cb = cbDi(ctx); if (!cb) return;
+    if (st(ctx).sposta && ctx.partita.dmInfo) return toccaSposta(ctx, c);
+    if (!mioTurno(ctx)) return;
     const s = st(ctx), me = io(ctx); if (!me) return;
     if (c.x < 0 || c.y < 0 || c.x >= cb.scena.w || c.y >= cb.scena.h) return;
     const chi = cb.creature.find((x) => x.x === c.x && x.y === c.y && vivo(x)) || cb.creature.find((x) => x.x === c.x && x.y === c.y && !x.fuggito);
@@ -219,9 +228,21 @@
       if (costo[j] === Infinity) return ctx.avviso(me.turno && me.turno.movimento > 0 ? 'Non ci arrivi con il movimento che ti resta' : 'Hai finito il movimento');
       if (occupata(cb, c.x, c.y, me)) return ctx.avviso('Lì c\'è già qualcuno');
       suono([[260, 0.03], [300, 0.03]], { tipo: 'sine', volume: 0.03 });
-      return ctx.invia({ tipo: 'muovi', x: c.x, y: c.y });
+      return manda(ctx, { tipo: 'muovi', x: c.x, y: c.y });
     }
     return undefined;
+  }
+  // 🖐️ la mano del master: prima tocca il nemico, poi la casella dove metterlo
+  function toccaSposta(ctx, c) {
+    const cb = cbDi(ctx), s = st(ctx);
+    if (c.x < 0 || c.y < 0 || c.x >= cb.scena.w || c.y >= cb.scena.h) return undefined;
+    const chi = cb.creature.find((x) => x.x === c.x && x.y === c.y && vivo(x));
+    if (chi && chi.lato === 'nemici' && !chi.pg) { s.sposta.id = s.sposta.id === chi.id ? null : chi.id; return ctx.ridisegna(); }
+    if (!s.sposta.id) return ctx.avviso(chi ? 'Puoi spostare solo i nemici' : 'Tocca prima il nemico da spostare');
+    if (chi) return ctx.avviso('Lì c\'è già qualcuno');
+    if (!passabile(cb.scena.g[c.y * cb.scena.w + c.x])) return ctx.avviso('Lì non ci si può stare');
+    suono([[300, 0.04], [240, 0.05]], { tipo: 'sine', volume: 0.03 });
+    return ctx.invia({ tipo: 'dm-cb', mossa: 'sposta', id: s.sposta.id, x: c.x, y: c.y });
   }
   function attacca(ctx, bersaglio) {
     const s = st(ctx), a = { tipo: 'attacca', bersaglio };
@@ -230,7 +251,7 @@
     if (s.dueMani) a.dueMani = true;
     s.punizione = null;
     suono([[180, 0.04], [120, 0.05]], { tipo: 'sawtooth', volume: 0.03 });
-    ctx.invia(a);
+    manda(ctx, a);
     const me = io(ctx); if (me && me.turno && me.turno.attacchi + 1 >= me.turno.attacchiMax) s.sel = null;
     return ctx.ridisegna();
   }
@@ -240,10 +261,10 @@
     if (punto) a.punto = punto;
     st(ctx).sel = null;
     suono([[520, 0.05], [780, 0.06], [1040, 0.08]], { tipo: 'sine', volume: 0.04 });
-    ctx.invia(a);
+    manda(ctx, a);
     return ctx.ridisegna();
   }
-  function azione(ctx, extra) { st(ctx).sel = null; ctx.invia({ tipo: 'azione', ...extra }); return ctx.ridisegna(); }
+  function azione(ctx, extra) { st(ctx).sel = null; manda(ctx, { tipo: 'azione', ...extra }); return ctx.ridisegna(); }
 
   // ---------- gli eventi diventano animazioni ----------
   function eventi(ctx) {
@@ -277,7 +298,7 @@
       else if (e.tipo === 'salvezza') { testo(e.a, e.riuscita ? 'resiste' : 'colpito!', e.riuscita ? '#c8d8ff' : '#ff9a4a'); t += 220; }
       else if (e.tipo === 'cade' || e.tipo === 'muore') { testo(e.id, e.tipo === 'muore' ? '💀' : '⬇', '#ffffff', true); t += 200; }
       else if (e.tipo === 'incantesimo') { const p = pos(e.da); if (p) s.anim.push({ t0: t, dur: 600, lampo: true, ...p, col: '#c8a0ff' }); t += 150; }
-      else if (e.tipo === 'turno' && e.id === ctx.partita.mioId && !ctx.stato.spettatore) { suono([[523, 0.08], [784, 0.12]], { tipo: 'triangle', volume: 0.05 }); if (F) setTimeout(() => centra(F, io(ctx), true), Math.max(0, t - performance.now())); s.sel = null; s.modo = 'muovi'; }
+      else if (e.tipo === 'turno' && e.id === mioIdDi(ctx) && !ctx.stato.spettatore) { suono([[523, 0.08], [784, 0.12]], { tipo: 'triangle', volume: 0.05 }); if (F) setTimeout(() => centra(F, io(ctx), true), Math.max(0, t - performance.now())); s.sel = null; s.modo = 'muovi'; }
       else if (e.tipo === 'fine') { if (F) mostraBanner(F, e.esito === 'vittoria' ? '🏆 Vittoria!' : '💀 Sconfitta…', e.esito); }
     }
   }
@@ -371,6 +392,9 @@
     // le pedine (prima i caduti, poi i vivi, l'attivo sopra)
     const ordine = cb.creature.filter((c) => !c.fuggito).sort((a, b) => (vivo(a) - vivo(b)) || ((a.id === cb.attivo) - (b.id === cb.attivo)) || (a.y - b.y));
     for (const c of ordine) pedina(F, g, c, s, t, cb, me, mio, come, F.vis);
+    // 🖐️ il nemico che il master sta per spostare
+    const daSpostare = s.sposta && s.sposta.id ? cb.creature.find((c) => c.id === s.sposta.id && vivo(c)) : null;
+    if (daSpostare) { const r = (RAGGIO[daSpostare.taglia] || 0.44) * C + 8; g.strokeStyle = `rgba(190,140,255,${0.65 + 0.3 * Math.sin(t / 150)})`; g.lineWidth = 3; g.setLineDash([4, 4]); g.beginPath(); g.arc((daSpostare.x + 0.5) * C, (daSpostare.y + 0.5) * C, r, 0, 7); g.stroke(); g.setLineDash([]); }
     // colpi, lampi e numeri
     for (const a of s.anim) {
       const q = Math.min(1, Math.max(0, (t - a.t0) / a.dur)); if (t < a.t0) continue;
@@ -467,7 +491,7 @@
     const cb = cbDi(ctx); if (!cb) return '';
     const att = cb.creature.find((c) => c.id === cb.attivo);
     return `<div class="dr-iniziativa"><span class="dr-round">Round <b>${cb.round}</b></span><div class="dr-ini-fila">${cb.ordine.map((id) => cb.creature.find((c) => c.id === id)).filter(Boolean).map((c) => miniPedina(ctx, c, cb)).join('')}</div>
-      <span class="dr-tocca ${mioTurno(ctx) ? 'mio' : ''}">${cb.finito ? (cb.finito === 'vittoria' ? '🏆 Vittoria!' : '💀 Sconfitta') : mioTurno(ctx) ? '⚔️ Tocca a te!' : att ? `Tocca a ${esc(att.nome)}` : ''}</span></div>`;
+      <span class="dr-tocca ${mioTurno(ctx) ? 'mio' : ''}">${cb.finito ? (cb.finito === 'vittoria' ? '🏆 Vittoria!' : '💀 Sconfitta') : mioTurno(ctx) && mano(ctx) ? `🎩 Muovi ${esc(mano(ctx).nome)}` : mioTurno(ctx) ? '⚔️ Tocca a te!' : att ? `Tocca a ${esc(att.nome)}` : ''}</span></div>`;
   }
   const LISTA_AZ = [
     ['scatto', '🏃', 'Scatto', 'Raddoppia il movimento'], ['disimpegno', '🌀', 'Disimpegno', 'Ti allontani senza attacchi di opportunità'], ['schivata', '🛡️', 'Schivata', 'Chi ti attacca ha svantaggio'],
@@ -487,6 +511,7 @@
     const s = st(ctx), me = io(ctx), pg = me ? pgDi(ctx, me.id) : null;
     const log = cb.eventi.filter((e) => e.testo && e.tipo !== 'turno').slice(-14).reverse().map((e) => `<li class="dr-ev-${e.tipo} ${e.colpito ? 'colpito' : ''} ${e.critico ? 'critico' : ''}">${esc(e.testo)}</li>`).join('');
     const registro = `<div class="dr-cb-log"><h4>Cronaca della battaglia</h4><ul>${log}</ul></div>`;
+    if (mano(ctx) && me && mioTurno(ctx)) return pannelloMano(ctx, me, mano(ctx), registro);
     if (!me || !pg) return `<div class="dr-cb-pannello"><p class="dr-cb-attesa">Guardi la battaglia.</p>${registro}</div>`;
     if (!mioTurno(ctx)) {
       const att = cb.creature.find((c) => c.id === cb.attivo);
@@ -550,6 +575,28 @@
       <div class="dr-cb-fine"><button type="button" class="dr-bt" data-az="dr-cb-auto" title="Il computer gioca questo turno per te">🤖 Gioca per me</button><button type="button" class="dr-bt dr-bt-oro" data-az="dr-cb-fine">Fine turno ⏭</button></div>
       ${registro}</div>`;
   }
+  // il pannello del master al turno di un nemico: i suoi attacchi, il soffio, le azioni semplici, fine turno
+  function pannelloMano(ctx, me, m, registro) {
+    const s = st(ctx), t = me.turno || {};
+    const pallino = (ok, n) => `<span class="dr-risorsa ${ok ? 'ok' : ''}"><i></i>${n}</span>`;
+    const attOk = t.azione || (t.attacchi > 0 && t.attacchi < t.attacchiMax);
+    const risorse = `<div class="dr-cb-risorse">${pallino(t.azione, 'Azione')}${pallino(me.reazione, 'Reazione')}<span class="dr-risorsa mov"><b>${fmt(t.movimento || 0)}</b> movimento</span>${t.attacchiMax > 1 ? `<span class="dr-risorsa">attacchi ${t.attacchi}/${t.attacchiMax}</span>` : ''}</div>`;
+    const selArma = s.sel && s.sel.tipo === 'arma' ? s.sel.id : undefined;
+    const armi = m.attacchi.map((a) => `<button type="button" class="dr-cb-arma ${selArma === a.id ? 'sel' : ''}" data-az="dr-cb-arma" data-id="${esc(a.id)}" ${attOk ? '' : 'disabled'}>
+      <b>${a.mischia ? '⚔️' : '🏹'} ${esc(a.nome)}</b><small>${a.colpire >= 0 ? '+' : ''}${a.colpire} · ${esc(a.danno)} ${esc(a.tipo || '')}${a.gittata ? ` · ${a.gittata[0]}/${a.gittata[1]} m` : a.portata > CELLA ? ` · portata ${fmt(a.portata)}` : ''}</small></button>`).join('');
+    const sl = (az) => (s.sel && s.sel.tipo === 'az' && s.sel.az === az ? 'sel' : '');
+    const soffio = m.soffio ? `<button type="button" class="dr-cb-az classe ${sl('soffio')}" data-az="dr-cb-az" data-id="soffio" data-chi="direzione" ${m.soffio.pronto && t.azione ? '' : 'disabled'} title="${esc(`${m.soffio.forma} di ${m.soffio.m} m, ${m.soffio.danno} ${m.soffio.tipo}`)}"><span>🐉</span>Soffio <small>${m.soffio.pronto ? `${esc(m.soffio.danno)} ${esc(m.soffio.tipo)}` : 'si ricarica'}</small></button>` : '';
+    const azioni = LISTA_AZ.slice(0, 3).map(([az, ic, n, d]) => `<button type="button" class="dr-cb-az" data-az="dr-cb-az" data-id="${az}" ${t.azione ? '' : 'disabled'} title="${esc(d)}"><span>${ic}</span>${n}</button>`).join('');
+    const guida = s.sel ? `<p class="dr-cb-guida">${guidaSel(ctx, s.sel)} <button type="button" class="dr-link" data-az="dr-cb-annulla">annulla</button></p>`
+      : `<p class="dr-cb-guida">🎩 Muovi tu <b>${esc(m.nome)}</b>: tocca una casella azzurra per spostarlo, un personaggio per attaccarlo${attOk ? '' : ' (azione già usata)'}.</p>`;
+    const sec = Math.ceil((m.attesa || 0) / 1000);
+    return `<div class="dr-cb-pannello mio">${risorse}${guida}
+      <div class="dr-cb-sez"><h4>⚔️ Attacchi di ${esc(m.nome)}</h4><div class="dr-cb-armi">${armi}</div></div>
+      <div class="dr-cb-sez"><h4>🎲 Azioni</h4><div class="dr-cb-azioni">${soffio}${azioni}</div>${m.incantesimi ? '<small class="dr-nota">Gli incantesimi dei mostri li lancia il gioco: usa «🤖 Lo fa il gioco».</small>' : ''}</div>
+      <div class="dr-cb-fine"><button type="button" class="dr-bt" data-az="dr-cb-auto" title="Il gioco fa questo turno del nemico con le sue regole">🤖 Lo fa il gioco</button><button type="button" class="dr-bt dr-bt-oro" data-az="dr-cb-fine">Fine turno ⏭</button></div>
+      ${sec < 60 ? `<small class="dr-nota">⏳ Se non fai niente, tra ${sec} secondi lo muove il gioco.</small>` : ''}
+      ${registro}</div>`;
+  }
   function guidaSel(ctx, sel) {
     const come = comeBersaglio(ctx, sel);
     if (sel.tipo === 'arma') return '🎯 Tocca il nemico da attaccare.';
@@ -598,7 +645,7 @@
         if (!chi) return azione(ctx, { az: id, ...(el.dataset.bonus ? { bonus: true } : {}), ...(extra || {}) });
         if (s.sel && s.sel.tipo === 'az' && s.sel.az === id && (!extra || (s.sel.extra && s.sel.extra.oggetto === extra.oggetto))) { s.sel = null; return ctx.ridisegna(); }
         const pg = pgDi(ctx, ctx.partita.mioId);
-        const area = id === 'soffio' && pg ? (['rosso', 'oro', 'verde', 'bianco', 'argento'].includes(pg.discendenza) ? { forma: 'cono', m: 4.5 } : { forma: 'linea', m: 9 }) : null;
+        const area = id === 'soffio' && pg && pg.soffio ? { forma: pg.soffio.forma, m: pg.soffio.m } : id === 'soffio' && pg ? (['rosso', 'oro', 'verde', 'bianco', 'argento'].includes(pg.discendenza) ? { forma: 'cono', m: 4.5 } : { forma: 'linea', m: 9 }) : null;
         s.sel = { tipo: 'az', az: id, chi, portata: Number(el.dataset.portata) || CELLA, area, extra };
         return ctx.ridisegna();
       }
@@ -609,8 +656,9 @@
         suono([[440, 0.05], [660, 0.07]], { tipo: 'sine', volume: 0.03 });
         return ctx.invia({ tipo: 'libera', testo });
       }
-      case 'dr-cb-fine': s.sel = null; suono([[392, 0.05], [330, 0.06]], { tipo: 'triangle', volume: 0.03 }); return ctx.invia({ tipo: 'fine' });
-      case 'dr-cb-auto': s.sel = null; return ctx.invia({ tipo: 'autoTurno' });
+      case 'dr-cb-fine': s.sel = null; suono([[392, 0.05], [330, 0.06]], { tipo: 'triangle', volume: 0.03 }); return manda(ctx, { tipo: 'fine' });
+      case 'dr-cb-auto': s.sel = null; return manda(ctx, { tipo: 'autoTurno' });
+      case 'dr-cb-sposta': s.sel = null; s.sposta = s.sposta ? null : { id: null }; return ctx.ridisegna();
       default: return undefined;
     }
   }
@@ -625,5 +673,6 @@
     if (s.sel && !mioTurno(ctx)) s.sel = null;
   }
 
-  window.DraghiCampo = { filaIniziativa, pannello, clic, dopo, mioTurno };
+  const spostando = (ctx) => !!st(ctx).sposta;
+  window.DraghiCampo = { filaIniziativa, pannello, clic, dopo, mioTurno, spostando };
 })();

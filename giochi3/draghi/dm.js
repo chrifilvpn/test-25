@@ -5,12 +5,17 @@
 // cosa (regole, idee, PNG, CD), farsi preparare una bozza da modificare, farle rispondere una volta sola o lasciarle
 // tutto il tavolo ("automatico"). Il master può anche scrivere di fretta, a grandi linee, e farsi RISCRIVERE il testo
 // dall'IA in un racconto curato: gli torna nella casella, lo controlla e lo cambia, poi lo manda lui (e la voce
-// narrante legge quello che manda). Si aggiunge a Draghi (draghi.js) come i metodi delle ambientazioni horror.
+// narrante legge quello che manda). In combattimento il master può muovere lui i nemici: al turno di un nemico il
+// gioco aspetta e il master lo muove, attacca, soffia o passa con le stesse regole dei giocatori (o lascia il turno
+// al gioco); in più li può spostare a mano dove vuole sulla mappa, in qualsiasi momento, senza regole.
+// Si aggiunge a Draghi (draghi.js) come i metodi delle ambientazioni horror.
 const MASTER = require('./master');
+const M = require('./mappe');
 const H = require('./horror');
 const { MOSTRI } = require('./mostri');
 
 const MAX_CONSIGLI = 40;
+const ATTESA_MANO = 120000; // il master muove i nemici: dopo 2 minuti senza mosse il turno del nemico lo fa il gioco
 // le caselle del master che si possono far riscrivere (i nomi dei campi della schermata, draghi-master.js)
 const CAMPI_RISCRITTURA = ['dmNarr', 'dmNarra', 'dmLNarr'];
 const RISCRITTORE = `Sei il NARRATORE di una partita di "Draghi e Segrete" (gioco di ruolo). Il master UMANO ha scritto di fretta, in modo grossolano, cosa succede: tu lo RISCRIVI come racconto curato, da leggere ai giocatori (e da leggere ad alta voce).
@@ -63,7 +68,14 @@ const metodi = {
     this.dm = null; this.dmAuto = false; this.attesaDM = null; this.nDM = 0;
     this.consigli = []; this.attesaConsiglio = false; this.bozzaDM = null; this.attesaBozza = false; this.liberaDM = null; this.dmNovita = false;
     this.riscritturaDM = null; this.attesaRiscrittura = false; this.nRiscritture = 0;
+    this.dmNemici = true; this.manoChiave = null; this.manoDa = 0;
   },
+  // in combattimento i nemici li muove il master (non il gioco): adesso tocca a uno di loro
+  manoAttiva() {
+    const cb = this.combattimento, c = cb && !cb.finito ? cb.attivo : null;
+    return !!(this.dmUmano && this.dmNemici && this.fase === 'combattimento' && c && !c.pg && c.lato === 'nemici');
+  },
+  chiaveMano() { const cb = this.combattimento; return cb && cb.attivo ? `${cb.round}:${cb.attivo.id}` : null; },
   // c'è un master umano che risponde lui (non in automatico)
   get dmUmano() { return this.dm != null && !this.dmAuto; },
   // chi può dare i comandi del tavolo (iniziare, mandare al master, chiudere): chi l'ha aperto e il master
@@ -163,7 +175,77 @@ const metodi = {
       return { ok: true };
     }
     if (t === 'dm-svuota') { this.consigli = []; return { ok: true }; }
+    if (t === 'dm-nemici') {
+      this.dmNemici = !!a.si; this.manoChiave = null;
+      if (this.combattimento) this.combattimento.evento({ tipo: 'nota', testo: this.dmNemici ? '🎩 Da ora i nemici li muove il master.' : '🤖 Da ora i nemici li muove il gioco.' });
+      return { ok: true };
+    }
+    if (t === 'dm-cb') return this.mossaDm(a);
     return { errore: 'Mossa non valida' };
+  },
+  // il master muove i nemici: al loro turno con le regole (muovi, attacca, soffio, scatto…), oppure li sposta a mano
+  mossaDm(a) {
+    const cb = this.combattimento;
+    if (this.fase !== 'combattimento' || !cb || cb.finito) return { errore: 'Adesso non c\'è un combattimento' };
+    if (a.mossa === 'sposta') return this.spostaDm(cb, a);
+    if (!this.dmNemici) return { errore: 'I nemici li sta muovendo il gioco: scegli «Li muovo io»' };
+    if (!this.manoAttiva()) return { errore: 'Adesso non tocca a un nemico' };
+    const c = cb.attivo;
+    this.manoChiave = this.chiaveMano(); this.manoDa = Date.now();
+    let r;
+    if (a.mossa === 'muovi') r = cb.muovi(c.id, a.x, a.y);
+    else if (a.mossa === 'attacca') r = cb.attacca(c.id, a.bersaglio, { arma: a.arma });
+    else if (a.mossa === 'azione' && a.az === 'soffio') r = this.soffioDm(cb, c, a.punto);
+    else if (a.mossa === 'azione' && ['scatto', 'disimpegno', 'schivata'].includes(a.az)) r = cb.azioneSemplice(c.id, a.az);
+    else if (a.mossa === 'fine') r = cb.fineTurno(c.id);
+    else if (a.mossa === 'autoTurno') r = cb.turnoAutomatico(this.livelloIA());
+    else return { errore: 'Mossa non valida' };
+    if (r && r.errore) return r;
+    this.manoChiave = this.chiaveMano(); this.manoDa = Date.now();
+    this.dopoAzioneCombattimento();
+    return { ok: true };
+  },
+  // il soffio del mostro (draghi, chimere…), come lo usa il gioco: si ricarica con 5-6 su un d6 all'inizio del turno
+  soffioDm(cb, c, punto) {
+    const s = c.ref.soffio;
+    if (!s) return { errore: `${c.ref.nome} non ha un soffio` };
+    if (!s.pronto) return { errore: 'Il soffio non è ancora pronto (si ricarica con 5 o 6 su un d6 a inizio turno)' };
+    if (!c.turno.azione) return { errore: 'Ha già usato l\'azione' };
+    const x = Math.round(Number(punto && punto.x)), y = Math.round(Number(punto && punto.y));
+    if (!(x >= 0 && y >= 0 && x < cb.scena.w && y < cb.scena.h) || (x === c.x && y === c.y)) return { errore: 'Tocca la direzione del soffio' };
+    c.turno.azione = false; s.pronto = false;
+    cb.areaDanno(c, { x, y }, { forma: s.forma, m: s.m }, { danno: s.danno, tipoDanno: s.tipo, ts: s.ts, cd: s.cd, meta: true, nome: 'Soffio' });
+    cb.controllaFine();
+    return { ok: true };
+  },
+  // la mano del master: un nemico va dove vuole lui (una casella libera dove si può stare), senza movimento né attacchi
+  // di opportunità. Si può fare in qualsiasi momento della battaglia.
+  spostaDm(cb, a) {
+    const c = cb.c(a.id);
+    if (!c || c.pg || c.lato !== 'nemici' || !cb.vivo(c)) return { errore: 'Puoi spostare solo i nemici ancora in piedi' };
+    const x = Math.round(Number(a.x)), y = Math.round(Number(a.y)), { w, h, g } = cb.scena;
+    if (!(x >= 0 && y >= 0 && x < w && y < h)) return { errore: 'Fuori dalla mappa' };
+    if (x === c.x && y === c.y) return { errore: 'È già lì' };
+    if (!M.passabile(g[y * w + x])) return { errore: 'Lì non ci si può stare' };
+    if (cb.occupata(x, y, c)) return { errore: 'Lì c\'è già qualcuno' };
+    // il percorso in linea retta, per l'animazione della pedina che scivola
+    const n = Math.max(Math.abs(x - c.x), Math.abs(y - c.y)), percorso = [];
+    for (let k = 0; k <= n; k++) percorso.push({ x: Math.round(c.x + ((x - c.x) * k) / n), y: Math.round(c.y + ((y - c.y) * k) / n) });
+    c.x = x; c.y = y;
+    cb.evento({ tipo: 'movimento', id: c.id, percorso, testo: `🖐️ Il master sposta ${c.ref.nome}.` });
+    return { ok: true };
+  },
+  // al master: il nemico che tocca a lui muovere, con i suoi attacchi
+  manoDm() {
+    if (!this.manoAttiva()) return null;
+    const cb = this.combattimento, c = cb.attivo, s = c.ref.soffio;
+    return {
+      id: c.id, nome: c.ref.nome,
+      attacchi: cb.attacchiDi(c).map((x) => ({ id: x.id, nome: x.nome, colpire: x.colpire, danno: x.danno, tipo: x.tipo, mischia: x.mischia, portata: x.portata, gittata: x.gittata })),
+      soffio: s ? { pronto: !!s.pronto, forma: s.forma, m: s.m, danno: s.danno, tipo: s.tipo } : null,
+      incantesimi: !!(c.ref.incantesimi && c.ref.incantesimi.lista && c.ref.incantesimi.lista.length),
+      attesa: this.manoChiave === this.chiaveMano() ? Math.max(0, this.manoDa + ATTESA_MANO - Date.now()) : ATTESA_MANO,
+    };
   },
   consiglio(ruolo, testo) { this.consigli.push({ ruolo, testo: String(testo || '').slice(0, 6000), ora: Date.now() }); if (this.consigli.length > MAX_CONSIGLI) this.consigli.shift(); },
 
@@ -225,6 +307,7 @@ const metodi = {
       consigli: this.consigli.slice(-MAX_CONSIGLI), attesaConsiglio: this.attesaConsiglio,
       bozza: this.bozzaDM, attesaBozza: this.attesaBozza,
       riscrittura: this.riscritturaDM, attesaRiscrittura: this.attesaRiscrittura,
+      nemiciAMano: this.dmNemici, mano: this.manoDm(),
       bestiario: infoBestiario(this.cp),
       scene: this.cp ? ['stazione', 'uffici', 'alloggi', 'medico', 'laboratorio', 'industriale', 'tram', 'nido', 'sottomarina', 'fondale', 'manicomio', 'fogne', 'cortile'] : ['dungeon', 'grotta', 'foresta', 'villaggio', 'taverna', 'cripta', 'palude', 'montagna', 'strada', 'castello'],
       segreti: this.cp && this.incubo && this.incubo.area ? this.contestoIncubo().trim() : null,
@@ -245,4 +328,4 @@ const metodi = {
   },
 };
 
-module.exports = { metodi, infoBestiario, perUmano, CONSIGLIERE, RISCRITTORE, sistemaTesto, pulisciRiscritto };
+module.exports = { metodi, ATTESA_MANO, infoBestiario, perUmano, CONSIGLIERE, RISCRITTORE, sistemaTesto, pulisciRiscritto };
