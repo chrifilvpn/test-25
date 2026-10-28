@@ -144,6 +144,25 @@ assert.ok(!G.triste({ browInnerUp: 0.7, browOuterUpLeft: 0.7, browOuterUpRight: 
 let T = G.creaTristezza();
 for (let i = 0; i < 200; i++) assert.ok(!T.aggiungi({ mouthFrownLeft: 0.32, mouthFrownRight: 0.32 }), 'bocca all\'ingiù da calmo: dopo un po\' no');
 assert.ok(T.aggiungi({ mouthFrownLeft: 0.7, mouthFrownRight: 0.65 }), 'e se ti rattristi davvero: sì');
+// triste dai punti: gli angoli della bocca che scendono (MediaPipe spesso dà mouthFrown quasi zero)
+const bocca = (giu) => { const k = Array.from({ length: 478 }, () => ({ x: 0.5, y: 0.5 }));
+  k[61] = { x: 0.45, y: 0.6 + giu }; k[291] = { x: 0.55, y: 0.6 + giu }; k[13] = { x: 0.5, y: 0.6 }; k[14] = { x: 0.5, y: 0.6 }; return k; };
+T = G.creaTristezza();
+for (let i = 0; i < 60; i++) assert.ok(!T.aggiungi({}, bocca(0)), 'bocca dritta: no');
+assert.ok(T.aggiungi({ mouthFrownLeft: 0.05, mouthFrownRight: 0.05 }, bocca(0.01)), 'angoli della bocca giù (dai punti): triste');
+assert.ok(!T.aggiungi({ mouthSmileLeft: 0.5, mouthSmileRight: 0.5 }, bocca(0.01)), 'col sorriso gli angoli non contano');
+// la faccia triste non è arrabbiata: sopracciglia su al centro, bocca giù, occhi un po' stretti
+R = G.creaRabbia();
+for (let i = 0; i < 60; i++) R.aggiungi({ browDownLeft: 0.1, browDownRight: 0.1, browInnerUp: 0.05 });
+const tristone = { browDownLeft: 0.4, browDownRight: 0.4, browInnerUp: 0.55, eyeSquintLeft: 0.4, eyeSquintRight: 0.4, mouthFrownLeft: 0.5, mouthFrownRight: 0.5, mouthPressLeft: 0.3, mouthPressRight: 0.3 };
+assert.ok(!R.aggiungi(tristone), 'faccia triste: non arrabbiata');
+assert.ok(!R.aggiungi({ browInnerUp: 0.05, eyeSquintLeft: 0.4, eyeSquintRight: 0.4, mouthFrownLeft: 0.6, mouthFrownRight: 0.6 }), 'occhi stretti e bocca giù: non arrabbiata');
+assert.ok(!R.aggiungi({ browInnerUp: 0.05, mouthPressLeft: 0.6, mouthPressRight: 0.6 }), 'solo labbra serrate (pensando): no');
+// chinare la testa (guardare il telefono) fa sembrare le sopracciglia più vicine agli occhi, ma non più vicine tra loro
+R = G.creaRabbia();
+const china = (g) => fronte(0).map((p, i) => ((i === 55 || i === 285) ? { x: p.x, y: p.y + g } : p));
+for (let i = 0; i < 60; i++) R.aggiungi(calmoOcchiali, fronte(0));
+assert.ok(!R.aggiungi({ ...calmoOcchiali, eyeSquintLeft: 0.2, eyeSquintRight: 0.2 }, china(0.015)), 'testa china: non arrabbiato');
 
 // bocca aperta anche dalla forma delle labbra (se jawOpen è basso ma non zero)
 const labbra = Array.from({ length: 478 }, () => ({ x: 0.5, y: 0.5 }));
