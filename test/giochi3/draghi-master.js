@@ -103,6 +103,49 @@ async function finoA(g, cond, n = 40) { for (let k = 0; k < n && !cond(); k++) {
   assert.ok(!g.azione(1, { tipo: 'dm-libera', esito: { narrazione: 'La lanterna esplode.', effetti: [{ bersaglio: gob.ref.nome, danno: '3', tipoDanno: 'fuoco' }] } }).errore);
   assert.ok(gob.ref.pf < pf || gob.ref.morto, 'l\'effetto deciso dal master si applica');
   assert.ok(!g.liberaDM && !g.attesaLibera);
+  // il master muove i nemici: al turno di un goblin il gioco aspetta lui, poi muove, attacca e passa con le regole
+  {
+    const cb = g.combattimento, gob2 = cb.creature.find((x) => x.lato === 'nemici' && cb.vivo(x));
+    assert.ok(g.dmNemici, 'di base i nemici li muove il master');
+    assert.ok(g.azione(0, { tipo: 'dm-cb', mossa: 'fine' }).errore, 'solo il master muove i nemici');
+    if (cb.attivo.lato !== 'nemici') { cb.fineTurno(cb.attivo.id); }
+    cb.indice = cb.ordine.indexOf(gob2.id); cb.iniziaTurno();
+    const pf0 = cb.creature.filter((x) => x.lato === 'gruppo').map((x) => x.ref.pf).join();
+    g.prossimaMossaMostro = 0; g.controllaTempo(); g.controllaTempo();
+    assert.strictEqual(cb.attivo, gob2, 'il gioco non muove il goblin da solo');
+    assert.strictEqual(cb.creature.filter((x) => x.lato === 'gruppo').map((x) => x.ref.pf).join(), pf0);
+    assert.ok(g.attesi().includes(1), 'si aspetta il master');
+    const m = g.vista(1).dmInfo.mano;
+    assert.ok(m && m.id === gob2.id && m.attacchi.length, 'il master vede il nemico da muovere con i suoi attacchi');
+    assert.strictEqual(g.vista(0).dmInfo, null);
+    // un passo verso il personaggio, poi un attacco se ci arriva, poi fine turno
+    const pg0 = g.creaturaDi(0);
+    const passi = cb.raggiungibili(gob2), w = cb.scena.w;
+    let meglio = null; for (let i = 0; i < passi.costo.length; i++) if (passi.costo[i] !== Infinity && passi.costo[i] > 0 && !cb.occupata(i % w, Math.floor(i / w), gob2)) { const q = { x: i % w, y: Math.floor(i / w) }; if (!meglio || cb.dist(q, pg0) < cb.dist(meglio, pg0)) meglio = q; }
+    if (meglio) { assert.ok(!g.azione(1, { tipo: 'dm-cb', mossa: 'muovi', x: meglio.x, y: meglio.y }).errore); assert.deepStrictEqual([gob2.x, gob2.y], [meglio.x, meglio.y]); }
+    assert.ok(g.azione(1, { tipo: 'dm-cb', mossa: 'muovi', x: -1, y: 0 }).errore, 'fuori dalla mappa no');
+    if (cb.dist(gob2, pg0) <= 1.5) { assert.ok(!g.azione(1, { tipo: 'dm-cb', mossa: 'attacca', bersaglio: pg0.id }).errore); assert.ok(!gob2.turno.azione || gob2.turno.attacchi > 0, 'l\'attacco usa l\'azione'); }
+    if (cb.attivo === gob2) assert.ok(!g.azione(1, { tipo: 'dm-cb', mossa: 'fine' }).errore);
+    assert.notStrictEqual(cb.attivo, gob2, 'il turno passa');
+    // dopo 2 minuti senza mosse il turno lo fa il gioco
+    const altro = cb.creature.find((x) => x.lato === 'nemici' && cb.vivo(x) && x !== gob2) || gob2;
+    cb.indice = cb.ordine.indexOf(altro.id); cb.iniziaTurno();
+    g.controllaTempo();
+    assert.strictEqual(cb.attivo, altro);
+    g.manoDa = Date.now() - 121000; g.controllaTempo();
+    assert.notStrictEqual(cb.attivo, altro, 'master via: lo muove il gioco');
+    // 🖐️ sposta a mano: dove vuole, in qualsiasi momento, ma solo i nemici e su caselle libere
+    const vivo = cb.creature.find((x) => x.lato === 'nemici' && cb.vivo(x));
+    let libera = null; for (let y = 0; y < cb.scena.h && !libera; y++) for (let x = 0; x < w && !libera; x++) if (require('../../giochi3/draghi/mappe').passabile(cb.scena.g[y * w + x]) && !cb.occupata(x, y) && cb.dist({ x, y }, vivo) > 6) libera = { x, y };
+    assert.ok(!g.azione(1, { tipo: 'dm-cb', mossa: 'sposta', id: vivo.id, ...libera }).errore);
+    assert.deepStrictEqual([vivo.x, vivo.y], [libera.x, libera.y], 'il nemico è dove l\'ha messo il master');
+    assert.ok(g.azione(1, { tipo: 'dm-cb', mossa: 'sposta', id: pg0.id, x: libera.x + 1, y: libera.y }).errore, 'i personaggi no');
+    assert.ok(g.azione(1, { tipo: 'dm-cb', mossa: 'sposta', id: vivo.id, x: pg0.x, y: pg0.y }).errore, 'non sopra qualcuno');
+    // «li muove il gioco»: il gioco torna a muovere i nemici
+    assert.ok(!g.azione(1, { tipo: 'dm-nemici', si: false }).errore);
+    assert.strictEqual(g.manoAttiva(), false); assert.strictEqual(g.vista(1).dmInfo.mano, null);
+    g.azione(1, { tipo: 'dm-nemici', si: true });
+  }
   // il master è via: risponde l'IA (la mossa del computer per il master)
   g.combattimento = null; g.fase = 'avventura';
   g.chiediMaster('azioni', 'Cosa fanno i personaggi: niente');

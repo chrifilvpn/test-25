@@ -3,8 +3,8 @@
 // combattimenti ed eventi da aggiungere, la bozza e la risposta dell'IA, il pulsante ✨ che fa riscrivere dall'IA in un
 // racconto curato quello che il master ha scritto di fretta), a fianco il consigliere IA a cui chiedere
 // qualsiasi cosa, la mappa completa (nell'horror tutta la stazione con la creatura), il bestiario, la guida con le CD
-// e i segreti dell'ambientazione. In combattimento i nemici li muove il gioco: il master racconta e giudica le azioni
-// libere dei giocatori. I pezzi comuni del tavolo (gruppo, racconto, mappa) arrivano da draghi.js (window.DraghiTavolo).
+// e i segreti dell'ambientazione. In combattimento il master muove lui i nemici (o li lascia al gioco), li può spostare
+// a mano dove vuole sulla mappa (🖐️), racconta e giudica le azioni libere dei giocatori. I pezzi comuni del tavolo (gruppo, racconto, mappa) arrivano da draghi.js (window.DraghiTavolo).
 (() => {
   const { esc, suono, primaVolta } = window.Nuovi;
   const T = () => window.DraghiTavolo, CB = () => window.DraghiCampo, IN = () => window.DraghiIncubo;
@@ -146,7 +146,11 @@
         <div class="dr-dm-bottoni">${rs.bt}${rs.stato}</div>
         <div class="dr-dm-riga">${sel('dmLB', [['', 'Nessun bersaglio'], ...x.creature.map((c) => [c.nome, `${c.nome} (${c.pf}/${c.pfMax} PF, CA ${c.ca})`])], '')}<input data-tieni="dmLD" placeholder="danno (es. 2d6)" maxlength="20" value="${esc(val(ctx, 'dmLD'))}">${sel('dmLC', [['', 'Nessuna condizione'], ...['prono', 'afferrato', 'accecato', 'spaventato', 'stordito', 'trattenuto', 'avvelenato', 'incapacitato'].map((c) => [c, c])], '')}</div>
         <div class="dr-dm-bottoni"><button type="button" class="dr-bt dr-bt-oro" data-az="dr-dm-libera" data-id="1">✔ Riesce</button><button type="button" class="dr-bt" data-az="dr-dm-libera" data-id="0">✖ Non riesce</button><button type="button" class="dr-bt dr-bt-sec" data-az="dr-dm-ia">⚡ Decida l'IA</button></div></div>` : '';
-    return `<div class="dr-dm-cb">${lib}<p class="dr-nota">I nemici li muove il gioco con le regole. Tu racconti la battaglia e giudichi le azioni libere dei giocatori.</p>${p.combattimento ? narra(ctx) : ''}${CB().pannello(ctx)}</div>`;
+    const I = info(ctx), aMano = I.nemiciAMano !== false, sposta = CB().spostando(ctx);
+    const comandi = `<div class="dr-dm-nemici"><div class="dr-dm-bottoni"><span>👹 I nemici:</span><button type="button" class="dr-chip ${aMano ? 'sel' : ''}" data-az="dr-dm-nemici" data-id="1">🎩 Li muovo io</button><button type="button" class="dr-chip ${aMano ? '' : 'sel'}" data-az="dr-dm-nemici" data-id="0">🤖 Li muove il gioco</button><button type="button" class="dr-chip ${sposta ? 'sel' : ''}" data-az="dr-cb-sposta" title="Metti un nemico dove vuoi sulla mappa, senza regole e in qualsiasi momento">🖐️ Sposta a mano</button></div>
+      <p class="dr-nota">${sposta ? '🖐️ Tocca un nemico sulla mappa, poi la casella dove metterlo. Tocca di nuovo «Sposta a mano» per finire.' : aMano ? 'Al turno di un nemico lo muovi tu, con le regole: spostalo, attacca, usa il soffio o lascia il turno al gioco. Tu racconti la battaglia e giudichi le azioni libere dei giocatori.' : 'I nemici li muove il gioco con le regole. Tu racconti la battaglia e giudichi le azioni libere dei giocatori.'}</p></div>`;
+    if (I.mano) return `<div class="dr-dm-cb">${lib}${comandi}${CB().pannello(ctx)}${p.combattimento ? narra(ctx) : ''}</div>`;
+    return `<div class="dr-dm-cb">${lib}${comandi}${p.combattimento ? narra(ctx) : ''}${CB().pannello(ctx)}</div>`;
   }
   function consigliere(ctx) {
     const I = info(ctx), msgs = I.consigli || [];
@@ -207,6 +211,7 @@
     if (cb && ui.drCbVisto !== cb.scena.g.length + cb.scena.stile) { ui.drCbVisto = cb.scena.g.length + cb.scena.stile; ui.drTab = 'battaglia'; ui.drLato = 'dm'; }
     if (!cb && ui.drTab === 'battaglia') ui.drTab = 'storia';
     if (info(ctx).libera && primaVolta(ui, `dr-dm-lib-${info(ctx).libera.testo}`)) { ui.drLato = 'dm'; if (tel) ui.drTab = 'mondo'; }
+    if (info(ctx).mano && cb && primaVolta(ui, `dr-dm-mano-${cb.round}-${cb.attivo}`)) { ui.drLato = 'dm'; if (tel) ui.drTab = 'battaglia'; }
     const tab = ui.drTab || (cb ? 'battaglia' : 'storia');
     let centro;
     if (cb) centro = `<section class="dr-centro dr-centro-cb">${CB().filaIniziativa(ctx)}<div id="dr-campo-posto" class="dr-campo-posto"></div></section>`;
@@ -221,6 +226,7 @@
     if (p.finita) return null;
     if (I.richiesta) return '🎩 Tocca a te, master!';
     if (I.libera) return '⚔️ Giudica l\'azione libera';
+    if (I.mano) return `🎩 Muovi ${I.mano.nome}`;
     if (p.fase === 'combattimento') return '⚔️ Battaglia';
     if (p.dmAuto) return '🤖 Racconta l\'IA';
     return '🎩 Sei il master';
@@ -320,6 +326,7 @@
         return ctx.invia({ tipo: 'dm-chiedi', testo: t });
       }
       case 'dr-dm-svuota': return ctx.invia({ tipo: 'dm-svuota' });
+      case 'dr-dm-nemici': return ctx.invia({ tipo: 'dm-nemici', si: id === '1' });
       default: return undefined;
     }
   }

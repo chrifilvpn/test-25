@@ -29,6 +29,7 @@ const AMBIENTAZIONI = ['classica', 'oscura', 'pirati', 'citta', 'selvaggia'];
 const ATTESA_DICHIARAZIONI = 150000; // dopo la prima azione scritta, al massimo 2 minuti e mezzo per gli altri
 const MAX_RACCONTO = 400;
 const ROUND_PER_RACCONTO = 2; // in combattimento il master IA racconta ogni due round
+const { ATTESA_MANO } = DM; // il master muove i nemici a mano: dopo 2 minuti senza mosse il turno lo fa il gioco
 const ATTESA_REVIVE = 15 * 60000; // tutti morti: un quarto d'ora per scrivere !revive, poi la campagna finisce
 const STILE_DA_LUOGO = { villaggio: 'villaggio', citta: 'villaggio', porto: 'villaggio', taverna: 'taverna', castello: 'castello', torre: 'castello', tempio: 'cripta', rovine: 'dungeon', dungeon: 'dungeon', grotta: 'grotta', cripta: 'cripta', foresta: 'foresta', montagna: 'montagna', palude: 'palude', deserto: 'strada', accampamento: 'foresta', ponte: 'strada', miniera: 'grotta', fattoria: 'villaggio', lago: 'palude' };
 const ao = (pg, m = 'o', f = 'a') => (pg && pg.genere === 'f' ? f : m); // pronto/pronta, morto/morta
@@ -132,7 +133,7 @@ class Draghi {
     if (this.fase === 'combattimento' && this.combattimento && !this.combattimento.finito) {
       const c = this.combattimento.attivo;
       const posto = c && c.pg ? this.pg.findIndex((p) => p === c.ref) : -1;
-      return [...(posto >= 0 ? [posto] : []), ...(this.liberaDM ? [this.dm] : [])];
+      return [...(posto >= 0 ? [posto] : []), ...(this.liberaDM || this.manoAttiva() ? [this.dm] : [])];
     }
     return [];
   }
@@ -147,6 +148,7 @@ class Draghi {
       const cb = this.combattimento;
       if (cb.finito) return Date.now() + 1500;
       const c = cb.attivo;
+      if (c && !c.pg && this.manoAttiva()) return this.manoChiave === this.chiaveMano() ? this.manoDa + ATTESA_MANO : Date.now() + 50;
       if (c && !c.pg) return Math.max(Date.now() + 50, this.prossimaMossaMostro);
     }
     if (this.fase === 'avventura' && this.primaDichiarazione) return this.primaDichiarazione + ATTESA_DICHIARAZIONI;
@@ -172,6 +174,16 @@ class Draghi {
       const cb = this.combattimento;
       if (cb.finito) { this.fineCombattimento(); return true; }
       const c = cb.attivo;
+      // il master umano muove lui i nemici (dm.js): il gioco aspetta, e li muove da solo solo se il master non fa niente
+      if (c && !c.pg && this.manoAttiva()) {
+        if (this.manoChiave !== this.chiaveMano()) { this.manoChiave = this.chiaveMano(); this.manoDa = Date.now(); return true; }
+        if (Date.now() < this.manoDa + ATTESA_MANO) return cambiato;
+        cb.evento({ tipo: 'nota', id: c.id, testo: `Il master non muove ${c.ref.nome}: per questo turno lo muove il gioco.` });
+        cb.turnoAutomatico(this.livelloIA());
+        this.manoDa = Date.now();
+        this.dopoAzioneCombattimento();
+        return true;
+      }
       if (c && !c.pg && Date.now() >= this.prossimaMossaMostro) {
         cb.turnoAutomatico(this.livelloIA());
         this.prossimaMossaMostro = Date.now() + 1100;
