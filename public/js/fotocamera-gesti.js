@@ -66,19 +66,33 @@
     return Math.max(giu, 0.6 * cucciolo + 0.6 * giu);
   }
   const triste = (e, soglia = 0.3) => tristezza(e) > soglia;
-  // la faccia triste che impara chi guarda: c'è chi ha la bocca un po' all'ingiù anche da calmo
-  function creaTristezza({ scarto = 0.18, minimo = 0.25 } = {}) {
-    let riposo = null, prova = '', fila = 0;
+  // gli angoli della bocca rispetto al centro delle labbra (61 e 291 contro 13-14), diviso la larghezza della bocca:
+  // più è alto, più gli angoli sono giù. MediaPipe dà mouthFrown spesso bassissimo anche con la bocca all'ingiù, i punti
+  // invece si vedono scendere.
+  function angoliGiu(k) {
+    if (!k || k.length < 292) return null;
+    const larga = Math.hypot(k[291].x - k[61].x, k[291].y - k[61].y);
+    return larga > 0 ? ((k[61].y + k[291].y) / 2 - (k[13].y + k[14].y) / 2) / larga : null;
+  }
+  // la faccia triste che impara chi guarda: c'è chi ha la bocca un po' all'ingiù anche da calmo.
+  // aggiungi(espressioni, puntiViso?) → true se triste
+  function creaTristezza({ scarto = 0.15, minimo = 0.2 } = {}) {
+    let riposo = null, prova = '', fila = 0, bocca = null;
     return {
-      aggiungi(e) {
+      aggiungi(e, k = null) {
         if (!e) return false;
-        const t = tristezza(e);
+        // gli angoli della bocca dai punti, rispetto a come sono da calmo (con il sorriso non contano)
+        const a = angoliGiu(k), sorriso = ((e.mouthSmileLeft || 0) + (e.mouthSmileRight || 0)) / 2;
+        let angoli = 0;
+        if (a != null) { if (bocca == null) bocca = a; angoli = sorriso > 0.2 ? 0 : Math.min(0.5, Math.max(0, (a - bocca) * 4)); }
+        const t = tristezza(e) + angoli;
         if (riposo == null) riposo = Math.min(t, minimo);
         let si = t > minimo && t - riposo > scarto;
-        if (si && ++fila > FILA_MAX) { riposo = t; fila = 0; si = false; } else if (!si) fila = 0;
-        prova = `${t.toFixed(2)} (serve ${Math.max(minimo, riposo + scarto).toFixed(2)})`;
+        if (si && ++fila > FILA_MAX) { riposo = t; if (a != null) bocca = a; fila = 0; si = false; } else if (!si) fila = 0;
+        prova = `${t.toFixed(2)} (serve ${Math.max(minimo, riposo + scarto).toFixed(2)}, angoli bocca +${angoli.toFixed(2)})`;
         if (t < riposo) riposo += (t - riposo) * 0.1;
         else if (!si && t < riposo + scarto / 2) riposo += (t - riposo) * 0.02;
+        if (a != null && !si) bocca += (a - bocca) * (a < bocca ? 0.1 : 0.02); // la bocca calma
         return si;
       },
       get riposo() { return riposo; },
@@ -253,7 +267,7 @@
   // aggiungi(espressioni, puntiViso?, rughe?) → true se arrabbiato.
   function creaRabbia({ scarto = 0.22, minimo = 0.3, lento = 0.03, scarto2 = 0.25 } = {}) {
     let riposo = null, prova = '', fila = 0;
-    let riposo2 = null, occhiSu = null, vicine = null, liscia = null; // seconda strada: punteggio e misure della faccia calma
+    let riposo2 = null, occhiSu = null, vicine = null, liscia = null, interno = null, stretti = null, serrate = null; // seconda strada: punteggio e misure della faccia calma
     const d = (k, a, b) => Math.hypot(k[a].x - k[b].x, k[a].y - k[b].y);
     return {
       aggiungi(e, k, rughe = null) {
@@ -261,6 +275,9 @@
         const v = (n) => e[n] || 0, media = (n) => (v(n + 'Left') + v(n + 'Right')) / 2;
         const giu = media('browDown') + 0.5 * media('noseSneer');
         const sorriso = media('mouthSmile');
+        // le sopracciglia su al centro sono tristezza (o sorpresa), mai rabbia: arrabbiandosi scendono
+        if (interno == null) interno = Math.min(v('browInnerUp'), 0.3);
+        const suAlCentro = v('browInnerUp') > Math.max(0.3, interno + 0.15);
         // se all'inizio sei già accigliato il riposo non parte troppo alto (scende poi in fretta sulla faccia calma)
         if (riposo == null) riposo = Math.min(giu, minimo);
         const prima = giu - riposo > scarto && giu > minimo;
@@ -270,24 +287,35 @@
           const alto = d(k, 10, 152) || 0.0001;
           const su = (d(k, 55, 159) + d(k, 285, 386)) / 2 / alto, tra = d(k, 55, 285) / (d(k, 133, 362) || 0.0001);
           if (occhiSu == null) { occhiSu = su; vicine = tra; }
-          punti = Math.max(0, 1 - su / occhiSu) * 2 + Math.max(0, 1 - tra / vicine) * 2;
+          // le distanze in su e giù cambiano anche solo chinando la testa (guardando il telefono): contano meno di
+          // quella tra le due sopracciglia, che chinando resta uguale
+          punti = Math.max(0, 1 - su / occhiSu) * 1 + Math.max(0, 1 - tra / vicine) * 3;
           misure = { su, tra };
         }
-        // gli occhi stretti da soli non bastano (anche socchiudendoli o con il sole in faccia si stringono): serve almeno
-        // un altro segno, naso, bocca o sopracciglia
+        // un segno da solo non basta (gli occhi si stringono anche col sole, le labbra si serrano pensando, le rughe
+        // cambiano con la luce o muovendo gli occhiali): ne servono almeno due diversi, ognuno rispetto alla faccia calma.
+        // La bocca all'ingiù non conta: è della faccia triste.
         let pieghe = 0;
         if (rughe != null) { if (liscia == null) liscia = rughe; pieghe = Math.min(1, Math.max(0, rughe / (liscia || 0.0001) - 1)); }
-        const altri = 0.8 * media('noseSneer') + 0.6 * media('mouthPress') + 0.4 * media('mouthFrown') + punti + 0.6 * pieghe;
-        const segni = media('eyeSquint') + altri;
+        const sq = media('eyeSquint'), pr = media('mouthPress');
+        if (stretti == null) { stretti = Math.min(sq, 0.3); serrate = Math.min(pr, 0.3); }
+        const quanti = (sq - stretti > 0.12) + (media('noseSneer') > 0.15) + (pr - serrate > 0.2) + (punti > 0.15) + (pieghe > 0.3);
+        const altri = 0.8 * media('noseSneer') + 0.4 * pr + punti + 0.4 * pieghe;
+        const segni = sq + altri;
         if (riposo2 == null) riposo2 = Math.min(segni, 0.3);
-        const seconda = segni - riposo2 > scarto2 && altri > 0.15;
-        let arrabbiato = (prima || seconda) && sorriso < 0.3;
-        if (arrabbiato && ++fila > FILA_MAX) { riposo = giu; riposo2 = segni; if (misure) { occhiSu = misure.su; vicine = misure.tra; } fila = 0; arrabbiato = false; } else if (!arrabbiato) fila = 0;
-        prova = `sopracciglia ${giu.toFixed(2)} (serve ${Math.max(minimo, riposo + scarto).toFixed(2)}) · altri segni ${segni.toFixed(2)} (serve ${(riposo2 + scarto2).toFixed(2)}, rughe +${Math.round(pieghe * 100)}%)`;
+        const seconda = segni - riposo2 > scarto2 && altri > 0.15 && quanti >= 2;
+        let arrabbiato = (prima || seconda) && sorriso < 0.3 && !suAlCentro;
+        if (arrabbiato && ++fila > FILA_MAX) { riposo = giu; riposo2 = segni; stretti = sq; serrate = pr; if (rughe != null) liscia = rughe; if (misure) { occhiSu = misure.su; vicine = misure.tra; } fila = 0; arrabbiato = false; } else if (!arrabbiato) fila = 0;
+        prova = `${suAlCentro ? '(sopracciglia su al centro: è triste) ' : ''}sopracciglia ${giu.toFixed(2)} (serve ${Math.max(minimo, riposo + scarto).toFixed(2)}) · altri segni ${segni.toFixed(2)} (serve ${(riposo2 + scarto2).toFixed(2)}, ${quanti} segni su 2, rughe +${Math.round(pieghe * 100)}%)`;
         if (giu < riposo) riposo += (giu - riposo) * 0.1;
         else if (!arrabbiato && giu < riposo + scarto / 2) riposo += (giu - riposo) * lento; // il riposo segue solo la faccia calma
         if (segni < riposo2) riposo2 += (segni - riposo2) * 0.1;
         else if (!arrabbiato && segni < riposo2 + scarto2 / 2) riposo2 += (segni - riposo2) * lento;
+        if (!arrabbiato) {
+          interno += (v('browInnerUp') - interno) * (v('browInnerUp') < interno ? 0.1 : 0.02);
+          stretti += (sq - stretti) * (sq < stretti ? 0.1 : 0.02);
+          serrate += (pr - serrate) * (pr < serrate ? 0.1 : 0.02);
+        }
         if (rughe != null && !arrabbiato) liscia += (rughe - liscia) * (rughe < liscia ? 0.1 : 0.02); // la fronte calma
         if (misure && !arrabbiato) { // la faccia calma: le misure seguono piano (più in fretta verso sopracciglia alte)
           occhiSu += (misure.su - occhiSu) * (misure.su > occhiSu ? 0.1 : 0.02);

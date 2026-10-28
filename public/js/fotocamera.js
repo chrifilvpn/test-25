@@ -318,11 +318,11 @@ window.Fotocamera = (() => {
       uscite.occhiolino = dritta && occhio.aggiungi(espressioni, puntiViso);
       uscite.arrabbiato = dritta && rabbia.aggiungi(espressioni, puntiViso, G.misuraRughe(...fronteDi(v, puntiViso)));
       uscite.socchiusi = dritta && socchiusi.aggiungi(espressioni);
-      uscite.triste = dritta && tristezza.aggiungi(espressioni);
+      uscite.triste = dritta && tristezza.aggiungi(espressioni, puntiViso);
     }
-    // un solo gatto alla volta, nell'ordine: dito alzato, lingua fuori, bocca aperta, occhiolino, arrabbiato, occhi
-    // socchiusi, faccia triste (l'occhiolino prima di arrabbiato: facendolo la guancia e il sopracciglio
-    // scendono; arrabbiato prima degli occhi: quando ti arrabbi li stringi)
+    // un solo gatto alla volta, nell'ordine: dito alzato, lingua fuori, bocca aperta, occhiolino, arrabbiato, faccia
+    // triste, occhi socchiusi (l'occhiolino prima di arrabbiato: facendolo la guancia e il sopracciglio
+    // scendono; arrabbiato e triste prima degli occhi: arrabbiandosi li stringi, da tristi le palpebre scendono)
     const dito = conta('dito', uscite.dito, 3);
     const lin = conta('lingua', uscite.lingua, 3);
     const aperta = conta('aperta', uscite.aperta, 3);
@@ -331,7 +331,7 @@ window.Fotocamera = (() => {
     const socc = conta('socchiusi', uscite.socchiusi, 6); // 6: una sbattuta d'occhi non basta
     const tri = conta('triste', uscite.triste, 4);
     // nessun gesto: nessun gatto, vedi solo te stesso
-    const gesto = dito ? 'dito' : lin ? 'lingua' : aperta ? 'aperta' : occ ? 'occhiolino' : arrab ? 'arrabbiato' : socc ? 'socchiusi' : tri ? 'triste' : null;
+    const gesto = dito ? 'dito' : lin ? 'lingua' : aperta ? 'aperta' : occ ? 'occhiolino' : arrab ? 'arrabbiato' : tri ? 'triste' : socc ? 'socchiusi' : null;
     // la riga in basso: il gesto visto, oppure cosa non va (faccia persa, testa girata, poca luce), oppure il messaggio normale
     $('#fcam .fcam-schermo').classList.toggle('fcam-con-gatto', !!gesto);
     if (base && !scatta.conto && ora > avvisoFino) {
