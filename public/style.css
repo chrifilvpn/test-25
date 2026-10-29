@@ -588,6 +588,14 @@ button.f4-col:hover .f4-buco { background: radial-gradient(circle at 50% 50%, rg
 .bn { display: flex; flex-wrap: wrap; gap: 1.2rem 1.8rem; justify-content: center; align-items: flex-start; --c: min(3.3vw, calc((100vh - 17rem) / 11), 38px); }
 .bn-battaglia.bn-n3, .bn-battaglia.bn-n4 { --c: min(2.1vw, calc((100vh - 16rem) / 11), 30px); }
 .bn-battaglia.bn-n4 { gap: 1rem; }
+/* telefono: la griglia da colpire prende tutta la larghezza, la mia flotta sotto e più piccola */
+@media (max-width: 620px) {
+  .bn, .bn-battaglia.bn-n3, .bn-battaglia.bn-n4 { --c: min(calc((100vw - 2.8rem) / 11), 36px); gap: .9rem; }
+  .bn-battaglia { flex-direction: column; align-items: center; }
+  .bn-battaglia .bn-avv { order: -1; }
+  .bn-battaglia .bn-mia { --c: min(calc((100vw - 2.8rem) / 15), 26px); }
+  .bn-pannello { width: 100%; }
+}
 .bn-blocco { display: grid; gap: .4rem; }
 .bn-blocco header { display: flex; justify-content: space-between; align-items: center; gap: .6rem; font-size: .92rem; }
 .bn-blocco header span { color: var(--tenue); font-size: .8rem; }
@@ -1237,7 +1245,11 @@ button.bc-zona { cursor: pointer; } button.bc-zona:hover:not(:disabled) { backgr
 /* sul telefono durante la partita la firma finiva sopra i pulsanti in basso */
 @media (max-width: 700px), (pointer: coarse) { #schermo-gioco:not([hidden]) ~ .firma { display: none; } }
 /* Scala 40 sul telefono: le 13-14 carte stanno tutte nello schermo (si sovrappongono di più) */
-@media (max-width: 600px) { .mano-scala .carta { --w: clamp(44px, 13vw, 78px); margin-left: calc(var(--w) * -.56); } }
+/* telefono: con 13-14 carte la mano va su due file, così ogni carta ha una striscia larga da toccare */
+@media (max-width: 600px) {
+  .mano-scala { --w: clamp(46px, 13.6vw, 78px); flex-wrap: wrap; justify-content: center; row-gap: 6px; padding-left: calc(.5rem + var(--w) * .45); }
+  .mano-scala .carta, .mano-scala .carta:first-child { --w: inherit; margin-left: calc(var(--w) * -.45); }
+}
 /* sul telefono i pulsanti della barra sono icone e "Tocca a te" va su una riga sua, così si legge per intero */
 @media (max-width: 620px) {
   .barra { flex-wrap: wrap; row-gap: .25rem; padding: .4rem .5rem .3rem; }
@@ -1282,6 +1294,8 @@ button.bc-zona { cursor: pointer; } button.bc-zona:hover:not(:disabled) { backgr
   .bc { --wc: 44px; }
   .bc-carte { gap: .5rem; flex-wrap: nowrap; }
   .bc-lato { min-width: 0; flex: 1; padding: .35rem .5rem .5rem; }
+  .bc-lato .cs-carte { gap: 0; }
+  .bc-lato .cs-carte > * + * { margin-left: -10px; } /* la terza carta si accavalla un po': Punto e Banco stanno in 360 pixel */
   .bc-zona { min-height: 4.5rem; padding: .4rem; }
 }
 
@@ -1367,6 +1381,8 @@ body.spettatore #tavolo canvas { pointer-events: none; }
 .pk-forza.alta .pk-forza-barra i { background: #3fae5a; }
 .pk-forza small { opacity: .75; }
 .pk-forza-x { border: 0; background: none; color: inherit; opacity: .55; cursor: pointer; font-size: .85rem; padding: .2rem; }
+/* col dito: i bottoncini dei tavoli (puntate, ordina, chiudi) almeno grandi come un polpastrello */
+@media (pointer: coarse) { #tavolo .mini-bt, #azioni .mini-bt { min-height: 2.25rem; min-width: 2.25rem; } .pk-forza-x { min-width: 2.25rem; min-height: 2.25rem; } }
 /* tabelle di strategia (blackjack, baccarat) */
 .cs-tab-apri { margin: .3rem 0 0; text-align: center; }
 .cs-tabella { position: fixed; inset: 0; z-index: 30; display: grid; place-items: center; padding: .6rem; background: rgba(0, 0, 0, .55); }

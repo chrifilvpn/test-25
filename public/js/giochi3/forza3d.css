@@ -28,4 +28,5 @@
 .f3-griglia span.ultima { box-shadow: 0 0 0 2px #7cc4ff; }
 .f3-mini { display: inline-block; width: .9rem; height: .9rem; border-radius: 50%; }
 .f3-mini.ros { background: #d62828; } .f3-mini.gia { background: #f2b705; }
-@media (max-width: 600px) { .f3-piani { gap: .4rem; } .f3-griglia { grid-template-columns: repeat(4, .8rem); gap: 2px; padding: 4px; } .f3-griglia span { width: .8rem; height: .8rem; } .f3-piano small { font-size: .62rem; } }
+/* telefono: i quattro piani su due file, con buchi grandi come un dito */
+@media (max-width: 600px) { .f3-piani { display: grid; grid-template-columns: repeat(2, auto); gap: .5rem .9rem; } .f3-griglia { grid-template-columns: repeat(4, 1.7rem); gap: 4px; padding: 5px; } .f3-griglia span { width: 1.7rem; height: 1.7rem; } .f3-piano small { font-size: .7rem; } }

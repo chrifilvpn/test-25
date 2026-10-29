@@ -1,7 +1,7 @@
 /* NURIKABE: sabbia chiara per le isole, mare blu con le onde, numeri come sassi tondi */
 .nk { width: min(44rem, 100%); margin: 0 auto; display: grid; justify-items: center; gap: .8rem; padding: .3rem 0 1rem; }
 .nk-griglia {
-  --lato: min(calc(min(34rem, 94vw) / var(--w)), calc(52vh / var(--h)));
+  --lato: min(calc((min(34rem, 100vw - 1.6rem) - 12px - (var(--w) - 1) * 2px) / var(--w)), calc(52vh / var(--h)));
   display: grid; grid-template-columns: repeat(var(--w), var(--lato)); grid-auto-rows: var(--lato); gap: 2px; padding: 6px; border-radius: 14px;
   background: #b39a6a; box-shadow: 0 10px 26px rgba(0, 0, 0, .4); user-select: none; -webkit-user-select: none; touch-action: none;
 }
