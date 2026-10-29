@@ -121,7 +121,10 @@
     const b = bucaDi(p.buca), tema = PB.COURSE[p.buca[0]].tema;
     const box = tela.parentElement;
     // il riquadro: largo come lo spazio, alto in proporzione (16:10), e mostra al massimo 1100 × 690 del campo
-    const largo = box.clientWidth, alto = Math.max(240, Math.min(window.innerHeight - 270, Math.round(largo * 0.62)));
+    // sul telefono in orizzontale l'altezza si misura da dove comincia il campo (con un numero fisso usciva di sotto)
+    const sdraiato = window.Arena.touch() && window.innerWidth > window.innerHeight && window.innerHeight <= 520;
+    const libera = sdraiato ? window.innerHeight - Math.max(0, box.getBoundingClientRect().top + (window.scrollY || 0)) - 16 : window.innerHeight - 270;
+    const largo = box.clientWidth, alto = Math.max(sdraiato ? 180 : 240, Math.min(libera, Math.round(largo * 0.62)));
     const dpr = window.devicePixelRatio || 1;
     if (tela.width !== Math.round(largo * dpr) || tela.height !== Math.round(alto * dpr)) { tela.width = Math.round(largo * dpr); tela.height = Math.round(alto * dpr); tela.style.width = `${largo}px`; tela.style.height = `${alto}px`; }
     const scala = Math.max(largo / 1100, alto / 690, Math.min(largo / b.W, alto / b.H));

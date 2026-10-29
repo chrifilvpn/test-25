@@ -162,7 +162,9 @@ window.Arena = (() => {
       const comandi = box.parentElement && box.parentElement.querySelector('.ar-touch, .st-frecce');
       // in orizzontale sul telefono i comandi stanno ai lati, sopra il campo (vedi .ar-touch nel CSS): non tolgono altezza
       const ai_lati = comandi && getComputedStyle(comandi).position === 'fixed';
-      const spazioSotto = (comandi && !ai_lati ? comandi.offsetHeight + 16 : 0) + (touch() ? (ai_lati ? 14 : 52) : 70);
+      // telefono in orizzontale: l'altezza è poca, si tiene solo un filo sotto il campo (anche nei giochi senza joystick)
+      const sdraiato = touch() && window.innerWidth > window.innerHeight && window.innerHeight <= 520;
+      const spazioSotto = (comandi && !ai_lati ? comandi.offsetHeight + 16 : 0) + (touch() ? (ai_lati || sdraiato ? 14 : 52) : 70);
       const scala = Math.min(box.clientWidth / p.W, Math.max(140, window.innerHeight - sopra - spazioSotto) / p.H);
       const dpr = window.devicePixelRatio || 1, w = Math.round(p.W * scala), h = Math.round(p.H * scala);
       if (tela.width !== Math.round(w * dpr)) { tela.width = Math.round(w * dpr); tela.height = Math.round(h * dpr); tela.style.width = `${w}px`; tela.style.height = `${h}px`; }

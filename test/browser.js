@@ -3,7 +3,7 @@
 // i tasti, trascina sul campo). Controlla che non ci siano errori nella pagina e che niente esca dallo schermo.
 //   npm run test:browser                 tutti i giochi, telefono e computer
 //   npm run test:browser -- tris uno     solo alcuni giochi
-// Variabili: SECONDI (default 12), INSIEME (partite in parallelo, default 4), SOLO=telefono|computer.
+// Variabili: SECONDI (default 12), INSIEME (partite in parallelo, default 4), SOLO=telefono|orizzontale|computer.
 // Serve Playwright con Chromium (npm i -D playwright && npx playwright install chromium); se manca, il test lo
 // dice e finisce senza errori (così "npm test" su Render non si ferma).
 const { spawn, execSync } = require('child_process');
@@ -23,7 +23,8 @@ const PORTA = 3900 + Math.floor(Math.random() * 90);
 const URL = `http://localhost:${PORTA}`;
 const SECONDI = Number(process.env.SECONDI || 12);
 const INSIEME = Number(process.env.INSIEME || 4);
-const DISPOSITIVI = { telefono: devices['iPhone 13'], computer: devices['Desktop Chrome'] };
+const DISPOSITIVI = { telefono: devices['iPhone 13'], computer: devices['Desktop Chrome'],
+  orizzontale: { ...devices['iPhone 13'], viewport: { width: devices['iPhone 13'].viewport.height, height: devices['iPhone 13'].viewport.width } } };
 const TASTI = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'w', 'a', 's', 'd', ' ', 'Enter', '1', '2', '3'];
 
 async function gioca(browser, id, nomeDisp) {
@@ -82,6 +83,9 @@ async function gioca(browser, id, nomeDisp) {
     // niente deve uscire di lato dallo schermo
     const largo = await p.evaluate(() => document.documentElement.scrollWidth - innerWidth);
     if (largo > 4) errori.push(`la pagina esce di lato di ${largo} pixel`);
+    // sul telefono una pagina più larga dello schermo fa rimpicciolire tutto (innerWidth cresce invece di scorrere)
+    const vista = DISPOSITIVI[nomeDisp].viewport.width, interno = await p.evaluate(() => innerWidth);
+    if (interno > vista + 4) errori.push(`la pagina è più larga dello schermo (${interno} invece di ${vista}): il telefono la rimpicciolisce`);
   } catch (e) { errori.push(`prova interrotta: ${e.message.split('\n')[0]}`); }
   await ctx.close();
   return { id, nomeDisp, errori: [...new Set(errori)], partita };
@@ -94,7 +98,7 @@ async function gioca(browser, id, nomeDisp) {
   for (let k = 0; k < 50 && !/in ascolto/.test(logServer); k++) await new Promise((r) => setTimeout(r, 200));
   const { GIOCHI } = require('../giochi');
   const scelti = process.argv.slice(2).length ? process.argv.slice(2) : Object.keys(GIOCHI);
-  const disp = process.env.SOLO ? [process.env.SOLO] : ['telefono', 'computer'];
+  const disp = process.env.SOLO ? [process.env.SOLO] : ['telefono', 'orizzontale', 'computer'];
   const lavori = scelti.flatMap((id) => disp.map((d) => [id, d]));
   const browser = await chromium.launch();
   const risultati = [];

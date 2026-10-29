@@ -536,7 +536,7 @@
 .attivo-bt { background: var(--avorio) !important; color: var(--inchiostro); }
 
 /* ======================= SNAKE ======================= */
-.sn { width: 100%; display: grid; justify-items: center; gap: .4rem; }
+.sn { width: 100%; display: grid; justify-items: center; gap: .4rem; touch-action: none; user-select: none; -webkit-user-select: none; }
 .sn-box { width: min(100%, 64rem); display: grid; justify-items: center; }
 .sn-tela { display: block; border-radius: 10px; box-shadow: 0 10px 26px rgba(0, 0, 0, .35); touch-action: none; }
 .sn-nota { margin: 0; text-align: center; }
@@ -1431,6 +1431,15 @@ button.sb-tessera:hover { transform: translateY(-4px); }
 .st-frecce { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem; width: min(24rem, 100%); touch-action: none; user-select: none; -webkit-user-select: none; }
 .st-frecce button { height: 3.8rem; border: 0; border-radius: 14px; background: var(--oro); color: #1f2430; font: 700 1.6rem var(--sans); box-shadow: 0 4px 12px rgba(0, 0, 0, .35); touch-action: none; }
 .st-frecce button:active { transform: scale(.94); }
+/* telefono in orizzontale: ◀ ▶ a sinistra, ▲ ▼ a destra, sopra i lati del campo (che così usa tutta l'altezza) */
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 520px) {
+  .st-frecce { position: fixed; left: 0; right: 0; bottom: max(.4rem, env(safe-area-inset-bottom)); z-index: 30; width: auto;
+    grid-template-columns: 3.6rem 3.6rem 1fr 3.6rem; grid-template-rows: 3.6rem 3.6rem; grid-template-areas: ". . . u" "l r . d";
+    padding: 0 max(.6rem, env(safe-area-inset-left)) 0 max(.6rem, env(safe-area-inset-right)); pointer-events: none; }
+  .st-frecce button { pointer-events: auto; height: auto; opacity: .88; font-size: 1.3rem; }
+  .st-frecce [data-st="l"] { grid-area: l; } .st-frecce [data-st="r"] { grid-area: r; }
+  .st-frecce [data-st="u"] { grid-area: u; } .st-frecce [data-st="d"] { grid-area: d; }
+}
 
 /* ---------- ROULETTE MAGGIONI ---------- */
 .rl { width: min(62rem, 100%); display: grid; gap: .6rem; justify-items: center; }
@@ -1673,6 +1682,14 @@ button.rl-c:hover:not(:disabled) { box-shadow: inset 0 0 0 2px var(--oro); }
   .ar .pa-round { font-size: .7rem; margin: 0; }
   .ar-hud { font-size: .78rem; min-height: 0; }
 }
+/* stessa cosa per i giochi d'azione che non usano il motore Arena: in orizzontale sul telefono l'altezza è poca, quindi
+   via la riga col nome dell'avversario (i punti sono già nella barra) e il campo parte subito */
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 520px) {
+  #schermo-gioco:has(.tt, .sn, .ah, .ch, .pt, .ce) .pos-alto, #schermo-gioco:has(.tt, .sn, .ah, .ch, .pt, .ce) .io { display: none; }
+  #schermo-gioco:has(.tt, .sn, .ah, .ch, .pt, .ce) .punteggio { font-size: .8rem; padding-block: 0; }
+  #schermo-gioco:has(.tt, .sn, .ah, .ch, .pt, .ce) .tavolo { padding-block: .1rem; gap: .1rem; }
+  .sn-nota, .ah-nota { display: none; }
+}
 /* shut the box: le combinazioni possibili come scorciatoie */
 .sb-combo { display: flex; flex-wrap: wrap; gap: .35rem; justify-content: center; max-width: 34rem; }
 .sb-combo .bottone { font-variant-numeric: tabular-nums; }
@@ -1717,6 +1734,28 @@ button.rl-c:hover:not(:disabled) { box-shadow: inset 0 0 0 2px var(--oro); }
 .sd-cella.aiutata { color: #b7791f; animation: sd-aiuto 1.2s ease-out; }
 @keyframes sd-aiuto { 0% { background: rgba(255, 224, 102, .9); } }
 .sd-comandi { flex-wrap: wrap; }
+/* tetris sul telefono: i pulsanti subito sotto il proprio tabellone (prima finivano sotto quelli degli altri, fuori
+   dallo schermo); il tabellone si comanda anche col dito (vedi i gesti in tetris.js) */
+@media (hover: none), (max-width: 760px) {
+  .tt-pulsanti { order: 1; }
+  .tt-altri { order: 2; }
+  .tt-mio canvas { touch-action: none; }
+}
+@media (pointer: coarse) {
+  .tt { gap: .6rem; }
+  .tt-altri { gap: .5rem; }
+}
+/* in orizzontale i pulsanti vanno ai lati: frecce a sinistra, rotazioni, hold e caduta a destra */
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 520px) {
+  .tt-pulsanti { position: fixed; left: 0; right: 0; bottom: max(.4rem, env(safe-area-inset-bottom)); z-index: 30; display: grid; gap: .35rem;
+    grid-template-columns: 3.4rem 3.4rem 1fr 3.4rem 3.4rem; grid-template-areas: "sx dx . rsx rdx" "giu giu . hold cad";
+    padding: 0 max(.6rem, env(safe-area-inset-left)) 0 max(.6rem, env(safe-area-inset-right)); pointer-events: none; }
+  .tt-pulsanti .tt-bt { pointer-events: auto; height: 3.2rem; min-width: 0; opacity: .9; }
+  .tt-bt[data-tt="sx"] { grid-area: sx; } .tt-bt[data-tt="dx"] { grid-area: dx; } .tt-bt[data-tt="giu"] { grid-area: giu; }
+  .tt-bt[data-tt="ruotaSx"] { grid-area: rsx; } .tt-bt[data-tt="ruota"] { grid-area: rdx; }
+  .tt-bt[data-tt="hold"] { grid-area: hold; font-size: .85rem; } .tt-bt[data-tt="caduta"] { grid-area: cad; font-size: .8rem; }
+  .tt { padding-inline: 7.6rem; }
+}
 /* tetris sul telefono: i 7 pulsanti in una riga sola */
 @media (max-width: 480px) {
   .tt-pulsanti { flex-wrap: nowrap; gap: .25rem; padding: 0 .2rem; }
@@ -1768,7 +1807,18 @@ button.rl-c:hover:not(:disabled) { box-shadow: inset 0 0 0 2px var(--oro); }
 @keyframes ex-papi-esce { to { opacity: 0; } }
 
 /* FOTOCAMERA MAGICA (public/js/fotocamera.js): ti vedi come in uno specchio e i gatti compaiono davanti a te */
-.fcam-velo { position: fixed; left: calc(100vw - clamp(240px, 62vw, 400px) - 12px); top: 76px; z-index: 90; width: clamp(240px, 62vw, 400px); }
+.fcam-velo { --fcam-w: clamp(240px, 62vw, 400px); position: fixed; left: calc(100vw - var(--fcam-w) - 12px); top: 76px; z-index: 90; width: var(--fcam-w); }
+/* sul telefono la finestra è più piccola, così si gioca intanto (in orizzontale copriva quasi tutto lo schermo) */
+@media (pointer: coarse) and (max-width: 620px) { .fcam-velo { --fcam-w: clamp(160px, 48vw, 230px); } }
+@media (pointer: coarse) and (max-height: 520px) { .fcam-velo { --fcam-w: clamp(160px, 30vw, 230px); top: 44px; } }
+@media (pointer: coarse) and (max-width: 620px), (pointer: coarse) and (max-height: 520px) {
+  .fcam-nota, .fcam-etichetta { display: none; }
+  .fcam-testa { gap: 4px; }
+  .fcam-box { padding: 6px 7px 7px; }
+  .fcam-testa { margin-bottom: 4px; }
+  .fcam-testa h2 { font-size: .9rem; }
+  .fcam-stato { font-size: .7rem; }
+}
 .fcam-velo[hidden] { display: none; }
 .fcam-velo.fcam-presa { opacity: .92; }
 .fcam-box { max-height: calc(100vh - 16px); overflow: auto; background: var(--panno-scuro); color: var(--testo); border-radius: 14px; padding: 8px 10px 10px; box-shadow: 0 10px 40px rgba(0, 0, 0, .6); border: 1px solid rgba(255, 255, 255, .12); }
@@ -1800,3 +1850,11 @@ button.rl-c:hover:not(:disabled) { box-shadow: inset 0 0 0 2px var(--oro); }
 .fcam-prova { margin: 8px 0 0; padding: 6px 8px; border-radius: 8px; background: rgba(0, 0, 0, .35); font: .72rem/1.35 ui-monospace, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
 @keyframes fcam-entra { from { opacity: 0; transform: scale(.92); } }
 @media (prefers-reduced-motion: reduce) { .fcam-filtro { animation: none; } }
+/* GIOCHI D'AZIONE SUL TELEFONO: due tocchi veloci (pulsanti, campo) non devono ingrandire la pagina, e tenere premuto
+   non deve selezionare il testo né aprire il menu del telefono. Lo zoom con due dita resta possibile. */
+#schermo-gioco:has(.ar, .tt, .sn, .ah, .ch, .pt, .ce, .tk, .hb, .mi, .pa, .pf, .bg) { touch-action: manipulation; }
+@media (pointer: coarse) {
+  #schermo-gioco:has(.ar, .tt, .sn, .ah, .ch, .pt, .ce, .tk, .hb, .mi, .pa, .pf, .bg) #tavolo { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  /* niente "tira giù per ricaricare" o rimbalzo della pagina mentre si gioca col dito */
+  html:has(#schermo-gioco:not([hidden]) :is(.ar, .tt, .sn, .ah, .ch, .pt, .ce)), body:has(#schermo-gioco:not([hidden]) :is(.ar, .tt, .sn, .ah, .ch, .pt, .ce)) { overscroll-behavior: none; }
+}
