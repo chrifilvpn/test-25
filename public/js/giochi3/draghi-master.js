@@ -212,13 +212,19 @@
     if (!cb && ui.drTab === 'battaglia') ui.drTab = 'storia';
     if (info(ctx).libera && primaVolta(ui, `dr-dm-lib-${info(ctx).libera.testo}`)) { ui.drLato = 'dm'; if (tel) ui.drTab = 'mondo'; }
     if (info(ctx).mano && cb && primaVolta(ui, `dr-dm-mano-${cb.round}-${cb.attivo}`)) { ui.drLato = 'dm'; if (tel) ui.drTab = 'battaglia'; }
+    // sul telefono la consolle ha la sua scheda «Rispondi»: nella Storia il racconto prende tutto lo schermo
+    if (ui.drTab === 'consolle' && (cb || !tel)) ui.drTab = cb ? 'battaglia' : 'storia';
     const tab = ui.drTab || (cb ? 'battaglia' : 'storia');
+    const r = info(ctx).richiesta;
     let centro;
     if (cb) centro = `<section class="dr-centro dr-centro-cb">${CB().filaIniziativa(ctx)}<div id="dr-campo-posto" class="dr-campo-posto"></div></section>`;
-    else centro = `<section class="dr-centro">${T().testaStoria(ctx)}${T().racconto(ctx)}${consolle(ctx)}</section>`;
-    const r = info(ctx).richiesta;
-    const nav = (cb ? [['battaglia', '⚔️', 'Battaglia'], ['mondo', '🎩', 'Master'], ['gruppo', '👥', 'Gruppo']] : [['storia', '📖', 'Storia'], ['mondo', '🧠', 'Aiuti'], ['gruppo', '👥', 'Gruppo']])
-      .map(([id, ic, n]) => `<button type="button" class="${tab === id ? 'sel' : ''}" data-az="dr-tab" data-id="${id}"><span>${ic}</span>${n}${(id === 'storia' && r) || (id === 'mondo' && info(ctx).libera) ? '<i class="dr-pallino"></i>' : ''}</button>`).join('');
+    else {
+      const vai = tel ? `<button type="button" class="dr-dm-vai ${r ? 'forte' : ''}" data-az="dr-tab" data-id="consolle">${r ? '🎩 Tocca a te, master: rispondi' : '🎩 Racconta, chiedi una prova, fai partire uno scontro'} ›</button>` : '';
+      centro = `<section class="dr-centro">${T().testaStoria(ctx)}${T().racconto(ctx)}${vai}${consolle(ctx)}</section>`;
+    }
+    const schede = cb ? [['battaglia', '⚔️', 'Battaglia'], ['mondo', '🎩', 'Master'], ['gruppo', '👥', 'Gruppo']]
+      : [['storia', '📖', 'Storia'], ...(tel ? [['consolle', '🎩', 'Rispondi']] : []), ['mondo', '🧠', 'Aiuti'], ['gruppo', '👥', 'Gruppo']];
+    const nav = schede.map(([id, ic, n]) => `<button type="button" class="${tab === id ? 'sel' : ''}" data-az="dr-tab" data-id="${id}"><span>${ic}</span>${n}${(id === (tel ? 'consolle' : 'storia') && r) || (id === 'mondo' && info(ctx).libera) ? '<i class="dr-pallino"></i>' : ''}</button>`).join('');
     return `<div class="dr dr-dm ${scena} ${cb ? 'dr-in-cb' : ''} dr-tab-${tab} dr-atm-${esc(p.atmosfera || 'calma')}">${T().gruppo(ctx)}${centro}${lato(ctx)}<nav class="dr-nav">${nav}</nav>${scheda1}</div>`;
   }
   function stato(ctx) {
@@ -290,17 +296,18 @@
       case 'dr-dm-str': ui.drDmStr = ui.drDmStr === id ? null : id; return ctx.ridisegna();
       case 'dr-dm-aggiungi': return aggiungi(ctx, id);
       case 'dr-dm-togli': { const [k, i] = String(id).split(':'); if (L[k]) L[k].splice(Number(i), 1); return ctx.ridisegna(); }
-      case 'dr-dm-mostro': { const x = L.nemici.find((m) => m.id === id && !m.attacchi); if (x) x.n = Math.min(10, (x.n || 1) + 1); else L.nemici.push({ id, n: 1 }); ui.drDmStr = 'combatti'; if (T().telefono()) ui.drTab = 'storia'; ctx.avviso('Aggiunto al prossimo combattimento'); return ctx.ridisegna(); }
+      case 'dr-dm-mostro': { const x = L.nemici.find((m) => m.id === id && !m.attacchi); if (x) x.n = Math.min(10, (x.n || 1) + 1); else L.nemici.push({ id, n: 1 }); ui.drDmStr = 'combatti'; if (T().telefono()) ui.drTab = 'consolle'; ctx.avviso('Aggiunto al prossimo combattimento'); return ctx.ridisegna(); }
       case 'dr-dm-manda-risposta': {
         const r = risposta(ctx);
         if (!r.narrazione && !r.prove.length && !r.salvezze.length && !r.eventi.length && !r.combattimento) return ctx.avviso('Scrivi cosa succede (o aggiungi una prova, un combattimento o un evento)');
         svuota(ui);
+        if (ui.drTab === 'consolle') ui.drTab = 'storia'; // sul telefono si torna al racconto per vedere cosa succede
         suono([[440, 0.05], [554, 0.05], [659, 0.08]], { tipo: 'sine', volume: 0.035 });
         return ctx.invia({ tipo: 'dm-rispondi', risposta: r });
       }
       case 'dr-dm-manda': return ctx.invia({ tipo: 'manda' });
       case 'dr-dm-bozza': return ctx.invia({ tipo: 'dm-bozza' });
-      case 'dr-dm-ia': svuota(ui); return ctx.invia({ tipo: 'dm-ia' });
+      case 'dr-dm-ia': svuota(ui); if (ui.drTab === 'consolle') ui.drTab = 'storia'; return ctx.invia({ tipo: 'dm-ia' });
       case 'dr-dm-auto': return ctx.invia({ tipo: 'dm-auto', si: id === '1' });
       case 'dr-dm-riscrivi': {
         const campo = id || 'dmNarr', t = String(val(ctx, campo)).trim();
