@@ -256,6 +256,20 @@
     disegnaGiochi();
   });
 
+  // sul telefono la barra dei filtri (sempre in vista) prendeva un quinto dello schermo: scorrendo in giù si nasconde,
+  // appena si torna su ricompare (come la barra degli indirizzi)
+  {
+    const barra = $('.filtri'), stretto = window.matchMedia('(max-width: 600px)');
+    let ultimaY = window.scrollY;
+    window.addEventListener('scroll', () => {
+      const y = window.scrollY, d = y - ultimaY;
+      if (Math.abs(d) < 8) return;
+      ultimaY = y;
+      const via = stretto.matches && d > 0 && y > barra.parentElement.offsetTop + 200 && !barra.contains(document.activeElement);
+      if (barra.classList.contains('filtri-via') !== via) barra.classList.toggle('filtri-via', via);
+    }, { passive: true });
+  }
+
   function disegnaGiochi() {
     const visibili = giochi.filter(passaFiltro);
     // cercando, prima i giochi il cui nome comincia con la parola, poi quelli che la contengono nel nome, poi gli altri
