@@ -1685,9 +1685,9 @@ button.rl-c:hover:not(:disabled) { box-shadow: inset 0 0 0 2px var(--oro); }
 /* stessa cosa per i giochi d'azione che non usano il motore Arena: in orizzontale sul telefono l'altezza è poca, quindi
    via la riga col nome dell'avversario (i punti sono già nella barra) e il campo parte subito */
 @media (pointer: coarse) and (orientation: landscape) and (max-height: 520px) {
-  #schermo-gioco:has(.tt, .sn, .ah, .ch, .pt, .ce) .pos-alto, #schermo-gioco:has(.tt, .sn, .ah, .ch, .pt, .ce) .io { display: none; }
-  #schermo-gioco:has(.tt, .sn, .ah, .ch, .pt, .ce) .punteggio { font-size: .8rem; padding-block: 0; }
-  #schermo-gioco:has(.tt, .sn, .ah, .ch, .pt, .ce) .tavolo { padding-block: .1rem; gap: .1rem; }
+  #schermo-gioco:is(:has(.tt), :has(.sn), :has(.ah), :has(.ch), :has(.pt), :has(.ce)) .pos-alto, #schermo-gioco:is(:has(.tt), :has(.sn), :has(.ah), :has(.ch), :has(.pt), :has(.ce)) .io { display: none; }
+  #schermo-gioco:is(:has(.tt), :has(.sn), :has(.ah), :has(.ch), :has(.pt), :has(.ce)) .punteggio { font-size: .8rem; padding-block: 0; }
+  #schermo-gioco:is(:has(.tt), :has(.sn), :has(.ah), :has(.ch), :has(.pt), :has(.ce)) .tavolo { padding-block: .1rem; gap: .1rem; }
   .sn-nota, .ah-nota { display: none; }
 }
 /* shut the box: le combinazioni possibili come scorciatoie */
@@ -1852,9 +1852,9 @@ button.rl-c:hover:not(:disabled) { box-shadow: inset 0 0 0 2px var(--oro); }
 @media (prefers-reduced-motion: reduce) { .fcam-filtro { animation: none; } }
 /* GIOCHI D'AZIONE SUL TELEFONO: due tocchi veloci (pulsanti, campo) non devono ingrandire la pagina, e tenere premuto
    non deve selezionare il testo né aprire il menu del telefono. Lo zoom con due dita resta possibile. */
-#schermo-gioco:has(.ar, .tt, .sn, .ah, .ch, .pt, .ce, .tk, .hb, .mi, .pa, .pf, .bg) { touch-action: manipulation; }
+#schermo-gioco:is(:has(.ar), :has(.tt), :has(.sn), :has(.ah), :has(.ch), :has(.pt), :has(.ce), :has(.tk), :has(.hb), :has(.mi), :has(.pa), :has(.pf), :has(.bg)) { touch-action: manipulation; }
 @media (pointer: coarse) {
-  #schermo-gioco:has(.ar, .tt, .sn, .ah, .ch, .pt, .ce, .tk, .hb, .mi, .pa, .pf, .bg) #tavolo { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  #schermo-gioco:is(:has(.ar), :has(.tt), :has(.sn), :has(.ah), :has(.ch), :has(.pt), :has(.ce), :has(.tk), :has(.hb), :has(.mi), :has(.pa), :has(.pf), :has(.bg)) #tavolo { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   /* niente "tira giù per ricaricare" o rimbalzo della pagina mentre si gioca col dito */
-  html:has(#schermo-gioco:not([hidden]) :is(.ar, .tt, .sn, .ah, .ch, .pt, .ce)), body:has(#schermo-gioco:not([hidden]) :is(.ar, .tt, .sn, .ah, .ch, .pt, .ce)) { overscroll-behavior: none; }
+  html:has(#schermo-gioco:not([hidden]) .ar, #schermo-gioco:not([hidden]) .tt, #schermo-gioco:not([hidden]) .sn, #schermo-gioco:not([hidden]) .ah, #schermo-gioco:not([hidden]) .ch, #schermo-gioco:not([hidden]) .pt, #schermo-gioco:not([hidden]) .ce), body:has(#schermo-gioco:not([hidden]) .ar, #schermo-gioco:not([hidden]) .tt, #schermo-gioco:not([hidden]) .sn, #schermo-gioco:not([hidden]) .ah, #schermo-gioco:not([hidden]) .ch, #schermo-gioco:not([hidden]) .pt, #schermo-gioco:not([hidden]) .ce) { overscroll-behavior: none; }
 }
