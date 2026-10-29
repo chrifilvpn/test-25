@@ -1416,3 +1416,10 @@ body.spettatore #tavolo canvas { pointer-events: none; }
   /* il gioco parte dall'alto: centrato in verticale scendeva e il campo veniva più piccolo */
   .tavolo.libero .panno { align-items: start; align-content: start; }
 }
+/* sul telefono la barra dei filtri si nasconde scorrendo in giù e torna scorrendo in su (vedi app.js) */
+@media (max-width: 600px) {
+  .filtri { transition: transform .22s ease, opacity .22s ease; }
+  .filtri.filtri-via { transform: translateY(-115%); opacity: 0; pointer-events: none; }
+}
+/* iPhone: un campo con il testo sotto i 16px fa ingrandire tutta la pagina quando lo si tocca */
+@media (pointer: coarse) { input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), select, textarea { font-size: max(16px, 1em); } }
