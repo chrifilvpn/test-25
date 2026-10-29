@@ -60,7 +60,7 @@
 .agr-chi b { color: var(--oro); }
 .agr-chi small { font-size: .72rem; }
 .agr-aiuto { font: 700 .95rem var(--serif); letter-spacing: .15em; color: #f2c14e; }
-.agr-bt-aiuto { border: 0; background: rgba(247, 240, 222, .1); color: var(--tenue); font-size: .75rem; padding: .15rem .5rem; border-radius: 999px; cursor: pointer; }
+.agr-bt-aiuto { min-height: 2rem; border: 0; background: rgba(247, 240, 222, .1); color: var(--tenue); font-size: .75rem; padding: .15rem .5rem; border-radius: 999px; cursor: pointer; }
 .agr-bt-aiuto:hover { background: rgba(242, 193, 78, .25); color: var(--avorio); }
 .agr-altra { position: absolute; top: .3rem; right: .45rem; font-size: .95rem; opacity: .85; }
 .agr-loro { margin: 0; font-size: .75rem; color: var(--tenue); }

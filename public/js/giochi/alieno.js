@@ -7,7 +7,10 @@
   const COL = ['#e0413a', '#2f6fd8', '#2e9d57', '#f2c230', '#f08a24', '#8e55c9', '#f07ab8', '#46c8e8', '#e8e8e8', '#8a5a36'];
   const NOMI_COL = ['rosso', 'blu', 'verde', 'giallo', 'arancione', 'viola', 'rosa', 'azzurro', 'bianco', 'marrone'];
   let mondo = null, nebbia = null, stelle = null, ctxG = null;
-  const loc = { compito: null, inizio: 0, stato: null, ruoloVisto: false };
+  const loc = { compito: null, inizio: 0, stato: null, ruoloVisto: false, listaAperta: false };
+  // sul telefono: niente tasti tra parentesi e lista dei compiti chiusa (si apre toccandola), così non copre la mappa e il joystick
+  const dito = () => matchMedia('(hover: none) and (pointer: coarse)').matches;
+  const tasto = (t) => (dito() ? '' : ` (${t})`);
   const ombra = (c, k) => { const n = parseInt(c.slice(1), 16), f = (v) => Math.max(0, Math.min(255, Math.round(v * k))); return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`; };
   const rnd = (s) => { const x = Math.sin(s * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
 
@@ -445,7 +448,8 @@
     predici,
     id: 'alieno',
     obiettivo: 'vittoria',
-    istruzioni: () => 'WASD o frecce (sul telefono il joystick). E = compito o pulsante · Q = elimina (se sei un Alieno) · R = segnala un corpo. Fuori dalle riunioni la chat è muta.',
+    istruzioni: () => (dito() ? 'Joystick per muoverti · 🛠️ Usa = compito o pulsante · 📣 Segnala un corpo · 🗡️ Elimina (se sei un Alieno) · tocca la lista per vedere i compiti. Fuori dalle riunioni la chat è muta.'
+      : 'WASD o frecce (sul telefono il joystick). E = compito o pulsante · Q = elimina (se sei un Alieno) · R = segnala un corpo. Fuori dalle riunioni la chat è muta.'),
     sottotitolo: (p, ctx) => { const s = p.stato && p.stato.s; return !s || !s.io ? '' : s.io.alieno ? '👽 Sei un ALIENO' : '🧑‍🚀 Sei dell\'equipaggio'; },
     statoGioco: (ctx, s) => (!s.s.io ? '' : s.s.f2 === 'discussione' || s.s.f2 === 'voto' ? 'Riunione!' : s.s.f2 === 'espulsione' ? 'Espulsione…' : s.s.f2 === 'fine' ? 'Fine' : !s.s.io.vivo ? '👻 Fantasma' : s.s.io.alieno ? 'Mimetizzati…' : 'Fai i compiti'),
     hud: (ctx, s) => { const x = s.s; if (!x.io) return ''; const fatti = x.io.compiti.filter((c) => c.fatto).length; return `<span>📍 ${esc(x.stanza)}</span><span>✅ compiti ${x.io.alieno ? '(finti) ' : ''}${fatti}/${x.io.compiti.length}</span>${x.io.alieno ? `<span>🗡️ ${x.io.cd ? `tra ${x.io.cd} s` : 'pronto'}</span>` : ''}<span>🚨 ${x.io.ri}</span>`; },
@@ -474,13 +478,14 @@
       if (s.io.compito) return htmlCompito(ex.stazioni.find((q) => q.id === s.io.compito.id));
       let html = '';
       // lista dei compiti con la barra dell'equipaggio
-      html += `<div class="al-lista"><div class="al-barra-tot"><i style="width:${s.prog}%"></i><span>Compiti dell'equipaggio ${s.prog}%</span></div>${s.io.alieno ? '<p class="piccolo">Compiti finti (per mimetizzarti):</p>' : ''}${s.io.compiti.map((c) => { const st = ex.stazioni.find((q) => q.id === c.st); return `<p class="${c.fatto ? 'fatto' : ''}">${c.fatto ? '✅' : c.passo ? '📦' : '◻️'} ${esc(st.nome)} <small>(${esc(ex.stanze.find((q) => q.id === st.stanza).nome)})</small></p>`; }).join('')}</div>`;
+      const chiusa = dito() && !loc.listaAperta, fatti = s.io.compiti.filter((c) => c.fatto).length;
+      html += `<div class="al-lista${chiusa ? ' chiusa' : ''}"${dito() ? ' data-az="lista" role="button" aria-expanded="' + !chiusa + '"' : ''}><div class="al-barra-tot"><i style="width:${s.prog}%"></i><span>${chiusa ? `📋 I miei compiti ${fatti}/${s.io.compiti.length} · squadra ${s.prog}% ▾` : `Compiti dell'equipaggio ${s.prog}%${dito() ? ' ▴' : ''}`}</span></div>${s.io.alieno ? '<p class="piccolo">Compiti finti (per mimetizzarti):</p>' : ''}${s.io.compiti.map((c) => { const st = ex.stazioni.find((q) => q.id === c.st); return `<p class="${c.fatto ? 'fatto' : ''}">${c.fatto ? '✅' : c.passo ? '📦' : '◻️'} ${esc(st.nome)} <small>(${esc(ex.stanze.find((q) => q.id === st.stanza).nome)})</small></p>`; }).join('')}</div>`;
       // pulsanti d'azione
       const v = vicini(ctx, s);
       const bt = [];
-      bt.push(`<button type="button" class="al-az" data-az="usa" ${v.compito || v.pulsante ? '' : 'disabled'}>${v.pulsante && !v.compito ? `🚨<small>${s.pul ? s.pul + ' s' : s.io.ri ? 'Riunione' : 'usata'}</small>` : '🛠️<small>Usa (E)</small>'}</button>`);
-      if (s.io.vivo) bt.push(`<button type="button" class="al-az segnala" data-az="segnala" ${v.corpo ? '' : 'disabled'}>📣<small>Segnala (R)</small></button>`);
-      if (s.io.alieno && s.io.vivo) bt.push(`<button type="button" class="al-az uccidi" data-az="uccidi" ${v.bersaglio && !s.io.cd ? '' : 'disabled'}>🗡️<small>${s.io.cd ? `${s.io.cd} s` : 'Elimina (Q)'}</small></button>`);
+      bt.push(`<button type="button" class="al-az" data-az="usa" ${v.compito || v.pulsante ? '' : 'disabled'}>${v.pulsante && !v.compito ? `🚨<small>${s.pul ? s.pul + ' s' : s.io.ri ? 'Riunione' : 'usata'}</small>` : `🛠️<small>Usa${tasto('E')}</small>`}</button>`);
+      if (s.io.vivo) bt.push(`<button type="button" class="al-az segnala" data-az="segnala" ${v.corpo ? '' : 'disabled'}>📣<small>Segnala${tasto('R')}</small></button>`);
+      if (s.io.alieno && s.io.vivo) bt.push(`<button type="button" class="al-az uccidi" data-az="uccidi" ${v.bersaglio && !s.io.cd ? '' : 'disabled'}>🗡️<small>${s.io.cd ? `${s.io.cd} s` : `Elimina${tasto('Q')}`}</small></button>`);
       html += `<div class="al-azioni">${bt.join('')}</div>`;
       if (!s.io.vivo) html += '<div class="al-fantasma">👻 Sei un fantasma: passi attraverso i muri, vedi tutto e puoi finire i tuoi compiti</div>';
       return html;
@@ -492,7 +497,8 @@
     },
     clic(ctx, el) {
       const az = el.dataset.az;
-      if (az === 'usa') usa(ctx);
+      if (az === 'lista') { loc.listaAperta = !loc.listaAperta; const so = document.querySelector('.ar-sopra'); if (so) so._html = null; }
+      else if (az === 'usa') usa(ctx);
       else if (az === 'segnala' || az === 'uccidi' || az === 'annulla') ctx.invia({ tipo: az });
       else if (az === 'vota') ctx.invia({ tipo: 'vota', chi: Number(el.dataset.chi) });
     },

@@ -97,7 +97,7 @@
   .wl-indizio { font-size: 1.25rem; }
   .wl-ruolo { font-size: .8rem; }
   .wl-estremi span { font-size: .88rem; }
-  .wl-carta { font-size: .82rem; padding: .45rem .5rem; }
+  .wl-carta { font-size: .82rem; padding: .45rem .5rem; min-height: 2.75rem; }
   .wl-registro { width: var(--wl-larga); }
   .wl-registro ol { max-height: none; }
 }

@@ -1,0 +1,4 @@
+/* TASTIERA DEL TELEFONO (vedi tastiera-telefono.js): mentre si scrive spariscono le righe dei posti */
+@media (max-width: 760px) {
+  body.tst-aperta #tavolo.libero .pos-alto, body.tst-aperta #tavolo #mio-nome { display: none; }
+}

@@ -6,7 +6,7 @@
 .cv-def p { flex: 1; margin: 0; font: 400 1.02rem/1.3 var(--sans); }
 .cv-def b { color: #8a5a00; margin-right: .2rem; }
 .cv-def small { color: #7a705a; }
-.cv-freccia { flex: none; width: 2rem; height: 2rem; border-radius: 50%; border: 0; background: #efe2bd; color: #4a3b10; font: 700 1.3rem/1 var(--sans); cursor: pointer; }
+.cv-freccia { flex: none; width: 2.5rem; height: 2.5rem; border-radius: 50%; border: 0; background: #efe2bd; color: #4a3b10; font: 700 1.3rem/1 var(--sans); cursor: pointer; }
 .cv-freccia:hover { background: #e6d29b; }
 .cv-carta { padding: .6rem; border-radius: 10px; background: #fbf6e8; box-shadow: 0 10px 30px rgba(0, 0, 0, .35), inset 0 0 0 1px rgba(0, 0, 0, .08); }
 .cv-griglia { display: grid; grid-template-columns: repeat(var(--c), var(--lato)); grid-auto-rows: var(--lato); border: 2px solid #1c1a14; background: #1c1a14; gap: 1px; }

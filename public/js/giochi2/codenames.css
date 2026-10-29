@@ -107,6 +107,6 @@ button.cdn-carta:focus-visible { outline: 3px solid var(--oro); outline-offset: 
   .cdn-registro { width: var(--cdn-larga); }
   .cdn-registro ol { max-height: none; }
   .cdn-capo { padding: .55rem; }
-  .cdn-num { width: 2.2rem; height: 2.2rem; }
+  .cdn-num { width: 2.6rem; height: 2.6rem; }
 }
 @media (prefers-reduced-motion: reduce) { .cdn-carta.appena, .cdn-puntini i { animation: none; } }
