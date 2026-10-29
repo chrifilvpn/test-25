@@ -20,7 +20,7 @@
       M = window.IsolationMappa;
       STAZ = M.OGGETTI.m.concat(M.OGGETTI.G);
       const m = await import('/js/isolation/motore.js');
-      mot = await m.crea({ M });
+      mot = await m.crea({ M, telefono: touch() });
     })().catch((e) => { errore = e; console.error('[isolation]', e); });
     return caricamento;
   }
@@ -30,7 +30,8 @@
   window.__isolationIO = io; // per le prove automatiche
   let inviato = '', ultimoInvio = 0, yawPronto = false, spettaIdx = 0, aiuto = false, partitaVista = null;
   // le impostazioni di chi gioca (restano nel browser): sensibilità del mouse, asse invertito, campo visivo, qualità
-  const IMP_BASE = { sens: 1, inverti: false, fov: 72, qualita: 'alta' };
+  // (sul telefono si parte senza ombre: la torcia con le ombre è la cosa che costa di più)
+  const IMP_BASE = { sens: 1, inverti: false, fov: 72, qualita: touch() ? 'media' : 'alta' };
   const imp = (() => { try { return { ...IMP_BASE, ...JSON.parse(localStorage.getItem('isolation-impostazioni') || '{}') }; } catch (_) { return { ...IMP_BASE }; } })();
   const salvaImp = () => { try { localStorage.setItem('isolation-impostazioni', JSON.stringify(imp)); } catch (_) { /* niente */ } };
   window.__isolationImp = imp; // per le prove automatiche
@@ -109,12 +110,117 @@
       audio.avvia();
       // il minigioco aperto: il clic è per lui (il mouse resta libero)
       if (mg) { const r = tela.getBoundingClientRect(); mgClic((e.clientX - r.left) * mgW / r.width, (e.clientY - r.top) * mgH / r.height); return; }
+      if (e.pointerType === 'touch') { toccoTela(e); return; }
       if (!bloccato()) { try { const p = tela.requestPointerLock(); if (p && p.catch) p.catch(() => {}); } catch (_) { /* niente */ } return; }
       if (e.button === 2) { io.ril = true; invia(true); } else if (e.button === 0) { if (stanzaSpettatore()) spettaIdx++; else premi(0); }
     });
     const su = (e) => { if (e.pointerType === 'mouse' && e.button === 2) { io.ril = false; invia(true); } };
     tela.addEventListener('pointerup', su); tela.addEventListener('pointercancel', su);
   }
+  // ---------- il telefono ----------
+  // In orizzontale la partita prende tutto lo schermo (il riquadro diventa fisso sopra la pagina, la tela segue la forma
+  // dello schermo): joystick a sinistra, il dito trascinato sul resto della scena gira la visuale, pulsanti a destra.
+  // In verticale si chiede di girare il telefono. Con ⛶ si torna alla pagina (Esci, chat) e poi si rientra.
+  const tel = { fuori: false, guarda: null, gx: 0, gy: 0, joy: null, respiro: null, res: 1.1, ema: 16, conta: 0, schermo: false };
+  window.__isolationTel = tel; // per le prove automatiche
+  const orizzontale = () => window.innerWidth > window.innerHeight;
+  function pieno() {
+    const si = touch() && !tel.fuori && orizzontale() && !!ctxA && !!ctxA.partita && ctxA.partita.gioco === 'isolation' && !ctxA.partita.finita;
+    const box = document.querySelector('.ar-box');
+    if (box && box.classList.contains('is-schermo-tel') !== si) box.classList.toggle('is-schermo-tel', si);
+    if (document.documentElement.classList.contains('is-pagina-piena') !== si) document.documentElement.classList.toggle('is-pagina-piena', si);
+    return si;
+  }
+  // la misura della tela in punti: al computer quella del server (1280×720); sul telefono a schermo pieno 480 punti di
+  // altezza (le scritte restano leggibili) e la larghezza che serve a riempire lo schermo
+  let vistaTel = false;
+  function misura(p, si) {
+    vistaTel = si;
+    if (!si) return [p.W, p.H];
+    return [Math.round(Math.max(640, Math.min(1400, 480 * window.innerWidth / Math.max(1, window.innerHeight)))), 480];
+  }
+  // sul telefono la prima volta che si tocca la scena si prova anche lo schermo intero vero (Android: spariscono le barre)
+  function schermoVero() {
+    if (tel.schermo || document.fullscreenElement || !document.fullscreenEnabled) return;
+    tel.schermo = true;
+    try {
+      const p = document.documentElement.requestFullscreen({ navigationUI: 'hide' });
+      if (p && p.then) p.then(() => { try { const o = screen.orientation && screen.orientation.lock && screen.orientation.lock('landscape'); if (o && o.catch) o.catch(() => {}); } catch (_) { /* niente */ } }).catch(() => {});
+    } catch (_) { /* niente */ }
+  }
+  function toccoTela(e) {
+    if (!pieno()) { tel.fuori = false; return; } // fuori dallo schermo pieno: toccare la scena ci rientra
+    schermoVero();
+    if (stanzaSpettatore()) { spettaIdx++; return; }
+    if (tel.guarda !== null) return;
+    tel.guarda = e.pointerId; tel.gx = e.clientX; tel.gy = e.clientY;
+  }
+  document.addEventListener('pointermove', (e) => {
+    if (tel.joy === e.pointerId) {
+      // il joystick spinto fino al bordo: si corre (lo xenomorfo scatta)
+      const j = document.querySelector('.is-joy'); if (!j) return;
+      const r = j.getBoundingClientRect(), d = Math.hypot(e.clientX - r.left - r.width / 2, e.clientY - r.top - r.height / 2);
+      const corre = d > 43;
+      if (corre !== io.corre) { io.corre = corre; j.classList.toggle('corre', corre); invia(true); }
+      return;
+    }
+    if (tel.guarda !== e.pointerId || !attiva()) return;
+    const k = 0.0062 * imp.sens, dx = e.clientX - tel.gx, dy = e.clientY - tel.gy;
+    tel.gx = e.clientX; tel.gy = e.clientY;
+    io.yaw += dx * k; io.pitch = Math.max(-1.35, Math.min(1.35, io.pitch - dy * k * (imp.inverti ? -1 : 1)));
+  }, { passive: true });
+  const lasciaDito = (e) => {
+    if (tel.guarda === e.pointerId) tel.guarda = null;
+    if (tel.joy === e.pointerId) { tel.joy = null; if (io.corre) { io.corre = false; invia(true); } const j = document.querySelector('.is-joy'); if (j) j.classList.remove('corre'); }
+    if (tel.respiro === e.pointerId) { tel.respiro = null; io.respiro = false; invia(true); }
+  };
+  document.addEventListener('pointerup', lasciaDito); document.addEventListener('pointercancel', lasciaDito);
+  // iOS accende l'audio solo alla fine di un tocco
+  document.addEventListener('touchend', () => { if (attiva()) audio.avvia(); }, { passive: true });
+  // i pulsanti sullo schermo (si premono al tocco, senza aspettare il "click")
+  document.addEventListener('pointerdown', (e) => {
+    if (!attiva() || !e.target.closest) return;
+    if (e.target.closest('.is-joy')) { tel.joy = e.pointerId; audio.avvia(); return; } // il movimento lo fa il joystick comune (data-ar="joy")
+    const b = e.target.closest('[data-ist]'); if (!b) return;
+    e.preventDefault(); audio.avvia();
+    const t = b.dataset.ist;
+    if (t === 'fuoco') { if (stanzaSpettatore()) spettaIdx++; else premi(0); }
+    else if (t === 'usa') premi(1);
+    else if (t === 'torcia') premi(2);
+    else if (t === 'razzo') premi(3);
+    else if (t === 'acc') { io.acc = !io.acc; invia(true); }
+    else if (t === 'ril') { io.ril = !io.ril; invia(true); }
+    else if (t === 'respiro') { tel.respiro = e.pointerId; io.respiro = true; invia(true); }
+    else if (t === 'aiuto') aiuto = !aiuto;
+    else if (t === 'rientra') { tel.fuori = false; schermoVero(); }
+    if (navigator.vibrate && (t === 'fuoco' || t === 'usa')) try { navigator.vibrate(12); } catch (_) { /* niente */ }
+  }, { passive: false });
+  // lo stato dei pulsanti (quali si vedono, quali sono accesi): si tocca il DOM solo quando cambia
+  function aggiornaTocco(chi) {
+    const el = document.querySelector('.is-tocco'); if (!el) return;
+    const k = `${chi}|${io.acc ? 1 : 0}|${io.ril ? 1 : 0}|${aiuto ? 1 : 0}`;
+    if (k === el._k) return; // (lo strato può essere ridisegnato: lo stato sta sull'elemento)
+    el._k = k;
+    el.dataset.chi = chi; el.classList.toggle('acc', io.acc); el.classList.toggle('ril', io.ril); el.classList.toggle('aiuto', aiuto);
+  }
+  // la risoluzione della scena 3D sul telefono si adatta: se i fotogrammi sono lenti si scende, se sono veloci si sale
+  function risoluzione(dt) {
+    tel.ema += (dt * 1000 - tel.ema) * 0.05;
+    if (++tel.conta < 90) return;
+    tel.conta = 0;
+    if (tel.ema > 36 && tel.res > 0.55) tel.res = Math.max(0.55, tel.res - 0.15);
+    else if (tel.ema < 21 && tel.res < 1.5) tel.res = Math.min(1.5, tel.res + 0.1);
+  }
+  // le scritte sullo schermo parlano di tasti: sul telefono diventano i pulsanti
+  const SUL_TELEFONO = [
+    [/premi E più volte per divincolarti · clic per bruciarlo/, 'tocca USA più volte per divincolarti · 🔥 per bruciarlo'],
+    [/TIENI PREMUTO SPAZIO/, 'TIENI PREMUTO 😮'], [/spazio · trattieni/, '😮 · trattieni'],
+    [/(^|\s)E (·|per) /g, '$1USA $2 '], [/(^|\s)C · /, '$1▼ · '], [/clic o Tab per cambiare/, 'tocca lo schermo per cambiare'],
+    [/^Clic · attacca/, '⚔ · attacca'], [/Clicca o premi spazio quando/, 'Tocca quando'], [/Clicca i tasti o scrivi con la tastiera/, 'Tocca i tasti'],
+    [/^Clicca un cavo/, 'Tocca un cavo'], [/WASD per muoverti/, 'joystick per muoverti'],
+  ];
+  const perTelefono = (t) => (touch() && typeof t === 'string' ? SUL_TELEFONO.reduce((a, [r, n]) => a.replace(r, n), t) : t);
+
   // le impostazioni: il pannello si apre col pulsante ⚙ (il mouse si libera), i valori restano nel browser
   function pannello(apri) {
     const P = document.querySelector('.is-pannello'); if (!P) return;
@@ -145,6 +251,11 @@
   document.addEventListener('click', (e) => {
     const b = e.target.closest && e.target.closest('[data-is="schermo"]');
     if (!b) return;
+    if (touch()) { // sul telefono: si torna alla pagina (Esci, chat) o si rientra nello schermo pieno
+      tel.fuori = !tel.fuori;
+      if (tel.fuori && document.fullscreenElement) document.exitFullscreen().catch(() => {});
+      return;
+    }
     const box = document.querySelector('.ar-box');
     if (document.fullscreenElement) document.exitFullscreen(); else if (box && box.requestFullscreen) { box.classList.add('is-schermo'); box.requestFullscreen().catch(() => {}); }
   });
@@ -307,7 +418,8 @@
 
   function disegna(g, p, s, prima, u, ctx) {
     ctxA = ctx;
-    const W = p.W, H = p.H, ora = performance.now(), dt = Math.min(0.1, (ora - ultimoT) / 1000); ultimoT = ora;
+    const ora = performance.now(), dt = Math.min(0.1, (ora - ultimoT) / 1000); ultimoT = ora;
+    const [W, H] = misura(p, vistaTel);
     preparaTela(g.canvas);
     if (!mot) {
       carica();
@@ -393,7 +505,9 @@
     if (!mostro && tensione > 0.45 && mu && (mu.f & 1)) { battitoT -= dt * (0.8 + tensione * 1.4); if (battitoT <= 0) { battitoT = 1; audio.suona('battito', Math.min(1, tensione)); } }
     // ---------- la scena 3D ----------
     const umani = I.umani.map((x) => ({ ...x, io: x.k === mio && !mostro && !morto, nascondi: vistaDi && x.k === vistaDi.k }));
-    const qualita = (touch() ? 0.7 : Math.min(1, 1.3 / (window.devicePixelRatio || 1))) * (imp.qualita === 'bassa' ? 0.6 : 1);
+    // la risoluzione della scena: sul telefono quella che regge (vedi risoluzione), in punti dello schermo
+    if (touch()) risoluzione(dt);
+    const qualita = (touch() ? tel.res / Math.min(window.devicePixelRatio || 1, 2) : Math.min(1, 1.3 / (window.devicePixelRatio || 1))) * (imp.qualita === 'bassa' ? 0.6 : 1);
     if (!cam.fov && cam.modo !== 'morte') cam.fov = imp.fov;
     const w = Math.max(320, Math.round(g.canvas.width * qualita)), h = Math.max(180, Math.round(g.canvas.height * qualita));
     const V = { w, h, dt, cam, umani, alieni: I.alieni, porte: st.p, gen: st.g, raccolti: st.o, razzi: st.fl, sbloccato: !!st.sb, nascondiXeno: IA ? IA.i : -1, ombre: imp.qualita === 'alta', joe: I.joe, fh: I.fh, uova: st.uo, ob: st.ob };
@@ -423,7 +537,7 @@
       if (tensione > 0.3) {
         const k = Math.min(1, tensione) * (0.55 + 0.45 * Math.sin(ora / 110));
         g.save(); g.strokeStyle = `rgba(255,40,30,${k})`; g.lineWidth = 18; g.strokeRect(9, 9, W - 18, H - 18); g.restore();
-        testo(g, '⚠ LO XENOMORFO È VICINO · E per lasciare la task', W / 2, H / 2 + 260, { size: 20, al: 'center', col: '#ff7060', peso: 700 });
+        testo(g, '⚠ LO XENOMORFO È VICINO · E per lasciare la task', W / 2, Math.min(H - 8, H / 2 + 260), { size: 20, al: 'center', col: '#ff7060', peso: 700 });
       }
     }
     // i messaggi in basso (eventi)
@@ -431,8 +545,15 @@
     g.textAlign = 'center'; g.font = '600 20px "Courier New", monospace';
     messaggi.forEach((m, i) => { g.globalAlpha = Math.min(1, (4000 - (ora - m.t)) / 600); g.fillStyle = '#d8f0d8'; g.fillText(m.testo, W / 2, H - 150 - (messaggi.length - 1 - i) * 26); });
     g.globalAlpha = 1;
+    if (touch()) aggiornaTocco(mg ? 'mg' : morto || salvo || (!mostro && !mu) ? 'morto' : mostro ? (modo === 'condotto' ? 'condotto' : 'alieno') : mu.f & 2 ? 'nascosto' : 'umano');
     if (aiuto) disegnaAiuto(g, W, H, mostro, survival(ctx));
     else if (!touch() && attiva()) testo(g, 'H · comandi', W - 28, H - 16, { size: 13, al: 'right', col: 'rgba(210,230,210,.6)' });
+    // il telefono fuori dallo schermo pieno: in verticale si chiede di girarlo, in orizzontale si rientra toccando
+    if (touch() && attiva() && !vistaTel) {
+      g.fillStyle = 'rgba(0,0,0,.72)'; g.fillRect(0, 0, W, H);
+      testo(g, orizzontale() ? '▶ Tocca qui per tornare a giocare' : '📱 Gira il telefono in orizzontale', W / 2, H / 2 - 10, { size: 54, al: 'center', col: '#e8f6e8', peso: 700 });
+      testo(g, orizzontale() ? 'la partita va avanti anche mentre leggi la chat' : 'la stazione si gioca a schermo pieno, col joystick e i pulsanti', W / 2, H / 2 + 50, { size: 30, al: 'center', col: '#b8d8b8' });
+    }
     // clic per giocare (mouse non bloccato)
     if (!touch() && attiva() && !bloccato() && ctx.partita.stato.fase === 'gioco' && !morto && !salvo && !mg && !aiuto) {
       g.fillStyle = 'rgba(0,0,0,.55)'; g.fillRect(W / 2 - 300, H / 2 - 42, 600, 94);
@@ -446,12 +567,15 @@
   }
   // H: i comandi sopra la scena
   function disegnaAiuto(g, W, H, mostro, surv) {
-    const righe = mostro
+    const righe = touch() ? (mostro
+      ? ['joystick · muoverti (fino al bordo: scatto)', 'dito sulla scena · guardare', '⚔ · attacca davanti a te', 'USA · grate dei condotti, armadietti e casse', surv ? 'chi sta fermo non lo vedi: colpisci dove senti i rumori' : 'i rumori sono segni sullo schermo e nuvolette sulla minimappa']
+      : ['joystick · muoverti (fino al bordo: correre, fa rumore)', 'dito sulla scena · guardare', '🔥 · lanciafiamme', 'USA · armadietti, casse, botole, ' + (surv ? 'task' : 'generatori'), '▼ · accucciarti   📡 · rilevatore', '🔦 · torcia   🎆 · razzo (attira lo xenomorfo)', '😮 · trattieni il respiro (nascosto)', 'da morto: tocca lo schermo per cambiare chi guardi', '⛶ · torna alla pagina (chat, Esci)'])
+      : mostro
       ? ['WASD · muoverti', 'mouse · guardare', 'Maiusc · scatto (consuma il fiato)', 'clic · attacca davanti a te', 'E · entra o scendi dalle grate dei condotti', 'E · apri armadietti e casse', surv ? 'chi sta fermo non lo vedi: colpisci dove senti i rumori' : 'i rumori sono segni sullo schermo e nuvolette sulla minimappa']
       : ['WASD · muoverti', 'mouse · guardare', 'Maiusc · correre (fa rumore)', 'C · accucciarti (passi sotto scrivanie e letti)', 'Q o tasto destro · rilevatore di movimento', 'F · torcia', 'E · usa: armadietti, casse, botole, ' + (surv ? 'task' : 'generatori'), 'clic · lanciafiamme', 'G · lancia un razzo (attira lo xenomorfo)', 'spazio · trattieni il respiro (nascosto)', 'Tab · da morto cambi chi guardi o la mappa', 'preso da un Working Joe: E più volte per liberarti'];
     const w = 560, h = 70 + righe.length * 26, x = W / 2 - w / 2, y = H / 2 - h / 2;
     g.save(); g.fillStyle = 'rgba(6,12,8,.9)'; g.strokeStyle = '#6fae6a'; g.lineWidth = 2; g.beginPath(); g.roundRect(x, y, w, h, 14); g.fill(); g.stroke();
-    testo(g, 'COMANDI · H per chiudere', W / 2, y + 36, { size: 18, al: 'center', col: '#b8f0b0' });
+    testo(g, touch() ? 'COMANDI · ? per chiudere' : 'COMANDI · H per chiudere', W / 2, y + 36, { size: 18, al: 'center', col: '#b8f0b0' });
     righe.forEach((r, i) => testo(g, r, x + 30, y + 70 + i * 26, { size: 15 }));
     g.restore();
   }
@@ -459,7 +583,7 @@
   let fermoDa = 0;
 
   // ---------- lo schermo del sopravvissuto ----------
-  function testo(g, t, x, y, { size = 18, col = '#cfe8cf', al = 'left', peso = 600 } = {}) { g.font = `${peso} ${size}px "Courier New", monospace`; g.textAlign = al; g.fillStyle = 'rgba(0,0,0,.6)'; g.fillText(t, x + 1, y + 1); g.fillStyle = col; g.fillText(t, x, y); }
+  function testo(g, t, x, y, { size = 18, col = '#cfe8cf', al = 'left', peso = 600 } = {}) { t = perTelefono(t); g.font = `${peso} ${size}px "Courier New", monospace`; g.textAlign = al; g.fillStyle = 'rgba(0,0,0,.6)'; g.fillText(t, x + 1, y + 1); g.fillStyle = col; g.fillText(t, x, y); }
   function hudUmano(g, W, H, st, I, ctx, { mu, morto, salvo, vistaDi, tensione, ora, cam }) {
     const nascosto = mu && (mu.f & 2);
     if (nascosto) {
@@ -530,7 +654,7 @@
     if (nome !== stanzaVista) { stanzaVista = nome; stanzaT = ora; }
     if (ora - stanzaT < 4000) { g.globalAlpha = Math.min(1, (4000 - (ora - stanzaT)) / 800); testo(g, nome.toUpperCase(), W / 2, 84, { size: 22, al: 'center', col: '#e6efe0' }); g.globalAlpha = 1; }
     const m = Math.floor(st.tr / 60), sec = String(st.tr % 60).padStart(2, '0');
-    testo(g, `${m}:${sec}`, W - 150, 40, { size: 20, al: 'right' });
+    testo(g, `${m}:${sec}`, W - (vistaTel ? 215 : 150), 40, { size: 20, al: 'right' });
     if (morto || salvo) {
       if (morto && morteT !== null && ora - morteT < 3200) {
         const k = (ora - morteT) / 3200, tm = (ora - morteT) / 1000;
@@ -547,7 +671,7 @@
     if (!mu) return;
     // inventario
     const me = st.me || [100, 0, 0, 100, -1];
-    const bx = 28, by = H - 92;
+    const bx = 28, by = vistaTel ? 178 : H - 92; // sul telefono in basso a sinistra c'è il joystick
     g.fillStyle = 'rgba(0,0,0,.45)'; g.fillRect(bx - 10, by - 26, 250, 86);
     testo(g, '🔦', bx, by, { size: 18 }); g.strokeStyle = '#9fd09f'; g.strokeRect(bx + 32, by - 14, 120, 14); g.fillStyle = me[0] < 20 ? '#e05040' : '#9fd09f'; g.fillRect(bx + 34, by - 12, 116 * me[0] / 100, 10);
     testo(g, mu.f & 32 ? 'ACCESA' : 'SPENTA', bx + 160, by, { size: 13 });
@@ -646,7 +770,7 @@
   // la minimappa intorno a sé (sempre visibile, in alto a destra): muri, porte, grate, gli altri xenomorfi e i rumori
   // sentiti come nuvolette di gas rosso che svaniscono. Ruota con la visuale (davanti è in alto)
   function minimappa(g, W, H, st, I, cam) {
-    const R = 120, cx = W - R - 26, cy = R + 84, RAGGIO = 230, k = R / RAGGIO;
+    const R = vistaTel ? 96 : 120, cx = W - R - 26, cy = R + (vistaTel ? 70 : 84), RAGGIO = 230, k = R / RAGGIO; // sul telefono un po' più piccola (sotto ci sono i pulsanti)
     g.save();
     g.fillStyle = 'rgba(6,8,14,.82)'; g.beginPath(); g.arc(cx, cy, R + 6, 0, Math.PI * 2); g.fill();
     g.strokeStyle = 'rgba(150,170,220,.5)'; g.lineWidth = 2; g.stroke();
@@ -692,8 +816,9 @@
       }
       g.fillStyle = 'rgba(255,255,255,.6)'; g.fillRect(W / 2 - 1.5, H / 2 - 1.5, 3, 3);
       const me = st.me || [100, 0, 0];
-      g.fillStyle = 'rgba(0,0,0,.5)'; g.fillRect(28, H - 50, 204, 16); g.fillStyle = me[0] < 20 ? '#a04040' : '#c0c8e0'; g.fillRect(30, H - 48, 200 * me[0] / 100, 12);
-      testo(g, 'FIATO', 28, H - 58, { size: 13, col: '#c0c8e0' });
+      const fy = vistaTel ? 150 : H - 50; // sul telefono in basso a sinistra c'è il joystick
+      g.fillStyle = 'rgba(0,0,0,.5)'; g.fillRect(28, fy, 204, 16); g.fillStyle = me[0] < 20 ? '#a04040' : '#c0c8e0'; g.fillRect(30, fy + 2, 200 * me[0] / 100, 12);
+      testo(g, 'FIATO', 28, fy - 8, { size: 13, col: '#c0c8e0' });
       if (me[2]) { g.fillStyle = 'rgba(255,120,40,.18)'; g.fillRect(0, 0, W, H); testo(g, surv ? '🔥 STORDITO DAL FUOCO' : '🔥 BRUCIATO: NON PUOI ATTACCARE', W / 2, H / 2 + 110, { size: 22, al: 'center', col: '#ff9050' }); }
       const pr = suggerimentoAlieno(I);
       testo(g, pr || (me[1] ? '' : 'Clic · attacca davanti a te'), W / 2, H / 2 + 70, { size: 18, al: 'center', col: '#e0e6f0' });
@@ -704,7 +829,7 @@
     testo(g, titolo, 28, 40, { size: 18, col: '#d0d8f0' });
     if (surv && modo !== 'condotto') testo(g, 'Chi sta fermo non lo vedi: colpisci dove senti i rumori', 28, 64, { size: 14, col: '#9aa6c8' });
     const m = Math.floor(st.tr / 60), sec = String(st.tr % 60).padStart(2, '0');
-    testo(g, `${m}:${sec}`, W - 150, 40, { size: 20, al: 'right', col: '#d0d8f0' });
+    testo(g, `${m}:${sec}`, W - (vistaTel ? 215 : 150), 40, { size: 20, al: 'right', col: '#d0d8f0' });
     if (st.sb) testo(g, '⚠ IL TORRENS È ATTRACCATO: FERMALI ALL\'ATTRACCO', 28, surv ? 88 : 66, { size: 15, col: '#ff8070' });
   }
   function suggerimentoAlieno(I) {
@@ -923,15 +1048,35 @@
     if ((ctx.partita.finita || (window.Boss && Boss.attivo)) && bloccato()) document.exitPointerLock();
   }
 
+  // i comandi per il dito (si vedono solo a schermo pieno; quali pulsanti dipende da chi sei: data-chi)
+  const TOCCO = `<div class="is-tocco" data-chi="umano">
+      <div class="is-joy" data-ar="joy" aria-label="Muoviti"><i></i></div>
+      <button type="button" class="is-tt is-aiuto" data-ist="aiuto" aria-label="Comandi">?</button>
+      <div class="is-azioni">
+        <button type="button" class="is-tt is-piccolo" data-ist="acc" aria-label="Accucciati">▼</button>
+        <button type="button" class="is-tt is-piccolo" data-ist="ril" aria-label="Rilevatore">📡</button>
+        <button type="button" class="is-tt is-piccolo" data-ist="torcia" aria-label="Torcia">🔦</button>
+        <button type="button" class="is-tt is-piccolo" data-ist="razzo" aria-label="Razzo">🎆</button>
+        <button type="button" class="is-tt is-usa" data-ist="usa">USA</button>
+        <button type="button" class="is-tt is-fuoco" data-ist="fuoco" aria-label="Lanciafiamme"><span class="is-umano-ic">🔥</span><span class="is-alieno-ic">⚔</span></button>
+        <button type="button" class="is-tt is-respiro" data-ist="respiro" aria-label="Trattieni il respiro">😮</button>
+      </div>
+    </div>`;
+
   const tavolo = window.Arena.tavolo({
     id: 'isolation',
     nomeAzione: null,
-    comandi: 'nessuno', // si gioca solo al computer
+    comandi: 'nessuno', // i comandi per il dito li disegna il gioco (sopra la scena, vedi sopra)
     clicAzione: false,
+    pieno,
+    misura,
+    maxDpr: touch() ? 2 : undefined, // sul telefono la tela a 3× costava troppo (grana, scritte e scena da ricopiare)
     obiettivo: 'punti',
     predici,
     istruzioni: (ctx) => (touch()
-      ? 'Questo gioco si gioca al computer, con mouse e tastiera.'
+      ? (sonoMostro(ctx)
+        ? 'Gira il telefono in orizzontale: si gioca a schermo pieno. Joystick a sinistra per muoverti (fino al bordo: scatto), trascina il dito sulla scena per guardare, ⚔ attacca, USA per grate, armadietti e casse. ? mostra i comandi, ⛶ torna alla pagina.'
+        : 'Gira il telefono in orizzontale: si gioca a schermo pieno. Joystick a sinistra per muoverti (fino al bordo: correre), trascina il dito sulla scena per guardare, 🔥 lanciafiamme, USA per armadietti, generatori e task, ▼ accucciarti, 📡 rilevatore, 🔦 torcia, 🎆 razzo, 😮 trattieni il respiro. ? mostra i comandi, ⛶ torna alla pagina.')
       : sonoMostro(ctx)
         ? 'Clicca sulla scena per bloccare il mouse. WASD muoverti · mouse guardare · Maiusc scatto · clic attacca davanti a te · E scendi o risali dalle grate e apri armadietti e casse. Sulla minimappa in alto a destra vedi i rumori come nuvolette rosse.'
         : 'Clicca sulla scena per bloccare il mouse. WASD muoversi · mouse guardare · Maiusc correre · C accucciarsi · Q (o tasto destro) rilevatore · F torcia · E usa · clic lanciafiamme · G razzo · spazio trattieni il respiro · Tab cambia chi guardi da morto.' + (survival(ctx) ? ' Survival: E su un terminale o un generatore con la luce gialla apre la task; resta fermo per diventare invisibile.' : '')),
@@ -954,9 +1099,9 @@
     dopoTick,
     disegna,
     // il pulsante dello schermo intero
-    sopra: () => `<div class="is-strato"><button type="button" class="is-bt is-pieno" data-is="schermo" title="Schermo intero">⛶</button><button type="button" class="is-bt is-ingr" data-is="opzioni" title="Impostazioni" aria-expanded="false">⚙</button>
+    sopra: () => `<div class="is-strato">${touch() ? TOCCO : ''}<button type="button" class="is-bt is-pieno" data-is="schermo" title="${touch() ? 'Torna alla pagina o allo schermo pieno' : 'Schermo intero'}">⛶</button><button type="button" class="is-bt is-ingr" data-is="opzioni" title="Impostazioni" aria-expanded="false">⚙</button>
       <div class="is-pannello" hidden><b>Impostazioni</b>
-        <label>Sensibilità del mouse <input type="range" id="is-sens" min="0.3" max="2.5" step="0.1"></label>
+        <label>${touch() ? 'Sensibilità della visuale' : 'Sensibilità del mouse'} <input type="range" id="is-sens" min="0.3" max="2.5" step="0.1"></label>
         <label><input type="checkbox" id="is-inverti"> Inverti su e giù</label>
         <label>Campo visivo <span id="is-fov-n"></span> <input type="range" id="is-fov" min="60" max="95" step="1"></label>
         <label>Qualità <select id="is-qualita"><option value="alta">Alta (ombre)</option><option value="media">Media (senza ombre)</option><option value="bassa">Bassa (per PC lenti)</option></select></label>

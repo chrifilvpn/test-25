@@ -163,9 +163,13 @@ window.Arena = (() => {
       // in orizzontale sul telefono i comandi stanno ai lati, sopra il campo (vedi .ar-touch nel CSS): non tolgono altezza
       const ai_lati = comandi && getComputedStyle(comandi).position === 'fixed';
       const spazioSotto = (comandi && !ai_lati ? comandi.offsetHeight + 16 : 0) + (touch() ? (ai_lati ? 14 : 52) : 70);
-      const scala = Math.min(box.clientWidth / p.W, Math.max(140, window.innerHeight - sopra - spazioSotto) / p.H);
-      const dpr = window.devicePixelRatio || 1, w = Math.round(p.W * scala), h = Math.round(p.H * scala);
-      if (tela.width !== Math.round(w * dpr)) { tela.width = Math.round(w * dpr); tela.height = Math.round(h * dpr); tela.style.width = `${w}px`; tela.style.height = `${h}px`; }
+      // cfg.pieno(): il gioco occupa tutto lo schermo (il riquadro è fisso sopra la pagina); cfg.misura(): la misura
+      // della tela in "punti del gioco" se non è quella del server (Alien Isolation sul telefono segue lo schermo)
+      const pieno = !!(cfg.pieno && cfg.pieno());
+      const [LW, LH] = cfg.misura ? cfg.misura(p, pieno) : [p.W, p.H];
+      const scala = pieno ? Math.min(box.clientWidth / LW, box.clientHeight / LH) : Math.min(box.clientWidth / LW, Math.max(140, window.innerHeight - sopra - spazioSotto) / LH);
+      const dpr = Math.min(window.devicePixelRatio || 1, cfg.maxDpr || 8), w = Math.round(LW * scala), h = Math.round(LH * scala);
+      if (tela.width !== Math.round(w * dpr) || tela.height !== Math.round(h * dpr)) { tela.width = Math.round(w * dpr); tela.height = Math.round(h * dpr); tela.style.width = `${w}px`; tela.style.height = `${h}px`; }
       const g = tela.getContext('2d');
       g.setTransform(dpr * scala, 0, 0, dpr * scala, 0, 0);
       let [dopo, primaD, u] = coppia();
@@ -201,10 +205,10 @@ window.Arena = (() => {
       else if (ultimo.fase === 'via') { scritta = String(Math.max(1, Math.ceil(ultimo.via / 1000))); sotto = `Round ${ultimo.round} di ${p.nRound}${cfg.ruolo ? ` · ${cfg.ruolo(p, ultimo, ctxA)}` : ''}`; }
       else if (ultimo.fase === 'pausaRound') { scritta = 'Fine round'; sotto = cfg.fineRound ? cfg.fineRound(p, ultimo, ctxA) : ''; }
       if (scritta) {
-        g.fillStyle = 'rgba(10,20,30,.55)'; g.fillRect(0, 0, p.W, p.H);
+        g.fillStyle = 'rgba(10,20,30,.55)'; g.fillRect(0, 0, LW, LH);
         g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
-        g.font = `400 ${scritta.length > 3 ? 64 : 120}px "Young Serif", Georgia, serif`; g.fillText(scritta, p.W / 2, p.H / 2 - 10);
-        if (sotto) { g.font = '600 24px system-ui, sans-serif'; g.fillText(sotto, p.W / 2, p.H / 2 + 60); }
+        g.font = `400 ${scritta.length > 3 ? 64 : 120}px "Young Serif", Georgia, serif`; g.fillText(scritta, LW / 2, LH / 2 - 10);
+        if (sotto) { g.font = '600 24px system-ui, sans-serif'; g.fillText(sotto, LW / 2, LH / 2 + 60); }
       }
     }
     requestAnimationFrame(disegna);

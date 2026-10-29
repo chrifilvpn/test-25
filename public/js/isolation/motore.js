@@ -61,9 +61,10 @@ class Pezzi {
   }
 }
 
-export async function crea({ M }) {
+export async function crea({ M, telefono = false }) {
   const T = M.T * D, H = M.SOFFITTO * D;
-  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: false });
+  // sul telefono niente antialias (costa tanto e sugli schermi fitti non si vede): la risoluzione la regola isolation.js
+  const renderer = new THREE.WebGLRenderer({ antialias: !telefono, powerPreference: 'high-performance', preserveDrawingBuffer: false });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.25;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
