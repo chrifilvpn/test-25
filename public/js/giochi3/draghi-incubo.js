@@ -15,7 +15,8 @@
   const STILI = ['stazione', 'uffici', 'alloggi', 'medico', 'laboratorio', 'industriale', 'tram', 'nido', 'sottomarina', 'fondale', 'manicomio', 'fogne', 'cortile'];
   const GROTTE = new Set(['nido', 'fondale', 'fogne']);
   const telefono = () => window.matchMedia && window.matchMedia('(max-width: 760px)').matches;
-  const tocco = () => window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  // comandi a tocco (joystick e pulsanti): col dito, o su uno schermo da telefono che si tocca
+  const tocco = () => window.matchMedia && (window.matchMedia('(pointer: coarse)').matches || (navigator.maxTouchPoints > 0 && telefono()));
   // colori dei pavimenti e dei muri per stile
   const COLORI = {
     stazione: ['#3a3f45', '#353a40', '#1b1e22', '#5a626c'], uffici: ['#43403c', '#3d3a36', '#1e1c1a', '#6a645c'], alloggi: ['#4a3e34', '#433830', '#1f1a16', '#6e5e50'],

@@ -69,3 +69,16 @@
   .dr-dm .dr-dm-rich-testo { max-height: 7rem; }
   .dr-dm .dr-dm-riga select, .dr-dm .dr-dm-riga input { flex: 1 1 45%; }
 }
+
+/* sul telefono la consolle ha la sua scheda «🎩 Rispondi»: nella Storia resta il racconto con un pulsante per andarci */
+.dr-dm .dr-dm-vai { display: none; }
+@media (max-width: 760px) {
+  .dr-dm.dr-tab-storia .dr-dm-consolle { display: none; }
+  .dr-dm .dr-dm-vai { display: block; flex: none; margin: .4rem .5rem .5rem; min-height: 42px; padding: .5rem .8rem; border-radius: 10px; border: 1px dashed var(--dr-bordo); background: rgba(216, 178, 90, .08); color: var(--dr-oro2); font: 600 .85rem system-ui, sans-serif; text-align: left; }
+  .dr-dm .dr-dm-vai.forte { border-style: solid; border-color: var(--dr-oro); background: linear-gradient(rgba(216, 178, 90, .3), rgba(216, 178, 90, .12)); animation: dr-dm-pulsa 2s ease-in-out 3; }
+  .dr-dm.dr-tab-consolle > .dr-centro { display: flex; }
+  .dr-dm.dr-tab-consolle > .dr-centro > :not(.dr-sotto) { display: none; }
+  .dr-dm.dr-tab-consolle .dr-sotto { flex: 1; max-height: none; border-top: 0; }
+  .dr-dm.dr-tab-consolle .dr-dm-rich-testo { max-height: 11rem; }
+  .dr-dm .dr-dm-testo { min-height: 7.5em; }
+}
