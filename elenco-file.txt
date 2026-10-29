@@ -485,6 +485,7 @@ public/js/giochi3/sfere.js
 public/js/giochi3/stickwar.css
 public/js/giochi3/stickwar.js
 public/js/giochi3/tela-fissa.js
+public/js/giochi3/tocco-vicino.js
 public/js/giochi3/wavelength.css
 public/js/giochi3/wavelength.js
 public/js/giochi3/xiangqi.css
