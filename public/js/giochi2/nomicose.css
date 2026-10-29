@@ -121,7 +121,9 @@ td.ncc-dubbia .ncc-risp i { color: #a8741a; }
   .ncc-tempo { min-width: 0; }
   .ncc-tempo i { width: 4.5rem; }
   .ncc-tempo b { font-size: 1.5rem; }
-  .ncc-stop { padding: .5rem .9rem; font-size: .9rem; }
+  .ncc-stop { padding: .5rem .9rem; font-size: .9rem; min-height: 2.75rem; }
+  .ncc-giro { min-width: 0; }
+  .ncc-pollice { min-height: 2.75rem; }
   .ncc-celle, .ncc-celle.n8 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .5rem; }
   .ncc-cat { padding: .55rem .6rem .6rem; gap: .25rem; }
   .ncc-nome { font-size: .7rem; }
@@ -133,6 +135,16 @@ td.ncc-dubbia .ncc-risp i { color: #a8741a; }
   .ncc-scorri td { min-width: 0; }
   .ncc-risp { font-size: .95rem; }
   .ncc-p { margin-left: 0; }
-  .ncc-pollice { width: 2.3rem; height: 2.1rem; }
+  .ncc-pollice { width: 2.75rem; height: 2.75rem; }
+}
+@media (max-width: 420px) {
+  .ncc-lettera { width: 3.2rem; height: 3.2rem; }
+  .ncc-lettera b { font-size: 2rem; }
+  .ncc-testa { gap: .5rem; }
+  .ncc-giro span { font-size: .75rem; letter-spacing: .04em; }
+  .ncc-destra { gap: .4rem; }
+  .ncc-stop { padding: .45rem .7rem; }
+  .ncc-tempo i { width: 3rem; }
+  .ncc-tempo b { font-size: 1.3rem; }
 }
 @media (prefers-reduced-motion: reduce) { .ncc-lettera, .ncc-stopdetto, .ncc-tempo.poco b { animation: none; } }

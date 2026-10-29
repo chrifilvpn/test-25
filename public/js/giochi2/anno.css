@@ -57,6 +57,7 @@
   background: rgba(247, 240, 222, .12); color: var(--tenue);
 }
 .yr-ac.si { background: #c2553a; color: #fff; }
+@media (pointer: coarse) { .yr-ac { min-height: 2.5rem; min-width: 3rem; } }
 .yr-ac:disabled { cursor: default; }
 .yr-scrivi.dato .yr-cifre { box-shadow: inset 0 3px 10px rgba(0, 0, 0, .7), 0 0 0 2px rgba(159, 210, 107, .7); }
 

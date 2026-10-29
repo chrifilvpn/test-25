@@ -845,7 +845,7 @@ button.it-leva { cursor: pointer; }
 .ms-buio { align-self: center; color: #fff; font-size: 1.4rem; }
 .ms-ogg { width: clamp(3rem, 9vw, 5.2rem); display: grid; justify-items: center; border-radius: 10px; transition: transform .12s; }
 .ms-ogg svg { width: 100%; height: auto; }
-.ms-ogg small { font-size: .68rem; color: var(--tenue); }
+.ms-ogg small { font-size: .76rem; color: var(--tenue); }
 .ms-ogg.vuoto { aspect-ratio: 1; align-content: center; border: 2px dashed rgba(247, 240, 222, .35); }
 .ms-ogg.vuoto b { color: var(--tenue); }
 .ms-ogg.da-mettere, .ms-ogg.cliccabile, .ms-ogg.messo { cursor: pointer; }
@@ -1328,6 +1328,12 @@ button.it-leva { cursor: pointer; }
 .al-az:disabled { opacity: .35; cursor: default; }
 .al-az.uccidi:not(:disabled) { background: rgba(180, 30, 40, .9); animation: db-pulsa 1s ease-in-out infinite; }
 .al-az.segnala:not(:disabled) { background: rgba(210, 150, 20, .9); animation: db-pulsa 1s ease-in-out infinite; }
+.al-lista[data-az] { cursor: pointer; max-width: min(15rem, 62%); }
+.al-lista[data-az] .al-barra-tot { height: 26px; border-radius: 13px; }
+.al-lista[data-az] .al-barra-tot span { line-height: 26px; font-size: .74rem; padding: 0 .5rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.al-lista.chiusa { padding: .3rem; }
+.al-lista.chiusa p { display: none; }
+.al-lista.chiusa .al-barra-tot { margin-bottom: 0; }
 .al-fantasma { position: absolute; left: 50%; top: 8px; transform: translateX(-50%); padding: .3rem .8rem; border-radius: 10px; background: rgba(120, 120, 160, .6); font-size: .8rem; }
 .al-ruolo { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); padding: 1rem 1.6rem; border-radius: 16px; background: rgba(10, 30, 60, .9); border: 3px solid #46c8e8; font: 400 1.8rem var(--serif); text-align: center; display: grid; gap: .3rem; }
 .al-ruolo.alieno { background: rgba(60, 10, 20, .92); border-color: #ff4a5a; }
@@ -1378,6 +1384,14 @@ button.it-leva { cursor: pointer; }
   .al-azioni { bottom: auto; top: 8px; right: 8px; grid-auto-flow: column; }
   .al-az { width: 3.2rem; height: 3.2rem; font-size: 1.1rem; }
   .al-ruolo { font-size: 1.2rem; padding: .6rem 1rem; }
+}
+/* sul telefono i pulsanti stanno sotto il pollice destro: in verticale accanto al joystick, in orizzontale in colonna a destra */
+@media (pointer: coarse) and (orientation: portrait) {
+  .al-azioni { top: calc(100% + 1.2rem); bottom: auto; right: .9rem; display: flex; gap: .7rem; }
+  .al-az { width: 4rem; height: 4rem; font-size: 1.4rem; }
+}
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 520px) {
+  .al-azioni { position: fixed; top: auto; right: max(.6rem, env(safe-area-inset-right)); bottom: max(.6rem, env(safe-area-inset-bottom)); z-index: 31; display: flex; flex-direction: column-reverse; gap: .5rem; }
 }
 
 /* ---------- SHUT THE BOX ---------- */
