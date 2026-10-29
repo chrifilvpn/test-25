@@ -15,3 +15,43 @@
 .is-strato .is-chiudi { min-height: 2.2rem; font-size: .95rem; }
 .is-strato .is-pannello input[type="checkbox"] { width: auto; flex: none; margin: 0; }
 .is-strato .is-pannello input[type="range"] { width: 100%; }
+/* IL TELEFONO: in orizzontale la partita prende tutto lo schermo (il riquadro diventa fisso sopra la pagina) */
+html.is-pagina-piena, html.is-pagina-piena body { overflow: hidden; overscroll-behavior: none; }
+.is-schermo-tel { position: fixed !important; inset: 0; z-index: 1000; width: auto !important; height: 100%; margin: 0; display: grid; place-items: center; background: #000; touch-action: none; }
+.is-schermo-tel .ar-tela { border-radius: 0; box-shadow: none; }
+.is-schermo-tel .is-strato .is-pieno, .is-schermo-tel .is-strato .is-ingr { top: max(.5rem, env(safe-area-inset-top)); }
+.is-schermo-tel .is-strato .is-pieno { right: max(.6rem, env(safe-area-inset-right)); }
+.is-schermo-tel .is-strato .is-ingr { right: calc(max(.6rem, env(safe-area-inset-right)) + 3rem); }
+/* i comandi per il dito: si vedono solo a schermo pieno */
+.is-tocco { display: none; }
+.is-schermo-tel .is-tocco { display: block; position: absolute; inset: 0; pointer-events: none; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; }
+.is-tocco > *, .is-tocco .is-azioni > * { pointer-events: auto; }
+.is-tocco .is-azioni { pointer-events: none; position: absolute; right: max(.8rem, env(safe-area-inset-right)); bottom: max(.8rem, env(safe-area-inset-bottom)); width: 13.2rem; height: 9rem; }
+.is-tocco .is-tt { position: absolute; display: grid; place-items: center; padding: 0; border-radius: 50%; border: 1.5px solid rgba(160, 220, 160, .5); background: rgba(10, 18, 12, .5); color: #d8f0d8; font: 700 1rem/1 "Courier New", monospace; touch-action: none; -webkit-tap-highlight-color: transparent; }
+.is-tocco .is-tt:active { background: rgba(70, 140, 80, .75); }
+.is-tocco .is-fuoco, .is-tocco .is-respiro { right: 0; bottom: 0; width: 4.8rem; height: 4.8rem; font-size: 2rem; border-color: rgba(255, 150, 90, .6); background: rgba(60, 20, 8, .5); }
+.is-tocco .is-usa { right: 5.5rem; bottom: .3rem; width: 4rem; height: 4rem; font-size: 1.05rem; }
+.is-tocco .is-piccolo { bottom: 5.8rem; width: 2.9rem; height: 2.9rem; font-size: 1.25rem; }
+.is-tocco [data-ist="acc"] { right: 0; }
+.is-tocco [data-ist="ril"] { right: 3.4rem; }
+.is-tocco [data-ist="torcia"] { right: 6.8rem; }
+.is-tocco [data-ist="razzo"] { right: 10.2rem; }
+.is-tocco.acc [data-ist="acc"], .is-tocco.ril [data-ist="ril"], .is-tocco.aiuto .is-aiuto { background: rgba(120, 200, 110, .55); border-color: #b8f0b0; color: #fff; }
+.is-tocco .is-aiuto { top: max(.5rem, env(safe-area-inset-top)); right: calc(max(.6rem, env(safe-area-inset-right)) + 6rem); width: 2.4rem; height: 2.4rem; border-radius: 12px; font-size: 1.1rem; opacity: .75; }
+/* il joystick (lo muove il motore comune: data-ar="joy"); spinto fino al bordo si corre */
+.is-tocco .is-joy { position: absolute; left: max(1.2rem, env(safe-area-inset-left)); bottom: max(1rem, env(safe-area-inset-bottom)); width: 8.4rem; height: 8.4rem; border-radius: 50%; border: 2px solid rgba(160, 220, 160, .4); background: radial-gradient(circle, rgba(20, 40, 24, .35), rgba(10, 18, 12, .55)); touch-action: none; }
+.is-tocco .is-joy i { position: absolute; left: 50%; top: 50%; width: 3.4rem; height: 3.4rem; margin: -1.7rem 0 0 -1.7rem; border-radius: 50%; background: rgba(190, 240, 190, .55); border: 2px solid rgba(230, 255, 230, .7); pointer-events: none; }
+.is-tocco .is-joy.corre { border-color: rgba(255, 190, 90, .8); }
+.is-tocco .is-joy.corre i { background: rgba(255, 190, 90, .7); }
+/* quali pulsanti servono: dipende da chi sei e da cosa stai facendo */
+.is-tocco .is-respiro, .is-tocco .is-alieno-ic { display: none; }
+.is-tocco[data-chi="alieno"] .is-piccolo, .is-tocco[data-chi="condotto"] .is-piccolo { display: none; }
+.is-tocco[data-chi="alieno"] .is-umano-ic { display: none; }
+.is-tocco[data-chi="alieno"] .is-alieno-ic { display: inline; }
+.is-tocco[data-chi="alieno"] .is-fuoco { border-color: rgba(150, 170, 255, .6); background: rgba(16, 20, 50, .5); }
+.is-tocco[data-chi="condotto"] .is-fuoco { display: none; }
+.is-tocco[data-chi="nascosto"] .is-joy, .is-tocco[data-chi="nascosto"] .is-fuoco, .is-tocco[data-chi="nascosto"] .is-piccolo:not([data-ist="ril"]) { display: none; }
+.is-tocco[data-chi="nascosto"] .is-respiro { display: grid; }
+.is-tocco[data-chi="morto"] .is-joy, .is-tocco[data-chi="morto"] .is-azioni { display: none; }
+.is-tocco[data-chi="mg"] .is-joy, .is-tocco[data-chi="mg"] .is-fuoco, .is-tocco[data-chi="mg"] .is-piccolo { display: none; }
+#tavolo .ar:has(.is-strato) .ar-gira { display: none; } /* Alien Isolation lo dice già sulla scena */

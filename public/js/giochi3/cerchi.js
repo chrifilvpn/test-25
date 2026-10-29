@@ -197,7 +197,7 @@
       ctxE = ctx;
       const t = tela();
       if (!t.tela._pronto) { t.tela._pronto = true; t.tela.addEventListener('pointerdown', premi); t.tela.setAttribute('aria-label', 'Campo dei cerchi'); }
-      t.metti('.ce-box', { W: Cl().W, H: Cl().H, sotto: window.matchMedia('(pointer: coarse)').matches ? 90 : 110, max: 1.3 });
+      t.metti('.ce-box', { W: Cl().W, H: Cl().H, sotto: !window.matchMedia('(pointer: coarse)').matches ? 110 : innerWidth > innerHeight && innerHeight <= 520 ? 14 : 90, max: 1.3 });
       mia(ctx);
       if (ctx.partita.finita && primaVolta(ctx.ui, 'ce-fine') && master) master.gain.value = 0;
     },

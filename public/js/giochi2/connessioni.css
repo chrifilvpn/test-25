@@ -50,6 +50,7 @@
 .cn-comandi small { font-weight: 500; opacity: .75; }
 .cn-arrendi { margin: 0; }
 .cn-link { background: none; border: 0; color: var(--tenue); text-decoration: underline; cursor: pointer; font-size: .85rem; padding: .3rem; }
+@media (pointer: coarse) { .cn-link { min-height: 2.75rem; padding: .5rem 1rem; } }
 
 .cn-prove { display: grid; gap: 3px; justify-items: center; margin-top: .2rem; }
 .cn-prove div { display: flex; gap: 3px; }

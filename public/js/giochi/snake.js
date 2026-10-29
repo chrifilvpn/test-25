@@ -22,7 +22,9 @@
     const p = ctx.partita;
     const box = tela.parentElement;
     if (!box) return;
-    const lato = Math.max(6, Math.floor(Math.min(box.clientWidth / p.W, (window.innerHeight * 0.66) / p.H)));
+    // l'altezza che resta sotto la barra (sul telefono in orizzontale è poca: si usa tutta quella libera)
+    const libera = window.innerHeight - Math.max(0, box.getBoundingClientRect().top + (window.scrollY || 0)) - 40;
+    const lato = Math.max(6, Math.floor(Math.min(box.clientWidth / p.W, (matchMedia('(pointer: coarse)').matches ? Math.max(window.innerHeight * 0.5, libera) : window.innerHeight * 0.66) / p.H)));
     const dpr = window.devicePixelRatio || 1;
     if (tela.width !== p.W * lato * dpr) { tela.width = p.W * lato * dpr; tela.height = p.H * lato * dpr; tela.style.width = `${p.W * lato}px`; tela.style.height = `${p.H * lato}px`; }
     const g = tela.getContext('2d');
@@ -121,15 +123,24 @@
     e.preventDefault();
     manda(d);
   });
+  // dito: si gira appena il dito ha strisciato abbastanza (non quando si stacca) e, senza staccarlo, si può girare
+  // ancora strisciando da un'altra parte; vale tutta la zona del gioco, non solo il campo
   let inizio = null;
-  document.addEventListener('pointerdown', (e) => { if (e.target === tela) { inizio = [e.clientX, e.clientY]; e.preventDefault(); } });
-  document.addEventListener('pointerup', (e) => {
-    if (!inizio) return;
-    const dx = e.clientX - inizio[0], dy = e.clientY - inizio[1];
-    inizio = null;
-    if (Math.max(Math.abs(dx), Math.abs(dy)) < 18) return;
-    manda(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'dx' : 'sx') : (dy > 0 ? 'giu' : 'su'));
+  const inGioco = () => ctxS && ctxS.partita && ctxS.partita.gioco === 'snake' && !ctxS.partita.finita;
+  document.addEventListener('pointerdown', (e) => {
+    if (!inGioco() || !(e.target === tela || (e.target.closest && e.target.closest('.sn')))) return;
+    inizio = [e.clientX, e.clientY, e.pointerId]; e.preventDefault();
   });
+  document.addEventListener('pointermove', (e) => {
+    if (!inizio || e.pointerId !== inizio[2]) return;
+    const dx = e.clientX - inizio[0], dy = e.clientY - inizio[1];
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 22) return;
+    manda(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'dx' : 'sx') : (dy > 0 ? 'giu' : 'su'));
+    inizio = [e.clientX, e.clientY, e.pointerId];
+  });
+  const lascia = (e) => { if (inizio && e.pointerId === inizio[2]) inizio = null; };
+  document.addEventListener('pointerup', lascia);
+  document.addEventListener('pointercancel', lascia);
 
   Object.assign(window.Tavoli, { snake });
 })();

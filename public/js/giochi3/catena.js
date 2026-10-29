@@ -36,7 +36,7 @@
           <div class="ct-riga"><span class="ct-pre">${p.attacco.toUpperCase()}</span><input class="ct-input" id="ct-input" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="20" value="${esc(ui.testo || '')}" aria-label="Scrivi la parola">
           <button type="button" class="bottone primario-bt" data-az="invia">Invia ⏎</button></div>
           ${p.ultimoErrore ? `<p class="ct-errore">✋ ${esc(p.ultimoErrore)}</p>` : ''}
-          <button type="button" class="bottone leggero piccolo-bt" data-az="passo">Passo (perdo una vita)</button></form>`;
+          <button type="button" class="bottone leggero piccolo-bt ct-passo" data-az="passo">Passo (perdo una vita)</button></form>`;
       } else sotto = `<p class="ct-msg">${esc(ctx.nome(p.turno))} cerca una parola con <b>${p.attacco.toUpperCase()}</b>…</p>`;
       return `<div class="ct"><div class="ct-giocatori">${giocatori}</div>
         <div class="ct-catena">${anelli}</div>

@@ -26,3 +26,5 @@
 .ct-input:focus { outline: none; border-color: #ffd166; }
 .ct-errore { margin: 0; color: #ff8a7a; }
 .ct-msg { margin: 0; text-align: center; }
+
+@media (pointer: coarse) { .ct-passo { min-height: 2.75rem; } }

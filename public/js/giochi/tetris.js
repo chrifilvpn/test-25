@@ -4,6 +4,7 @@
   const COLORI = [null, '#4dd6e8', '#f5d547', '#b57bf2', '#6fd672', '#f06b6b', '#5b8def', '#f5a04a']; // I O T S Z J L
   let ctxT = null, stato = null, mia = null, altre = new Map();
   let forme = null, tipi = null;
+  let lMio = 20; // lato di un quadretto del mio tabellone (per i gesti col dito)
 
   function mattone(g, x, y, l, col, alfa = 1) {
     g.globalAlpha = alfa;
@@ -50,15 +51,20 @@
     const io = stato.t[ctx.mio];
     const box = document.querySelector('.tt-mio');
     if (!box) return;
-    // sul telefono sotto il tabellone ci sono anche i pulsanti: il tabellone lascia loro lo spazio
+    // il tabellone prende l'altezza libera sotto la barra; sul telefono sotto ci sono anche i pulsanti (in orizzontale
+    // stanno ai lati, fissi, e non tolgono altezza)
     const pulsanti = document.querySelector('.tt-pulsanti');
-    const spazio = pulsanti && pulsanti.offsetHeight ? 275 : 230;
-    const l = Math.max(14, Math.min(34, Math.floor((window.innerHeight - spazio) / 20)));
+    const pulsH = pulsanti && pulsanti.offsetHeight && getComputedStyle(pulsanti).position !== 'fixed' ? pulsanti.offsetHeight + 14 : 0;
+    const sopra = Math.max(0, box.getBoundingClientRect().top + (window.scrollY || 0));
+    const l = Math.max(12, Math.min(34, Math.floor((window.innerHeight - sopra - pulsH - 16) / 20)));
     tabellone(mia.tela, io, l, true);
+    lMio = l;
     pezzetto(mia.hold, io.h, Math.round(l * 0.6), io.hu);
     (io.nx || []).forEach((t, k) => pezzetto(mia.next[k], t, Math.round(l * (k ? 0.5 : 0.6))));
     mia.info.textContent = '';
-    for (const [i, tela] of altre) tabellone(tela, stato.t[i], ctx.partita.n > 4 ? 7 : 10, false);
+    // sul telefono i tabelloni degli altri sono piccoli: si guarda il proprio
+    const piccoli = matchMedia('(pointer: coarse)').matches;
+    for (const [i, tela] of altre) tabellone(tela, stato.t[i], piccoli ? (ctx.partita.n > 4 ? 4 : 6) : ctx.partita.n > 4 ? 7 : 10, false);
     const conta = document.querySelector('.tt-conta');
     if (conta) conta.textContent = stato.pausa ? '⏸' : stato.via > 0 ? String(Math.ceil(stato.via / 1000)) : '';
     for (const el of document.querySelectorAll('[data-tt-punti]')) { const b = stato.t[Number(el.dataset.ttPunti)]; el.textContent = `${b.p} · ${b.r} righe · liv. ${b.l}`; }
@@ -150,6 +156,32 @@
   const smetti = () => { if (tieni) { clearTimeout(tieni); clearInterval(tieni); tieni = null; } };
   document.addEventListener('pointerup', smetti);
   document.addEventListener('pointercancel', smetti);
+
+  // gesti col dito sul proprio tabellone: tocco = ruota, trascinare di lato = sposta (un quadretto alla volta),
+  // trascinare in giù = scende, colpo veloce in giù = caduta
+  let gesto = null;
+  document.addEventListener('pointerdown', (e) => {
+    if (!mia || e.target !== mia.tela || e.pointerType === 'mouse') return;
+    e.preventDefault();
+    gesto = { id: e.pointerId, x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t: performance.now(), mosso: false };
+  });
+  document.addEventListener('pointermove', (e) => {
+    if (!gesto || e.pointerId !== gesto.id) return;
+    const passo = Math.max(14, lMio);
+    while (Math.abs(e.clientX - gesto.x) >= passo) { const d = Math.sign(e.clientX - gesto.x); manda(d > 0 ? 'dx' : 'sx'); gesto.x += d * passo; gesto.mosso = true; }
+    while (e.clientY - gesto.y >= passo * 1.2) { manda('giu'); gesto.y += passo * 1.2; gesto.mosso = true; }
+  });
+  const fineGesto = (e) => {
+    if (!gesto || e.pointerId !== gesto.id) return;
+    const dt = performance.now() - gesto.t, dx = e.clientX - gesto.x0, dy = e.clientY - gesto.y0;
+    if (e.type === 'pointerup') {
+      if (dy > 50 && dy / dt > 0.9 && Math.abs(dx) < dy) manda('caduta');
+      else if (!gesto.mosso && Math.hypot(dx, dy) < 12 && dt < 350) manda('ruota');
+    }
+    gesto = null;
+  };
+  document.addEventListener('pointerup', fineGesto);
+  document.addEventListener('pointercancel', fineGesto);
 
   Object.assign(window.Tavoli, { tetris });
 })();
