@@ -283,7 +283,7 @@
     const p = ctx.partita;
     // il master umano: chi ha aperto il tavolo lo sceglie col 🎩 (o uno si propone), non al computer né a chi gioca sul computer passato
     const puoDm = (i) => p.modalita !== 'reale' && p.n > 1 && !p.bot[i] && !(p.locali || []).includes(i) && !ctx.stato.spettatore && (sonoHost(ctx) || (i === ctx.mio && p.dm == null));
-    const tastoDm = (i) => (i === p.dm ? (sonoHost(ctx) || i === ctx.mio ? `<button type="button" class="dr-chip sel dr-cr-dm" data-az="dr-dm-lascia" title="Non fa più il master: torna l'IA">🎩 master ✕</button>` : '<span class="dr-chip sel dr-cr-dm">🎩 master</span>') : puoDm(i) ? `<button type="button" class="dr-chip dr-cr-dm" data-az="dr-dm-scegli" data-id="${i}" title="${i === ctx.mio ? 'Faccio io il master al posto dell\'IA' : 'Fa il master al posto dell\'IA'}">🎩${i === ctx.mio && !sonoHost(ctx) ? ' Faccio io il master' : ''}</button>` : '');
+    const tastoDm = (i) => (i === p.dm ? (sonoHost(ctx) || i === ctx.mio ? `<button type="button" class="dr-chip sel dr-cr-dm" data-az="dr-dm-lascia" title="Non fa più il master: torna l'IA">🎩 master ✕</button>` : '<span class="dr-chip sel dr-cr-dm">🎩 master</span>') : puoDm(i) ? `<button type="button" class="dr-chip dr-cr-dm" data-az="dr-dm-scegli" data-id="${i}" title="${i === ctx.mio ? 'Faccio io il master al posto dell\'IA' : 'Fa il master al posto dell\'IA'}">🎩${i === ctx.mio ? ' Faccio io il master' : ' master'}</button>` : '');
     const chi = p.pg.map((pg, i) => `<li class="${pg || i === p.dm ? 'pronto' : ''}">${pg ? `<span class="dr-mini-ritr">${A().ritratto(pg, { cornice: false })}</span>` : `<span class="dr-mini-ritr vuoto">${i === p.dm ? '🎩' : p.bot[i] ? '🤖' : '✍️'}</span>`}<span><b>${pg ? esc(pg.nome) : p.bot[i] ? 'Compagno del computer' : esc(ctx.nome(i))}</b><small>${i === p.dm ? 'il master' : pg ? `${NOMI_STIRPE[pg.stirpe]} ${NC[pg.classe].toLowerCase()}` : p.bot[i] ? 'lo crea il computer' : 'sta creando il personaggio…'}</small></span>${tastoDm(i)}</li>`).join('');
     const spiega = p.dm == null && p.modalita !== 'reale' && p.n > 1 && sonoHost(ctx) ? '<p class="dr-nota">🎩 Volete un master in carne e ossa? Tocca il cappello accanto a chi lo farà: non crea il personaggio e l\'IA gli fa da consigliere.</p>' : '';
     const idea = comanda(ctx)
@@ -332,7 +332,10 @@
         if (mioPg(ctx) || ctx.stato.spettatore) return `<div class="dr dr-fase-pronti ${scena}">${mioPg(ctx) ? pronto(ctx) : latoCreazione(ctx)}${scheda1}</div>`;
         // sul telefono la colonna della compagnia (con 📂) non si vede durante la creazione: una riga in cima
         const barra = comanda(ctx) && p.modalita !== 'reale' && !ctx.stato.spettatore ? '<label class="dr-riprendi-barra">📂 Avete una campagna salvata? <u>Riprendila</u><input type="file" accept=".json,application/json" data-dr-file hidden></label>' : '';
-        return `<div class="dr dr-fase-crea ${scena}">${barra}${CR().html(ctx, latoCreazione(ctx))}${scheda1}</div>`;
+        // e la compagnia (il 🎩 del master, l'idea, «Inizia») si apre con un pulsante
+        const pronti = p.pg.filter(Boolean).length;
+        const compagnia = ctx.stato.spettatore ? '' : `<button type="button" class="dr-cr-comp-bt" data-az="dr-compagnia" aria-expanded="${ui.drCompagnia ? 'true' : 'false'}">👥 La compagnia${p.n > 1 ? ` (${pronti}/${p.n} pronti)` : ''}${comanda(ctx) ? ' · 🎩 master, idea, «Inizia»' : ''} <b>${ui.drCompagnia ? '▴' : '▾'}</b></button>`;
+        return `<div class="dr dr-fase-crea ${scena} ${ui.drCompagnia ? 'dr-cr-comp-aperta' : ''}">${barra}${compagnia}${CR().html(ctx, latoCreazione(ctx))}${scheda1}</div>`;
       }
       if (p.reale && (p.fase === 'reale' || p.fase === 'caduti')) return `${IN().realeHtml(ctx)}${scheda1}`;
       if (DM().sonoDm(ctx)) return DM().panno(ctx, scena);
@@ -423,6 +426,7 @@
         case 'dr-chiudi-scheda': ui.drScheda = null; ui.t_note = null; return ctx.ridisegna();
         case 'dr-tab': ui.drTab = id; if (id === 'mondo' && (!ui.drLato || ui.drLato === 'turno')) ui.drLato = p.combattimento ? 'racconto' : 'mappa'; if (id === 'battaglia') ui.drLato = 'turno'; return ctx.ridisegna();
         case 'dr-lato': ui.drLato = id; return ctx.ridisegna();
+        case 'dr-compagnia': ui.drCompagnia = !ui.drCompagnia; return ctx.ridisegna();
         case 'dr-mappa-intera': ui.drMappaIntera = !ui.drMappaIntera; return ctx.ridisegna();
         case 'dr-luogo': ui.drLuogo = Number(id) || id; if (telefono()) { ui.drTab = 'mondo'; ui.drLato = 'mappa'; } return ctx.ridisegna();
         case 'dr-dichiara': {
