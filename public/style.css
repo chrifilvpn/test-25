@@ -1403,6 +1403,19 @@ body.spettatore #tavolo canvas { pointer-events: none; }
 .tel-barra { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 0 auto .5rem; padding: .4rem .7rem; max-width: 960px; border-radius: 12px; background: rgba(90, 120, 220, .18); border: 1px solid rgba(90, 120, 220, .45); font-size: .9rem; }
 .tel-barra[hidden] { display: none; }
 .tel-nome { font: inherit; padding: .25rem .5rem; border-radius: 8px; border: 1px solid rgba(127, 127, 127, .5); max-width: 11rem; }
+/* telefono in orizzontale (largo più di 620 px ma basso): la barra in alto resta di sole icone come in verticale,
+   se no il titolo e le scritte dei pulsanti la facevano uscire di lato e il telefono rimpiccioliva tutta la pagina */
+@media (pointer: coarse) and (max-height: 520px) {
+  .barra-titolo { display: none; }
+  .solo-largo { display: none; } .solo-stretto { display: inline; }
+  .barra { padding: .25rem .5rem; gap: .35rem; }
+  .barra-sx, .barra-dx { min-width: 0; }
+  .barra-dx { gap: .3rem; }
+  .barra .bottone.piccolo-bt { padding: .25rem .5rem; font-size: .8rem; }
+  .stato-turno { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .9rem; }
+  /* il gioco parte dall'alto: centrato in verticale scendeva e il campo veniva più piccolo */
+  .tavolo.libero .panno { align-items: start; align-content: start; }
+}
 /* sul telefono la barra dei filtri si nasconde scorrendo in giù e torna scorrendo in su (vedi app.js) */
 @media (max-width: 600px) {
   .filtri { transition: transform .22s ease, opacity .22s ease; }
