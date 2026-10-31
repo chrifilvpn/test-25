@@ -69,7 +69,7 @@ class Snake {
 
   input(p, d) {
     const s = this.serpenti[p];
-    if (!s || !s.vivo || !DIR[d.dir]) return;
+    if (!s || !s.vivo || !Object.prototype.hasOwnProperty.call(DIR, d.dir)) return;
     const ultima = s.coda.length ? s.coda[s.coda.length - 1] : s.dir;
     if (d.dir === ultima || d.dir === OPPOSTA[ultima] || s.coda.length >= 3) return;
     s.coda.push(d.dir);

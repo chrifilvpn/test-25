@@ -9,6 +9,9 @@
 
 const { indirizzo, MappaLimitata, eScansione } = require('./guardia');
 const CHIAVI_VIETATE = new Set(['__proto__', 'constructor', 'prototype']);
+// valori che, usati come chiave (es. DIR[d.dir]), pescano funzioni di Object.prototype invece di undefined:
+// "constructor", "toString"… non servono a nessun gioco, quindi diventano una stringa vuota
+const VALORI_VIETATI = new Set([...Object.getOwnPropertyNames(Object.prototype), 'prototype']);
 // quanti proxy fidati ci sono davanti al server (Render: 1) e se leggere l'indirizzo passato da Cloudflare
 const RETE = { hop: Math.max(0, Number(process.env.PROXY_FIDATI ?? 1) || 0), cloudflare: process.env.CLOUDFLARE === '1' };
 
@@ -17,7 +20,7 @@ const RETE = { hop: Math.max(0, Number(process.env.PROXY_FIDATI ?? 1) || 0), clo
 function pulisciDato(x, prof = 0, stato = null) {
   const sospetto = () => { if (stato) stato.sospetto = true; };
   if (x === null || x === undefined) return undefined;
-  if (typeof x === 'string') { if (x.length > 4000) { sospetto(); return x.slice(0, 4000); } return x; }
+  if (typeof x === 'string') { if (VALORI_VIETATI.has(x)) { sospetto(); return ''; } if (x.length > 4000) { sospetto(); return x.slice(0, 4000); } return x; }
   if (typeof x === 'number') return Number.isFinite(x) ? x : 0;
   if (typeof x === 'boolean') return x;
   if (typeof x !== 'object') return undefined;
@@ -120,7 +123,9 @@ const LIMITI_EVENTI = {
   chat: [1, 5], // 5 messaggi di fila, poi uno al secondo
   chatGlobale: [0.5, 4], // chat di tutto il sito: 4 di fila, poi uno ogni 2 secondi
   creaStanza: [0.2, 4],
-  entraStanza: [0.5, 6], // niente tentativi a raffica di indovinare i codici dei tavoli
+  entraStanza: [0.5, 6],
+  boss: [1, 6], // pagina delle dispense: niente pause a raffica che bloccano il tavolo
+  azione: [15, 40], // niente tentativi a raffica di indovinare i codici dei tavoli
   predefinito: [15, 40],
 };
 

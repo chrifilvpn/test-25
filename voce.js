@@ -125,7 +125,8 @@ class Voce {
   async leggi(testoGrezzo, voceGrezza, ip = '') {
     const testo = pulisci(testoGrezzo);
     if (!testo) return { errore: 'manca il testo', stato: 400 };
-    const voce = VOCI[String(voceGrezza || 'diego')];
+    const v = String(voceGrezza || 'diego');
+    const voce = Object.prototype.hasOwnProperty.call(VOCI, v) ? VOCI[v] : null; // niente "constructor" & co.
     if (!voce) return { errore: 'voce sconosciuta', stato: 400 };
     const chiave = `${voce}|${testo}`;
     const giaFatta = this.memoria.get(chiave);
