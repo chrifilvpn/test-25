@@ -328,11 +328,25 @@ function gestisciTick(s) {
   if (s.cicloDi && (s.cicloDi !== g || !g || g.finita || !stanze.has(s.codice))) { clearInterval(s.ciclo); s.ciclo = null; s.cicloDi = null; }
   if (!g || !g.tick || g.finita || s.ciclo) return;
   s.cicloDi = g;
+  s.erroriTick = 0;
   s.ciclo = setInterval(() => {
     if (s.partita !== g || g.finita || !stanze.has(s.codice)) { clearInterval(s.ciclo); s.ciclo = null; s.cicloDi = null; return; }
     if (inPausa(s)) return;
+    // nessuna persona collegata: inutile far girare il gioco (e un tavolo abbandonato non consuma il server)
+    if (!s.posti.some((x) => x && !x.locale && (!x.bot || x.inSala) && x.connesso)) return;
     let cambiato = false;
-    try { cambiato = g.tick(Date.now()); } catch (e) { console.warn(`[${s.gioco}] errore nel tick: ${e.message}`); }
+    try { cambiato = g.tick(Date.now()); s.erroriTick = 0; } catch (e) {
+      console.warn(`[${s.gioco}] errore nel tick: ${e.message}`);
+      // un errore che si ripete a ogni tick bloccherebbe la partita per sempre: dopo 40 di fila si torna in sala
+      if (++s.erroriTick >= 40) {
+        clearInterval(s.ciclo); s.ciclo = null; s.cicloDi = null; s.erroriTick = 0;
+        s.partita = null; tornei.annulla(s); ripristinaInSala(s);
+        s.posti.forEach((x, k) => { if (x && ((x.bot && x.sostituto) || x.uscito)) s.posti[k] = null; });
+        messaggioSistema(s, '⚠️ La partita si è bloccata per un errore ed è stata chiusa: potete ricominciare');
+        invia(s);
+        return;
+      }
+    }
     s.posti.forEach((x, posto) => { if (x && !x.bot && x.socketId) io.to(x.socketId).volatile.emit('tick', g.vistaTick(posto)); });
     if (s.spettatori) for (const [sid, sp] of s.spettatori) if (seguibile(s, sp.segue)) io.to(sid).volatile.emit('tick', g.vistaTick(sp.segue));
     if (cambiato || g.finita) aggiorna(s);
@@ -731,6 +745,14 @@ guardia.quandoBan = (ip, ban) => {
   aggiornaAdmin();
 };
 const codiciSbagliati = new MappaLimitata(20000), comandiFinti = new MappaLimitata(20000);
+// chat globale: oltre al limite per connessione, uno per indirizzo (largo: a scuola la classe ha lo stesso indirizzo)
+const chatGlobalePerIp = new MappaLimitata(20000);
+function chatGlobaleConsentita(ip) {
+  let b = chatGlobalePerIp.get(ip);
+  if (!b) b = new sicurezza.Secchiello(2, 12);
+  chatGlobalePerIp.set(ip, b);
+  return b.prendi();
+}
 // conta i tentativi di un indirizzo in una finestra di tempo; restituisce quanti ne ha fatti
 function conta(mappa, ip, finestraMs) { const ora = Date.now(); let c = mappa.get(ip); if (!c || ora - c.dal > finestraMs) c = { n: 0, dal: ora }; c.n++; mappa.set(ip, c); return c.n; }
 
@@ -824,6 +846,7 @@ io.on('connection', (socket) => {
   socket.on('chatGlobale', ({ testo, nome } = {}) => {
     if (TRUCCO.eComando(testo)) return; // il trucco segreto non si vede mai, neanche nella chat globale
     if (provaAdmin(testo)) return;
+    if (!chatGlobaleConsentita(ipSocket)) { socket.emit('avvisoPrivato', 'Troppi messaggi da questa rete: aspetta qualche secondo'); return; }
     // nei giochi che controllano la chat del tavolo (Disegna, Chi è l'Alieno, Nomi in codice…) la chat globale
     // permetterebbe di aggirare le regole (scrivere la parola, dire chi è l'Alieno): chi gioca o guarda lì aspetta
     if (stanza && chatControllata(stanza) && !/^!(prof|comandi)\b/i.test(String(testo || '').trim())) {
@@ -1061,6 +1084,7 @@ io.on('connection', (socket) => {
     if (!s || s.partita || !sonoHost()) return;
     const g = s.posti[Number(posto)];
     if (!g || g.id === mioId) return;
+    if (!g.bot && g.socketId) { const so = io.sockets.sockets.get(g.socketId); if (so) so.leave(s.codice); }
     if (!g.bot) { io.to(g.socketId).emit('allontanato'); messaggioSistema(s, `${g.nome} è stato tolto dal tavolo`); }
     s.posti[Number(posto)] = null;
     aggiorna(s);
@@ -1143,7 +1167,7 @@ io.on('connection', (socket) => {
     const s = stanza;
     let i = mioPosto();
     const ioStesso = i;
-    if (!s || !s.partita || i === -1) return;
+    if (!s || !s.partita || i === -1 || typeof s.partita.azione !== 'function') return; // i giochi in tempo reale usano solo input
     // passa il telefono: la mossa di un amico sullo stesso dispositivo
     if (azione && Number.isInteger(azione.per) && azione.per !== i) {
       const x = s.posti[azione.per];
@@ -1165,7 +1189,12 @@ io.on('connection', (socket) => {
       if (esiste === false) return errore(`🧚 «${daControllare}» non sembra una parola italiana: provane un'altra`);
       if (inEsecuzione(s)) return errore('Esecuzione pubblica in corso: aspetta un attimo 🌋');
     }
-    const r = s.partita.azione(i, azione || {});
+    // la funzione è async: un errore qui non arriverebbe al try/catch di sicurezza.js, quindi si prende qui
+    let r;
+    try { r = s.partita.azione(i, azione || {}) || { errore: 'Mossa non valida' }; } catch (e) {
+      console.warn(`[${s.gioco}] mossa non valida: ${e && e.message}`);
+      return errore('Mossa non valida');
+    }
     if (!r.errore) s.mosseFatte = (s.mosseFatte || 0) + 1;
     if (r.errore) return errore(r.errore);
     if (r.silenzioso) return; // la mossa non cambia niente di quello che vedono gli altri (es. una lettera in Nomi, cose, città)

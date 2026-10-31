@@ -34,8 +34,11 @@ process.once('beforeExit', salva);
 const leggi = (chiave, predefinito = null) => (dati.has(chiave) ? dati.get(chiave) : predefinito);
 function scrivi(chiave, valore) {
   if (!dati.has(chiave) && dati.size >= MAX_CHIAVI) {
-    // si butta la chiave più vecchia (le Map ricordano l'ordine di inserimento)
-    dati.delete(dati.keys().next().value);
+    // si butta la chiave più vecchia (le Map ricordano l'ordine di inserimento), ma prima i segni "sfida già fatta":
+    // così chi apre tante sfide con identificativi nuovi non può far sparire le classifiche
+    let via = null;
+    for (const k of dati.keys()) if (k.startsWith('sfidaFatta:')) { via = k; break; }
+    dati.delete(via !== null ? via : dati.keys().next().value);
   }
   dati.set(chiave, valore);
   sporco = true;

@@ -219,6 +219,7 @@ class Backgammon {
     if (a.tipo === 'gioca') { // la sequenza intera (il computer)
       if (!Array.isArray(a.passi)) return { errore: 'Mossa non valida' };
       for (const x of a.passi) {
+        if (!x || typeof x !== 'object') return { errore: 'Mossa non valida' };
         const r = this.azione(p, { tipo: 'passo', da: x.da, a: x.a });
         if (r.errore) return r;
       }
