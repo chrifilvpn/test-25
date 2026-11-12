@@ -44,3 +44,13 @@
   .sw-mano { bottom: 48px; right: 3px; gap: 3px; }
   .sw-dir, .sw-colpo { padding: 5px 11px; font-size: 16px; }
 }
+/* telefono in verticale: il campo è più alto, quindi i pulsanti possono essere più grandi */
+@media (max-width: 620px) and (orientation: portrait) {
+  .sw-bt { padding: 6px 9px; font-size: 15px; border-radius: 10px; }
+  .sw-ordini { top: 5px; left: 5px; gap: 5px; }
+  .sw-armeria { left: 48px; }
+  .sw-unita { bottom: 5px; gap: 4px; }
+  .sw-u { width: 52px; padding: 3px 1px 6px; font-size: 10px; }
+  .sw-ic { font-size: 22px; }
+  .sw-u b { font-size: 12px; }
+}

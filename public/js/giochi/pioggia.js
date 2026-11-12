@@ -7,6 +7,7 @@
     id: 'pioggia',
     nomeAzione: '💨 Scatto',
     obiettivo: 'monete',
+    vivo: (ctx, s, i) => (s.s.e[i] ? `🪙 ${s.s.e[i].m}` : null),
     istruzioni: () => 'WASD o frecce (sul telefono il joystick): prendi le monete. Spazio (o 💨): scatto per travolgere gli altri e fargli cadere le monete!',
     statoGioco: () => 'Raccogli!',
     hud: (ctx, s) => { const e = s.s.e[ctx.mio]; return `<span>⏱️ ${s.s.resta} s</span><span>🪙 ${e ? e.m : 0}</span>${e && e.p ? `<span>${ICONA[e.p]} attivo</span>` : ''}<span>${e && e.r ? '💨 in ricarica' : '💨 pronto'}</span>`; },
