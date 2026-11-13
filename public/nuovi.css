@@ -1791,6 +1791,43 @@ button.rl-c:hover:not(:disabled) { box-shadow: inset 0 0 0 2px var(--oro); }
   .rl-frase { font-size: .78rem; }
   .rl-ruota { width: min(10.5rem, 44vw); }
 }
+/* casinò e poker su telefono e schermi bassi: il pannello per puntare (gettoni, Conferma, Passa/Punta/Rilancia) resta
+   attaccato in basso, sempre in vista senza scorrere; il tavolo scorre sotto */
+@media (max-width: 620px) {
+  .cs > .cs-pannello { position: sticky; bottom: 0; z-index: 3; background: #0f2a20; backdrop-filter: none; box-shadow: 0 -8px 18px rgba(0, 0, 0, .35); padding: .45rem .6rem; gap: .3rem; }
+  .cs > .cs-pannello .cs-importo { font-size: .82rem; margin: 0; }
+  .cs > .cs-pannello .cs-gettone-bt .cs-gettone { width: 2.3rem; height: 2.3rem; }
+  .cs > .cs-pannello .piccolo { font-size: .76rem; }
+  .pk-comandi .pk-slider { display: grid; gap: .3rem; width: 100%; }
+  .pk-comandi .mini-bt { padding-top: .25rem; padding-bottom: .25rem; }
+}
+@media (max-width: 620px) { .cs > .cs-pannello { width: 100%; } }
+/* computer con lo schermo basso (portatili): tavoli più compatti, così i pulsanti per puntare stanno nello schermo */
+@media (min-width: 621px) and (max-height: 760px) {
+  .cs { gap: .5rem; }
+  .cs > .cs-pannello { padding: .45rem .8rem; gap: .3rem; }
+  .cs > .cs-pannello .cs-gettone-bt .cs-gettone { width: 2.2rem; height: 2.2rem; }
+  .pk { --wc: 46px; }
+  .pk-ovale { height: 12.5rem; margin: 2.2rem 0 .9rem; }
+  .pk-centro { gap: .2rem; }
+  .pk-mie { --wc: 62px; }
+  .pk-mia-mano { font-size: 1rem; }
+  .pk-forza { margin-top: 0; font-size: .8rem; }
+  .rl-ruota { width: 8.5rem; }
+  .rl-croupier svg { width: 3.4rem; }
+  .rl-tappeto { grid-auto-rows: minmax(2rem, auto); }
+  .cs-mia .bj-posto { min-height: 4.2rem; }
+  .cs-tavolo { gap: .45rem; padding-bottom: .7rem; }
+  .bj .cs-carte, .sm .cs-carte { --wc: 52px; }
+  .cs-scarpa, .cs-tab-apri { margin: 0; }
+  /* blackjack, sette e mezzo e baccarat: durante le puntate il tavolo è vuoto, il pannello resta attaccato in basso */
+  .bj > .cs-pannello, .bc > .cs-pannello { position: sticky; bottom: 0; z-index: 3; background: #0f2a20; box-shadow: 0 -8px 18px rgba(0, 0, 0, .35); }
+  .bj-banco { padding: .3rem 2rem .6rem; }
+  .bj-regola { margin-top: .3rem; }
+  .bc-zona { min-height: 4.2rem; padding: .35rem; }
+  .bc-lato { padding: .3rem 1rem .5rem; }
+  .bc .cs-carte { --wc: 48px; }
+}
 /* roulette sul telefono: gettoni e "Conferma puntata" restano attaccati in basso mentre si scorre il tappeto */
 @media (max-width: 620px) {
   .rl > .cs-pannello { position: sticky; bottom: 0; z-index: 3; width: 100%; background: #0f2a20; backdrop-filter: none; box-shadow: 0 -8px 18px rgba(0, 0, 0, .35); padding: .45rem .5rem; gap: .3rem; }
