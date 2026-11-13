@@ -1820,7 +1820,7 @@ button.rl-c:hover:not(:disabled) { box-shadow: inset 0 0 0 2px var(--oro); }
   .rl-tappeto { grid-auto-rows: minmax(2rem, auto); }
   .cs-mia .bj-posto { min-height: 4.2rem; }
   .cs-tavolo { gap: .45rem; padding-bottom: .7rem; }
-  .bj .cs-carte, .sm .cs-carte { --wc: 52px; }
+  .bj .cs-carte { --wc: 52px; }
   .cs-scarpa, .cs-tab-apri { margin: 0; }
   /* blackjack, sette e mezzo e baccarat: durante le puntate il tavolo è vuoto, il pannello resta attaccato in basso */
   .bj > .cs-pannello, .bc > .cs-pannello { position: sticky; bottom: 0; z-index: 3; background: #0f2a20; box-shadow: 0 -8px 18px rgba(0, 0, 0, .35); }
