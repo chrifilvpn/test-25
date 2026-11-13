@@ -32,3 +32,12 @@
 }
 @media (prefers-reduced-motion: reduce) { .bt-ora, .bt-casella.sbaglio { animation: none; } }
 .panno-battitura .ar-gira { display: none; } /* girare il telefono qui non serve: conta la tastiera */
+/* sul computer: il foglio sta in alto (non a metà schermo col vuoto sopra) ed è scritto più grande */
+@media (min-width: 900px) and (min-height: 600px) {
+  .tavolo.libero .panno:has(.bt) { align-items: start; align-content: start; }
+  .bt { margin-top: 1.4rem; gap: .8rem; }
+  .bt-testo { font-size: 1.62rem; padding: 1.3rem 1.7rem; }
+  .bt-casella { flex-basis: 26rem; font-size: 1.4rem; padding: .7rem 1.1rem; }
+  .bt-mio { font-size: 1rem; }
+  .bt-fonte { font-size: .9rem; }
+}

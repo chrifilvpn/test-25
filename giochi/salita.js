@@ -18,6 +18,7 @@ function fineTrucco(g, sempre = false) {
   for (let p = 0; p < g.n; p++) { const da = g._winDa && g._winDa[p]; if (da != null && (sempre || g.tempoRound - da >= 1)) T.consuma(g, p); if (g._winDa) delete g._winDa[p]; }
 }
 const W = 1000, H = 620, R = 15, V = 300;
+const DOPO_PRIMO = 15; // monete in salita: secondi che restano agli altri dopo il primo arrivato
 const LUNGHEZZA = 6000; // monete in salita: lunghezza del percorso
 
 // MAPPE A TEMA: a ogni round si sceglie un'ambientazione, che decide quali pezzi di percorso escono e come sono.
@@ -225,7 +226,9 @@ class Salita extends Arena {
     this.monete = this.monete.filter((m) => !m.presa);
     const inGara = this.e.filter((e) => !e.fuori && e.arrivo === null).length;
     if (this.modo === 'fuga') return inGara === 0 || (this.n > 1 && inGara === 1 && this.e.filter((e) => e.fuori).length === this.n - 1 && this.soloDa(3)) || this.tempoRound > 150;
-    return inGara === 0 || this.tempoRound > 180;
+    // dopo il primo arrivato gli altri hanno ancora 15 secondi: prima chi restava fermo in cima teneva fermo il round
+    const primo = this.arrivi.length ? this.e[this.arrivi[0]].arrivo : null;
+    return inGara === 0 || (primo !== null && this.tempoRound > primo + DOPO_PRIMO) || this.tempoRound > 180;
   }
   // colpito da un pericolo (o finito nella lava): torna un po' indietro, resta fermo un attimo e perde 2 monete
   colpisci(p, cosa) {
@@ -342,6 +345,7 @@ class Salita extends Arena {
     const vis = (y) => y > this.cam - 60 && y < this.cam + H + 60;
     return {
       cam: Math.round(this.cam), fine: this.modo === 'monete' ? -LUNGHEZZA : null,
+      ch: this.modo === 'monete' && this.arrivi.length ? Math.max(0, Math.ceil(this.e[this.arrivi[0]].arrivo + DOPO_PRIMO - this.tempoRound)) : null,
       te: this.tema,
       e: this.e.map((e) => ({ id: e.id, x: Math.round(e.x), y: Math.round(e.y), f: e.fuori ? 1 : 0, a: e.arrivo !== null ? 1 : 0, m: e.monete, st: e.fermo > 0 ? 1 : 0, im: e.immune > 0 ? 1 : 0, salto: e.salto })),
       o: this.ostacoli.filter((o) => vis(o.y) || (o.h && vis(o.y + o.h))).map((o) => (o.tipo === 'masso' ? { id: o.id, t: 0, x: Math.round(o.x), y: Math.round(o.y), r: Math.round(o.r) }
@@ -384,7 +388,7 @@ module.exports = {
       regole: [...regoleComuni,
         'Ambientazioni: foresta (alberi, siepi, ruscelli che rallentano, tronchi che rotolano), ghiacciaio (sul ghiaccio si scivola e si frena a fatica; blocchi di ghiaccio, palle di neve), vulcano (fiumi di lava da passare sui ponti: la lava ti respinge e ti fa perdere 2 monete; palle di fuoco) e tempio perduto (stanze, corsie, colonne, lame, sabbie mobili che rallentano). Anche un pericolo che ti tocca ti fa perdere 2 monete.',
         'Il percorso ha una lunghezza fissa (la barra mostra quanto manca) ed è pieno di monete, spesso proprio nei varchi dei muri: ogni moneta vale un punto.',
-        'Chi arriva in cima prende un bonus: 30 punti il primo, 20 il secondo, 10 il terzo, 5 gli altri. Chi resta indietro è fuori, ma tiene le monete già prese.',
+        'Chi arriva in cima prende un bonus: 30 punti il primo, 20 il secondo, 10 il terzo, 5 gli altri. Dopo il primo arrivato gli altri hanno ancora 15 secondi per arrivare, poi il round si chiude. Chi resta indietro è fuori, ma tiene le monete già prese.',
         'Dopo 3 round (o 1, o 5) vince chi ha più punti. Il gioco è in tempo reale: si ferma per tutti quando qualcuno apre le dispense.',
         'Il computer facile guarda poco avanti e non cerca le monete; il medio le cerca; il difficile guarda lontano, prende le monete e sta sempre davanti.'],
     },

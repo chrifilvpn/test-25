@@ -39,8 +39,10 @@ window.Arena = (() => {
       if (joy.id !== null) return;
       const x = (tasti.has('d') || tasti.has('arrowright') ? 1 : 0) - (tasti.has('a') || tasti.has('arrowleft') ? 1 : 0);
       const y = (tasti.has('s') || tasti.has('arrowdown') ? 1 : 0) - (tasti.has('w') || tasti.has('arrowup') ? 1 : 0);
-      const l = Math.hypot(x, y) || 1;
-      inp.x = x / l; inp.y = y / l;
+      // cfg.giraTasti: un gioco che mostra il campo girato (calcio balilla sugli schermi larghi) scambia gli assi
+      const [gx, gy] = cfg.giraTasti ? cfg.giraTasti(x, y) : [x, y];
+      const l = Math.hypot(gx, gy) || 1;
+      inp.x = gx / l; inp.y = gy / l;
     }
     function invia(forza = false) {
       if (!attiva()) return;
@@ -72,7 +74,9 @@ window.Arena = (() => {
 
     function coordMondo(e) {
       const r = tela.getBoundingClientRect(), p = ctxA.partita;
-      return [((e.clientX - r.left) / r.width) * p.W, ((e.clientY - r.top) / r.height) * p.H];
+      const fx = (e.clientX - r.left) / r.width, fy = (e.clientY - r.top) / r.height;
+      if (cfg.coord) return cfg.coord(fx, fy, p); // campo disegnato girato: il gioco dice dov'è il punto nel suo mondo
+      return [fx * p.W, fy * p.H];
     }
     // mouse: mira o bersaglio (il gatto segue il puntatore); click = azione
     function preparaTela() {
@@ -219,8 +223,29 @@ window.Arena = (() => {
       if (scritta) {
         g.fillStyle = 'rgba(10,20,30,.55)'; g.fillRect(0, 0, LW, LH);
         g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
-        g.font = `400 ${scritta.length > 3 ? 64 : 120}px "Young Serif", Georgia, serif`; g.fillText(scritta, LW / 2, LH / 2 - 10);
-        if (sotto) { g.font = '600 24px system-ui, sans-serif'; g.fillText(sotto, LW / 2, LH / 2 + 60); }
+        g.font = `400 ${scritta.length > 3 ? 64 : 120}px "Young Serif", Georgia, serif`; g.fillText(scritta, LW / 2, LH / 2 - (ultimo.fase === 'pausaRound' && !ultimo.pausa && p.n > 1 ? Math.min(60, LH * 0.12) : 10));
+        // fine round: la classifica del round (quanto ha fatto ognuno adesso e il totale), col migliore in cima
+        const st = p.storico || [];
+        if (!ultimo.pausa && ultimo.fase === 'pausaRound' && st.length && st.length === ultimo.round && p.n > 1 && !cfg.senzaClassificaRound) {
+          const ora2 = st[st.length - 1], primaR = st.length > 1 ? st[st.length - 2] : ora2.map(() => 0);
+          const righe = ora2.map((tot, i) => ({ i, tot: Math.round(tot), piu: Math.round(tot - primaR[i]) })).sort((x, y) => (cfg.menoEMeglio ? x.piu - y.piu : y.piu - x.piu) || y.tot - x.tot);
+          const k = Math.min(LW / 1000, LH / 620) || 1, alta = Math.min(34 * k, (LH * 0.42) / righe.length), larga = Math.min(LW * 0.86, 430 * k), x0 = LW / 2 - larga / 2;
+          let y = LH / 2 + 34 * k;
+          if (sotto && !/^Punti totali/.test(sotto)) { g.font = `600 ${Math.round(22 * k)}px system-ui, sans-serif`; g.fillText(sotto, LW / 2, y); y += 30 * k; }
+          g.font = `600 ${Math.round(Math.min(20 * k, alta * 0.62))}px system-ui, sans-serif`;
+          righe.forEach((r, n) => {
+            const cy = y + alta * (n + 0.5);
+            g.fillStyle = r.i === ctxA.mio ? 'rgba(255,255,255,.2)' : 'rgba(0,0,0,.35)';
+            g.beginPath(); if (g.roundRect) g.roundRect(x0, cy - alta * 0.44, larga, alta * 0.88, alta * 0.3); else g.rect(x0, cy - alta * 0.44, larga, alta * 0.88); g.fill();
+            g.fillStyle = COLORI[r.i % COLORI.length]; g.beginPath(); g.arc(x0 + alta * 0.55, cy, alta * 0.2, 0, Math.PI * 2); g.fill();
+            g.fillStyle = '#fff'; g.textAlign = 'left';
+            let nome = `${n === 0 && righe[0].piu !== righe[righe.length - 1].piu ? '🏆 ' : ''}${r.i === ctxA.mio ? 'Tu' : ctxA.nome(r.i)}`; if (nome.length > 16) nome = `${nome.slice(0, 15)}…`;
+            g.fillText(nome, x0 + alta * 1.05, cy + 1);
+            g.textAlign = 'right'; g.fillText(`${r.piu >= 0 ? '+' : ''}${r.piu}   ·   ${r.tot}`, x0 + larga - alta * 0.45, cy + 1);
+          });
+          g.textAlign = 'center';
+        }
+        else if (sotto) { g.font = '600 24px system-ui, sans-serif'; g.fillText(sotto, LW / 2, LH / 2 + 60); }
       }
     }
     requestAnimationFrame(disegna);
@@ -274,6 +299,7 @@ window.Arena = (() => {
         const st = document.getElementById('stato-turno');
         const testo = this.stato(ctx);
         if (st && testo && st.textContent !== testo) st.textContent = testo;
+        if (cfg.vivo && ora - (this._vivoDal || 0) > 400) { this._vivoDal = ora; const pe = document.getElementById('punteggio'); if (pe) { const html = this.punteggio(ctx); if (pe._vivo !== html) { pe._vivo = html; pe.innerHTML = html; } } }
         const h = document.querySelector('.ar-hud');
         if (h && cfg.hud) { const html = cfg.hud(ctx, d); if (h._html !== html) { h._html = html; h.innerHTML = html; } }
         aggiornaSopra(ctx, d);
@@ -305,7 +331,9 @@ window.Arena = (() => {
       },
       punteggio(ctx) {
         const p = ctx.partita;
-        return p.punti.map((x, i) => `<span style="color:${COLORI[i % COLORI.length]}">${esc(i === ctx.mio ? 'Tu' : ctx.nome(i))} <b>${x}</b></span>`).join('') + `<span class="obiettivo">${esc(cfg.obiettivo || 'punti')}</span>`;
+        // cfg.vivo: quello che ognuno sta facendo in questo round (monete in tasca, caselle colorate…), accanto al totale
+        const s = ultimo || p.stato, inGioco = cfg.vivo && s && s.s && s.fase === 'gioco' && !p.finita;
+        return p.punti.map((x, i) => { let v = null; if (inGioco) { try { v = cfg.vivo(ctx, s, i); } catch (e) { v = null; } } return `<span style="color:${COLORI[i % COLORI.length]}">${esc(i === ctx.mio ? 'Tu' : ctx.nome(i))} <b>${x}</b>${v != null ? ` <small class="ar-vivo">${esc(String(v))}</small>` : ''}</span>`; }).join('') + `<span class="obiettivo">${esc(cfg.obiettivo || 'punti')}</span>`;
       },
       infoPosto(ctx, posto) { return `${ctx.partita.punti[posto]} punti`; },
       // i giochi con uno strato HTML sopra il canvas (cfg.sopra) ricevono i clic sui loro pulsanti [data-az]
