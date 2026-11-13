@@ -161,7 +161,12 @@
     const z = zonaUtile(cb), zw = (z.x1 - z.x0 + 1) * C, zh = (z.y1 - z.y0 + 1) * C;
     const kFit = Math.min(F.W / zw, F.H / zh, 2.2);
     if (s.cam.fit || forza) {
-      if (kFit * C >= 30 || forza) { s.cam.k = kFit; s.cam.ox = (F.W - zw * kFit) / 2 - z.x0 * C * kFit; s.cam.oy = (F.H - zh * kFit) / 2 - z.y0 * C * kFit; s.cam.fit = true; s.cam.zona = true; return; }
+      // sul telefono un campo grande non ci sta con caselle comode: si parte lo stesso dalla panoramica (si vede dove
+      // sono i nemici, prima restavano fuori vista) e al proprio turno la vista si stringe su di sé (vedi 'turno')
+      const panoramica = F.W < 600 && kFit * C < 30 && kFit * C >= 11 && !forza && !s.cam.vista;
+      if (panoramica) { s.cam.panoramica = true; s.cam.panDa = performance.now(); }
+      s.cam.vista = true;
+      if (kFit * C >= 30 || forza || panoramica) { s.cam.k = kFit; s.cam.ox = (F.W - zw * kFit) / 2 - z.x0 * C * kFit; s.cam.oy = (F.H - zh * kFit) / 2 - z.y0 * C * kFit; s.cam.fit = true; s.cam.zona = true; return; }
       s.cam.k = (F.W < 600 ? 28 : 36) / C; s.cam.fit = false; centra(F, io(F.ctx) || cb.creature.find((c) => c.id === cb.attivo), false);
     }
     limita(F, s);
@@ -271,7 +276,7 @@
     const cb = cbDi(ctx), s = st(ctx), F = ctx.ui.campo; if (!cb) return;
     const chiave = `${cb.scena.stile}${cb.scena.w}x${cb.scena.h}${cb.scena.g.slice(0, 120)}`;
     const ultimo = cb.eventi.length ? cb.eventi[cb.eventi.length - 1].n : 0;
-    if (s.chiave !== chiave) { s.chiave = chiave; s.evVisto = ultimo; s.anim = []; s.posAnim = {}; s.sel = null; if (F) { F.chiaveNebbia = ''; adatta(F, s, false); } return; }
+    if (s.chiave !== chiave) { s.chiave = chiave; s.evVisto = ultimo; s.anim = []; s.posAnim = {}; s.sel = null; s.cam.vista = false; s.cam.panoramica = false; s.cam.fit = true; if (F) { F.chiaveNebbia = ''; adatta(F, s, false); } return; }
     const nuovi = cb.eventi.filter((e) => e.n > s.evVisto);
     s.evVisto = ultimo;
     if (!nuovi.length) return;
@@ -298,7 +303,7 @@
       else if (e.tipo === 'salvezza') { testo(e.a, e.riuscita ? 'resiste' : 'colpito!', e.riuscita ? '#c8d8ff' : '#ff9a4a'); t += 220; }
       else if (e.tipo === 'cade' || e.tipo === 'muore') { testo(e.id, e.tipo === 'muore' ? '💀' : '⬇', '#ffffff', true); t += 200; }
       else if (e.tipo === 'incantesimo') { const p = pos(e.da); if (p) s.anim.push({ t0: t, dur: 600, lampo: true, ...p, col: '#c8a0ff' }); t += 150; }
-      else if (e.tipo === 'turno' && e.id === mioIdDi(ctx) && !ctx.stato.spettatore) { suono([[523, 0.08], [784, 0.12]], { tipo: 'triangle', volume: 0.05 }); if (F) setTimeout(() => centra(F, io(ctx), true), Math.max(0, t - performance.now())); s.sel = null; s.modo = 'muovi'; }
+      else if (e.tipo === 'turno' && e.id === mioIdDi(ctx) && !ctx.stato.spettatore) { suono([[523, 0.08], [784, 0.12]], { tipo: 'triangle', volume: 0.05 }); if (F) setTimeout(() => { if (s.cam.panoramica) { s.cam.panoramica = false; s.cam.fit = false; s.cam.k = 28 / C; centra(F, io(ctx), false); } else centra(F, io(ctx), true); }, Math.max(0, t - performance.now(), s.cam.panoramica ? (s.cam.panDa || 0) + 2600 - performance.now() : 0)); s.sel = null; s.modo = 'muovi'; }
       else if (e.tipo === 'fine') { if (F) mostraBanner(F, e.esito === 'vittoria' ? '🏆 Vittoria!' : '💀 Sconfitta…', e.esito); }
     }
   }

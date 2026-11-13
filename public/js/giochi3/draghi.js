@@ -80,7 +80,7 @@
     if (p.fase === 'avventura' && !pg.morto) stato = p.bot[posto] ? '<em class="dr-st bot" title="Compagno del computer">🤖</em>' : p.dichiarazioni[posto] != null ? '<em class="dr-st ok" title="Ha scritto">✓</em>' : '<em class="dr-st scrive" title="Sta pensando">✍️</em>';
     if (p.fase === 'prove') { const x = p.prove.filter((r) => r.posto === posto); if (x.length) stato = x.every((r) => r.esito) ? '<em class="dr-st ok">🎲</em>' : '<em class="dr-st scrive">🎲</em>'; }
     if (cb && cb.attivo === pg.uid) stato = '<em class="dr-st turno">⚔️</em>';
-    const chi = p.bot[posto] ? 'computer' : esc(ctx.nome(posto));
+    const chi = p.bot[posto] ? 'PC' : esc(ctx.nome(posto));
     return `<button type="button" class="dr-pg ${posto === ctx.mio ? 'mio' : ''} ${pf <= 0 ? 'giu' : ''} ${pg.morto ? 'morto' : ''}" data-az="dr-scheda" data-id="${pg.uid}" style="--cc:${colClasse(pg.classe)}">
       <span class="dr-pg-ritr">${A().ritratto(pg, { cornice: false })}<i class="dr-pg-liv">${pg.livello}</i></span>
       <span class="dr-pg-info"><b>${esc(pg.nome)}</b><small>${NOMI_STIRPE[pg.stirpe]} ${NC[pg.classe].toLowerCase()} · ${chi}</small>

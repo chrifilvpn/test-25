@@ -309,6 +309,7 @@ public/js/giochi/mappa.js
 public/js/giochi/massi.js
 public/js/giochi/mensola.js
 public/js/giochi/mind.js
+public/js/giochi/monumenti-arte.js
 public/js/giochi/nascondino.js
 public/js/giochi/paintball.js
 public/js/giochi/palloncini.js

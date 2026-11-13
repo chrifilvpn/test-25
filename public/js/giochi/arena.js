@@ -280,7 +280,7 @@ window.Arena = (() => {
       },
       panno(ctx) {
         const p = ctx.partita;
-        return `<div class="ar">
+        return `<div class="ar ${cfg.compatto && !touch() ? 'ar-compatto' : ''}">
           <p class="pa-round">Round ${p.stato.round} di ${p.nRound}${(cfg.sottotitolo && cfg.sottotitolo(p, ctx)) ? ` · ${cfg.sottotitolo(p, ctx)}` : ''}</p>
           <div class="ar-hud"></div>
           <div class="ar-box"><div class="ar-sopra"></div></div>

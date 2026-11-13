@@ -50,7 +50,7 @@
       return `<div class="bd">
         <p class="pa-round">${esc(p.cosa || 'Bandiera')} ${p.domanda} di ${p.nDomande}${p.migliore > 1 ? ` · serie migliore: ${p.migliore}` : ''}</p>
         ${tempo}
-        ${p.bandiera ? `<div class="bd-bandiera ${p.bandiera.sagoma ? 'sagoma' : ''}">${figura(p.bandiera)}</div>` : `<div class="bd-icona" aria-hidden="true">${esc(p.icona || '❓')}</div>`}
+        ${p.bandiera ? `<div class="bd-bandiera ${p.bandiera.sagoma ? 'sagoma' : ''}">${figura(p.bandiera)}</div>` : (window.MonumentiArte && MonumentiArte.di(p.testo)) ? `<div class="bd-arte">${MonumentiArte.di(p.testo)}</div>` : `<div class="bd-icona" aria-hidden="true">${esc(p.icona || '❓')}</div>`}
         <p class="bd-domanda">${esc(p.testo || 'Di che paese è questa bandiera?')}</p>
         ${p.indizio ? `<p class="bd-indizio">${esc(p.indizio)}</p>` : ''}
         ${messaggio(ctx)}

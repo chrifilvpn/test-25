@@ -1070,6 +1070,7 @@
     clicAzione: false,
     pieno,
     misura,
+    compatto: true, // sul computer niente riga del round né istruzioni sotto: la scena prende quello spazio (H mostra i comandi)
     maxDpr: touch() ? 2 : undefined, // sul telefono la tela a 3× costava troppo (grana, scritte e scena da ricopiare)
     obiettivo: 'punti',
     predici,
