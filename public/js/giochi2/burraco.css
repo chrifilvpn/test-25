@@ -64,3 +64,5 @@
   .bu-banco { gap: .4rem; }
   .bu-zona h3 { font-size: .78rem; }
 }
+/* telefono: i pozzetti (carte girate di lato) non toccano il bordo destro */
+@media (max-width: 620px) { .bu-pozzetti { padding-right: .45rem; } .bu-banco { gap: .4rem; } }

@@ -61,3 +61,5 @@ button.un-dorso:hover .carta, button.un-dorso:focus-visible .carta { box-shadow:
   .un-bersaglio-mano, .un-mia-mano { --w: 52px; }
 }
 @media (prefers-reduced-motion: reduce) { .un-bersaglio-mano.mia, .un-mia .carta.un-nuova, .un-dorso.un-tolta, .un-grande { animation: none; } }
+/* l'etichetta «uomo nero» sotto la carta resta sopra le carte vicine (sul telefono le carte si accavallano) */
+.un-mia:has(.un-etichetta) { z-index: 3; }

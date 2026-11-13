@@ -20,6 +20,14 @@ Made by chry_pala. Altri giochi arriveranno uno alla volta.
 
 ## Novità di questa versione
 
+- **Migliorie di Carte e Casinò** (telefono e schermi bassi):
+  - **Poker, Texas, Omaha, Blackjack, Baccarat, Sette e mezzo, Higher or Lower**: sul telefono il pannello per puntare (gettoni, Conferma, Passa/Punta/Rilancia) resta attaccato in basso, sempre in vista senza scorrere, come già nella Roulette. Sui computer con lo schermo basso (portatili) i tavoli sono più compatti e i pulsanti stanno nello schermo.
+  - **Scopa, Scopone, Cirulla, Asso pigliatutto**: accanto al nome si legge «N carte prese» (prima «N carte» sembrava il numero di carte in mano).
+  - **FreeCell e Piramide** sul telefono: carte più grandi, usano tutta la larghezza. FreeCell si stringe anche sugli schermi bassi.
+  - **Mani con tante carte** sul telefono (Tressette, Scopone, UNO…): un po' di margine ai bordi, la prima e l'ultima carta non toccano lo schermo.
+  - **Briscola**: sotto il mazzo è scritta la carta di briscola («briscola: re di picche»), che sul telefono si vedeva poco.
+  - **Uomo nero**: l'etichetta «uomo nero» sotto la carta non finisce più sotto le carte vicine. **Burraco**: sul telefono i pozzetti non toccano il bordo.
+  - **Briscola chiamata**: provato a far aprire di briscola il chiamante con tante briscole alte: su 3000 mani vince meno (67% contro 73%), quindi resta com'era; corretta la regola che lo descriveva.
 - **Rianalisi di strategia e rompicapo (10 novembre)**:
   - **Go sui goban grandi**: sul 19×19 (e a volte sul 13×13) il computer medio e difficile metteva le pietre in fila sul bordo (A19, B19, C19…) o passava dopo poche mosse, perché le partite simulate erano poche rispetto agli incroci e tutte le mosse restavano a pari merito. Ora ogni incrocio ha un «buon senso» di partenza (linee 3 e 4 e punti vicini alle pietre prima, bordo vuoto dopo), il tempo per pensare cresce con la grandezza del goban e non passa più a goban mezzo vuoto. La descrizione del gioco ora nomina anche il 19×19.
   - **Annunci grandi sul telefono** («Ada conquista Medio Oriente!», «Bomba!»…): si stringevano a metà schermo andando a capo in 3-4 righe dentro un ovale che copriva la barra; ora usano tutta la larghezza e stanno su una o due righe.

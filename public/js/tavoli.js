@@ -47,7 +47,7 @@ window.Tavoli = (() => {
       return `<div class="area-mazzo">
           ${p.mazzo > 0 ? `<div class="briscola-sotto">${FB(p.briscola)}</div>` : ''}
           ${p.mazzo > 1 ? `<div class="mazzo-grande">${Carte.retro()}<span>${p.mazzo - 1}</span></div>` : ''}
-          <div class="etichetta-briscola">${Carte.seme(p.briscola.seme)} briscola a ${Carte.SEMI[p.briscola.seme]}</div>
+          <div class="etichetta-briscola">${Carte.seme(p.briscola.seme)} briscola: <b>${esc(Carte.nome(p.briscola).split(' di ')[0].toLowerCase())}</b> di ${Carte.SEMI[p.briscola.seme]}</div>
         </div>
         <div class="croce">${giocate}</div>`;
     },
@@ -111,7 +111,7 @@ window.Tavoli = (() => {
       const p = ctx.partita;
       const f = p.aSquadre ? posto % 2 : posto;
       const s = p.scope[f];
-      return `${plur(p.preseCarte[f], 'carta', 'carte')}${s ? `, <b class="scope">${plur(s, 'scopa', 'scope')}</b>` : ''}`;
+      return `${plur(p.preseCarte[f], 'carta presa', 'carte prese')}${s ? `, <b class="scope">${plur(s, 'scopa', 'scope')}</b>` : ''}`;
     },
     punteggio(ctx) {
       const p = ctx.partita;

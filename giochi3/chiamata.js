@@ -296,9 +296,8 @@ function botGioco(g, p, livello) {
   const perCosto = [...mano].sort((a, b) => costo(a) - costo(b));
   const liscio = perCosto[0];
   if (!g.tavolo.length) {
-    // apre: il chiamante (e il socio che si è svelato) tira fuori le briscole se ne ha tante; gli altri lisciano
-    const mieB = mano.filter(isB).sort((a, b) => forza(b) - forza(a));
-    if (livello === 'XX' && p === g.chiamata.chiamante && mieB.length >= 3 && forza(mieB[0]) >= 8) return gioca(mieB[0]);
+    // apre con un liscio. Provato (3000 mani): se il chiamante apre di briscola alta quando ne ha tante, vince meno
+    // spesso (67% contro 73%), quindi non lo fa
     return gioca(liscio);
   }
   const puntiTavolo = g.tavolo.reduce((s, x) => s + punti(x.carta), 0);
@@ -409,7 +408,7 @@ module.exports = {
       'Le prese come nella briscola: si può giocare qualsiasi carta; prende la briscola più alta, o se non ce ne sono la carta più alta del seme giocato per primo. Chi prende gioca per primo la presa dopo.',
       'Punti della mano: se chiamante e socio ce la fanno, il chiamante prende 2, il socio 1 e gli altri perdono 1 ciascuno; se non ce la fanno è il contrario. Se il chiamante chiama una carta che ha già in mano gioca da solo contro quattro: ±4 per lui, ∓1 agli altri.',
       'Se tutti passano senza chiamare si rimescola. Si giocano le mani scelte (di solito 5, una a testa come mazziere): vince chi ha il totale più alto.',
-      'Il computer facile chiama e gioca un po\' a caso; il medio sa quando conviene chiamare; il difficile tiene conto di chi è amico, carica i punti al compagno e tira fuori le briscole quando serve.',
+      'Il computer facile chiama e gioca un po\' a caso; il medio sa quando conviene chiamare; il difficile tiene conto di chi è amico, carica i punti al compagno e, per ogni carta, immagina tante distribuzioni possibili delle carte che non vede e gioca quella che fa vincere più spesso la sua squadra.',
     ],
   },
   crea: (o) => new Chiamata(o),

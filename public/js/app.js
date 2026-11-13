@@ -1121,7 +1121,7 @@
     const cs = getComputedStyle(cont), gap = parseFloat(cs.columnGap) || 0;
     const margini = carte.slice(1).map((c) => parseFloat(getComputedStyle(c).marginLeft) || 0);
     const tot = carte.reduce((t, c) => t + c.offsetWidth, 0) + margini.reduce((a, b) => a + b, 0) + gap * (carte.length - 1);
-    const W = Math.min(cont.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0), document.documentElement.clientWidth) - 8;
+    const W = Math.min(cont.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0), document.documentElement.clientWidth) - 20; // un po' di aria ai bordi: la prima e l'ultima carta non toccano lo schermo
     if (tot <= W) return;
     const meno = (tot - W) / (carte.length - 1);
     carte.slice(1).forEach((c, i) => { c.style.marginLeft = `${margini[i] - meno}px`; });
