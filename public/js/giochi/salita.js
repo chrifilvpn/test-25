@@ -213,7 +213,7 @@
     statoGioco: (ctx, s) => { const e = s.s.e[ctx.mio]; return !e ? '' : e.f ? 'Sei fuori: guarda gli altri' : e.a ? 'Sei arrivato!' : modo === 'fuga' ? 'Scappa!' : 'Sali!'; },
     sottotitolo: () => '',
     hud: (ctx, s) => (modo === 'fuga' ? `<span>${NOME_TEMA[s.s.te] || ''}</span><span>⏱️ ${Math.floor(s.t)} s</span><span>🏃 in fuga: ${s.s.e.filter((e) => !e.f).length}</span>`
-      : `<span>${NOME_TEMA[s.s.te] || ''}</span><span>🪙 ${s.s.e[ctx.mio] ? s.s.e[ctx.mio].m : 0} monete</span><span class="sa-barra"><i style="width:${Math.round(s.s.prog * 100)}%"></i></span><span>${Math.round(s.s.prog * 100)}%</span>`),
+      : `<span>${NOME_TEMA[s.s.te] || ''}</span><span>🪙 ${s.s.e[ctx.mio] ? s.s.e[ctx.mio].m : 0} monete</span><span class="sa-barra"><i style="width:${Math.round(s.s.prog * 100)}%"></i></span><span>${Math.round(s.s.prog * 100)}%</span>${s.s.ch != null ? `<span class="sa-chiude">🏁 si chiude tra ${s.s.ch} s</span>` : ''}`),
     fineRound: (p, s, ctx) => `Punti totali: ${p.punti[ctx.mio]}`,
     disegna: disegna(modo),
     dopoTick(ctx, d, prima) {

@@ -42,7 +42,7 @@
   }
 
   const tavolo = window.Arena.tavolo({
-    id: 'tigerball',
+    id: 'tigerball', menoEMeglio: true,
     comandi: 'nessuno',
     clicAzione: false,
     obiettivo: 'tiri (meno è meglio)',

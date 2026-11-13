@@ -1133,6 +1133,8 @@ button.it-leva { cursor: pointer; }
 .ar-box { width: 100%; display: grid; justify-items: center; }
 .ar-tela { display: block; border-radius: 14px; box-shadow: 0 8px 24px rgba(0, 0, 0, .4); touch-action: none; user-select: none; -webkit-user-select: none; }
 .ar-istr { margin: 0; text-align: center; }
+.sa-chiude { color: var(--oro); font-weight: 700; }
+.ar-vivo { font-size: .9em; font-variant-numeric: tabular-nums; margin-left: .15em; }
 .ar-istr.ar-corta { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ar-touch { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 0 .5rem; touch-action: none; user-select: none; -webkit-user-select: none; }
 .ar-joy { position: relative; width: 7.5rem; height: 7.5rem; border-radius: 50%; background: rgba(255, 255, 255, .1); border: 2px solid rgba(255, 255, 255, .3); touch-action: none; }

@@ -7,6 +7,7 @@
   const tavolo = window.Arena.tavolo({
     id: 'colori',
     obiettivo: 'caselle / 10',
+    vivo: (ctx, s, i) => (s.s.n && s.s.n[i] != null ? `■ ${s.s.n[i]}` : null),
     istruzioni: () => 'WASD o frecce (sul telefono il joystick): dove passi il pavimento prende il tuo colore. Ruba i colori agli altri!',
     statoGioco: () => 'Colora!',
     hud: (ctx, s) => `<span>⏱️ ${s.s.resta} s</span>${s.s.n.map((x, i) => `<span style="color:${COLORI[i % COLORI.length]}">■ ${x}</span>`).join('')}`,

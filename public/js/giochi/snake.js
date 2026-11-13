@@ -4,6 +4,28 @@
   const COLORI = ['#ffd166', '#6aa8ff', '#ff7b6b', '#7fd1a8', '#c89bff', '#ffa94d', '#5fd0d0', '#f7a8d8'];
   const TASTI = { ArrowUp: 'su', ArrowDown: 'giu', ArrowLeft: 'sx', ArrowRight: 'dx', w: 'su', s: 'giu', a: 'sx', d: 'dx', W: 'su', S: 'giu', A: 'sx', D: 'dx' };
   let ctxS = null, tela = null, stato = null, partitaDi = null;
+  // movimento fluido: per ogni serpente le caselle di prima e il momento del passo; tra un passo e l'altro si scorre
+  let mossa = [];
+  function segna(nuovo) {
+    const ora = performance.now();
+    (nuovo.s || []).forEach((s, i) => {
+      const m = mossa[i];
+      const testa = s.c && s.c[0] ? `${s.c[0][0]},${s.c[0][1]}` : '';
+      if (!m || !s.v || !testa) { mossa[i] = { testa, prima: null, t0: ora, dur: 140 }; return; }
+      if (m.testa === testa) return;
+      const vecchio = stato && stato.s[i] && stato.s[i].c;
+      mossa[i] = { testa, prima: vecchio ? vecchio.map((c) => [c[0], c[1]]) : null, t0: ora, dur: Math.max(50, Math.min(320, (ora - m.t0) * 1.05)) };
+    });
+  }
+  // dove disegnare il pezzo k del serpente i in questo istante
+  function dove(i, k, c) {
+    const m = mossa[i];
+    if (!m || !m.prima || (stato && stato.pausa)) return c;
+    const f = Math.min(1, (performance.now() - m.t0) / m.dur);
+    const a = m.prima[k];
+    if (f >= 1 || !a || Math.abs(a[0] - c[0]) + Math.abs(a[1] - c[1]) !== 1) return c; // passaggio dal bordo: niente scivolata
+    return [a[0] + (c[0] - a[0]) * f, a[1] + (c[1] - a[1]) * f];
+  }
 
   function assicuraTela(ctx) {
     const p = ctx.partita;
@@ -53,12 +75,18 @@
       if (!s.v) return;
       const col = COLORI[i % 8];
       g.globalAlpha = s.fa ? 0.45 : 1;
-      s.c.forEach(([x, y], k) => {
+      const pos = s.c.map((c, k) => dove(i, k, c));
+      // il corpo: una striscia continua sotto i pallini, così in curva non si vedono buchi
+      g.strokeStyle = shade(col); g.lineWidth = lato * 0.5; g.lineCap = 'round'; g.lineJoin = 'round'; g.beginPath();
+      pos.forEach(([x, y], k) => { const salto = k > 0 && Math.abs(pos[k - 1][0] - x) + Math.abs(pos[k - 1][1] - y) > 1.5; if (k === 0 || salto) g.moveTo((x + 0.5) * lato, (y + 0.5) * lato); else g.lineTo((x + 0.5) * lato, (y + 0.5) * lato); });
+      g.stroke();
+      for (let k = pos.length - 1; k >= 0; k--) {
+        const [x, y] = pos[k];
         const r = k === 0 ? 0.48 : 0.42 - Math.min(0.12, k * 0.004);
         g.fillStyle = k === 0 ? col : k % 2 ? col : shade(col);
         g.beginPath(); g.arc((x + 0.5) * lato, (y + 0.5) * lato, lato * r, 0, Math.PI * 2); g.fill();
-      });
-      const [hx, hy] = s.c[0];
+      }
+      const [hx, hy] = pos[0];
       const off = { su: [0, -1], giu: [0, 1], sx: [-1, 0], dx: [1, 0] }[s.d];
       const perp = [off[1], off[0]];
       for (const k of [-1, 1]) {
@@ -86,9 +114,10 @@
     reset(ctx) {
       ctxS = ctx;
       // nuova partita (o rivincita): si riparte dallo stato completo
-      if (ctx.ui._snakeVisto !== true || ctx.partita.finita) { stato = ctx.partita.stato; ctx.ui._snakeVisto = true; }
+      if (ctx.ui._snakeVisto !== true || ctx.partita.finita) { mossa = []; stato = ctx.partita.stato; ctx.ui._snakeVisto = true; }
     },
     tick(ctx, d) {
+      segna(d);
       stato = d;
       // i punti in alto si aggiornano anche tra un messaggio e l'altro
       if (Date.now() - (ctx.ui._puntiDal || 0) > 400) { ctx.ui._puntiDal = Date.now(); const el = document.getElementById('punteggio'); if (el) el.innerHTML = snake.punteggio(ctx); }

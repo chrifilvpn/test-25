@@ -31,6 +31,31 @@
       if (conFantasma && b.f != null) for (const [a, c] of celle(b.pz.t, b.pz.r)) if (b.f + c >= 0) { g.strokeStyle = col; g.lineWidth = 2; g.globalAlpha = 0.55; g.strokeRect((b.pz.x + a) * l + 2, (b.f + c) * l + 2, l - 4, l - 4); g.globalAlpha = 1; }
       for (const [a, c] of celle(b.pz.t, b.pz.r)) if (b.pz.y + c >= 0) mattone(g, b.pz.x + a, b.pz.y + c, l, col);
     }
+    // righe cancellate: un lampo bianco che si stringe e scintille, dove c'erano le righe (prima sparivano di colpo)
+    const pr = tela._prima;
+    if (pr && b.r > pr.r && pr.pz && forme) {
+      const piena = new Array(H).fill(0);
+      for (let i = 0; i < W * H; i++) if (Number(pr.g[i])) piena[Math.floor(i / W)]++;
+      const yy = pr.f != null ? pr.f : pr.pz.y;
+      // il pezzo di prima, lasciato cadere fin dove arriva
+      const occ = (x, y) => x < 0 || x >= W || y >= H || (y >= 0 && Number(pr.g[y * W + x]));
+      let y0 = yy; if (pr.f == null) while (!celle(pr.pz.t, pr.pz.r).some(([a2, c2]) => occ(pr.pz.x + a2, y0 + 1 + c2)) && y0 < H) y0++;
+      for (const [a2, c2] of celle(pr.pz.t, pr.pz.r)) if (y0 + c2 >= 0 && y0 + c2 < H) piena[y0 + c2]++;
+      const righe = piena.map((n, y) => (n >= W ? y : -1)).filter((y) => y >= 0);
+      if (righe.length) tela._lampo = { righe, t0: performance.now() };
+    }
+    tela._prima = { g: b.g, pz: b.pz, f: b.f, r: b.r };
+    const lp = tela._lampo;
+    if (lp) {
+      const f = (performance.now() - lp.t0) / 380;
+      if (f >= 1) tela._lampo = null;
+      else for (const y of lp.righe) {
+        const alto = l * (1 - f * 0.85);
+        g.fillStyle = `rgba(255,255,255,${0.85 * (1 - f)})`; g.fillRect(0, y * l + (l - alto) / 2, W * l, alto);
+        g.fillStyle = `rgba(255,236,150,${1 - f})`;
+        for (let k = 0; k < 6; k++) { const sx = ((k * 37 + y * 53) % 100) / 100 * W * l, dir = k % 2 ? 1 : -1; g.fillRect(sx + dir * f * l * 1.6, y * l + l / 2 - f * l * (0.6 + (k % 3) * 0.5), Math.max(2, l * 0.14), Math.max(2, l * 0.14)); }
+      }
+    }
     if (!b.v) { g.fillStyle = 'rgba(0,0,0,.5)'; g.fillRect(0, 0, W * l, H * l); }
   }
   function pezzetto(tela, t, l, spento) {

@@ -150,7 +150,7 @@
       gs.fillStyle = '#6f6458'; gs.beginPath(); gs.moveTo(x - 22, y - 10); gs.lineTo(x - 4, y - 20); gs.lineTo(x + 4, y - 4); gs.lineTo(x - 14, y + 2); gs.fill();
       for (let k = 0; k < 9; k++) { gs.fillStyle = k % 3 ? '#f5c518' : '#ffe680'; gs.beginPath(); gs.arc(x - 22 + rnd(k + f) * 44, y - 10 + rnd(k + f + 1) * 22, 2 + rnd(k) * 2.5, 0, Math.PI * 2); gs.fill(); }
     }
-    scena = { cielo, lontano, colline, suolo, S, nome: ex.scena, fiocchi: Array.from({ length: S.neve ? 70 : 0 }, (_, k) => [rnd(k + 0.11) * W, rnd(k + 0.31) * H, 0.6 + rnd(k) * 1.6]) };
+    scena = { cielo, lontano, colline, suolo, S, nome: ex.scena, W: ex.W, fiocchi: Array.from({ length: S.neve ? 70 : 0 }, (_, k) => [rnd(k + 0.11) * W, rnd(k + 0.31) * H, 0.6 + rnd(k) * 1.6]) };
   }
 
   // ---------- gli stickman ----------
@@ -373,6 +373,18 @@
 
   // ---------- la minimappa e le barre delle statue ----------
   const mm = { x: 330, y: 8, w: 300, h: 22 };
+  // telefono in verticale: si guarda un pezzo di campo più stretto (560 invece di 960), così il campo viene quasi
+  // quadrato e alto il doppio; il server non cambia, è solo la finestra sulla battaglia (che già si trascina)
+  const stretto = () => window.Arena.touch() && window.innerWidth < window.innerHeight && window.innerWidth < 620;
+  let exVero = null, exStretto = null;
+  function adatta(extra) {
+    if (!extra) return extra;
+    const vero = extra._vero || extra;
+    if (!stretto()) { mm.w = 300; mm.x = (vero.W - mm.w) / 2; return vero; }
+    if (exVero !== vero) { exVero = vero; exStretto = { ...vero, W: 560, _vero: vero }; }
+    mm.w = 300; mm.x = (exStretto.W - mm.w) / 2;
+    return exStretto;
+  }
   function minimappa(g, s) {
     g.fillStyle = 'rgba(10,15,25,.6)'; g.fillRect(mm.x - 3, mm.y - 3, mm.w + 6, mm.h + 22);
     g.fillStyle = 'rgba(255,255,255,.12)'; g.fillRect(mm.x, mm.y, mm.w, mm.h);
@@ -415,6 +427,7 @@
   const tavolo = window.Arena.tavolo({
     id: 'stickwar',
     mouse: null,
+    misura: (p) => [stretto() ? 560 : p.W, p.H],
     clicAzione: false,
     comandi: 'nessuno',
     obiettivo: 'punti',
@@ -436,7 +449,7 @@
       else if (a === 'colpisci') ctx.invia({ tipo: 'colpisci' });
     },
     dopoTick(ctx, d) {
-      ctxD = ctx; ex = ctx.partita.extra || ex;
+      ctxD = ctx; ex = adatta(ctx.partita.extra || ex);
       if (!ex) return;
       const adesso = ora(), s = d.s, pos = new Map(s.u.map((u) => [u[0], u]));
       const vedo = (x) => x > cam - 60 && x < cam + ex.W + 60;
@@ -466,10 +479,10 @@
       barre();
     },
     disegna(g, p, st, prima, u, ctx) {
-      ctxD = ctx; ex = p.extra || ex;
+      ctxD = ctx; ex = adatta(p.extra || ex);
       if (!ex) return;
       // paesaggio nuovo (livello o battaglia del torneo): si riparte dalla propria statua
-      if (!scena || scena.nome !== ex.scena) { preparaScena(); cam = null; }
+      if (!scena || scena.nome !== ex.scena || scena.W !== ex.W) { const giro = scena && scena.nome === ex.scena; preparaScena(); if (giro && cam !== null) cam = camVoluta = limCam(cam); else cam = null; }
       // lo strato dei pulsanti sta sopra il campo (non su tutta la larghezza della pagina)
       const so = g.canvas.parentElement && g.canvas.parentElement.querySelector('.ar-sopra');
       if (so) { const l = `${g.canvas.offsetLeft}px`, w = `${g.canvas.offsetWidth}px`, h = `${g.canvas.offsetHeight}px`; if (so.style.left !== l || so.style.width !== w || so.style.height !== h) Object.assign(so.style, { left: l, width: w, height: h, right: 'auto', bottom: 'auto' }); }
@@ -546,7 +559,7 @@
     const nuovo = ctx.partita && ctx.partita.extra;
     // partita nuova: telecamera dalla propria statua, paesaggio del livello
     if (nuovo && (!ex || nuovo.scena !== ex.scena || nuovo.modo !== ex.modo || nuovo.livello !== ex.livello || (ctx.partita.stato && ctx.partita.stato.fase === 'via'))) { if (!ctxD || ctxD.partita !== ctx.partita) { cam = null; camVoluta = null; armeria = false; } }
-    ctxD = ctx; ex = nuovo || ex;
+    ctxD = ctx; ex = adatta(nuovo || ex);
     reset0.call(tavolo, ctx);
   };
   Object.assign(window.Tavoli, { stickwar: tavolo });
